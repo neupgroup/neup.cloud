@@ -63,6 +63,7 @@ function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onL
 function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: boolean, toggleMobileMenu: () => void }) {
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center border-b bg-background px-4 shadow-sm lg:px-6">
+      <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between">
         <div className="flex items-center gap-4">
             <div className="md:hidden">
                 <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
@@ -90,6 +91,7 @@ function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: bool
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
+      </div>
     </header>
   );
 }
