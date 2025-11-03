@@ -63,7 +63,7 @@ function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onL
 function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: boolean, toggleMobileMenu: () => void }) {
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center border-b bg-background px-4 shadow-sm lg:px-6">
-      <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between">
+      <div className="mx-auto flex w-full max-w-[1440px] items-center">
         <div className="flex items-center gap-4">
             <div className="md:hidden">
                 <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
@@ -141,7 +141,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
 
         {/* Main Content */}
-        <main className="min-h-[calc(100vh-4rem)] bg-muted/20 p-4 md:p-8">
+        <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8">
           <div className="w-full">{children}</div>
         </main>
       </div>
