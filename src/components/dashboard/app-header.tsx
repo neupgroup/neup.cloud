@@ -123,12 +123,6 @@ export default function AppHeader() {
           <DropdownMenuItem>Logout</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </header>ap-4">
-            <Settings className="h-5 w-5" />
-            Settings
-          </Link>
-        </nav>
-      </div>
-    </div>
+    </header>
   );
 }
