@@ -21,7 +21,7 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { Button } from "@/componentsui/button";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -29,8 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/componentsui/input";
-import { Textarea } from "@/componentsui/textarea";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { getRecommendations } from "@/app/actions";
 import { Loader2, Zap } from "lucide-react";
 import type { InfrastructureRecommendationsOutput } from "@/ai/flows/infrastructure-recommendations";

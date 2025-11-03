@@ -33,8 +33,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Label } from "@/componentsui/label";
-import { Input } from "@/componentsui/input";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
 
 const apps = [
