@@ -1,24 +1,148 @@
-import React from "react";
-import AppSidebar from "@/components/dashboard/app-sidebar";
-import AppHeader from "@/components/dashboard/app-header";
-import { SidebarProvider } from "@/components/ui/sidebar";
+'use client';
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <SidebarProvider>
-      <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-        <AppSidebar />
-        <div className="flex flex-col">
-          <AppHeader />
-          <main className="flex flex-1 flex-col gap-4 bg-muted/20 p-4 md:gap-8 md:p-8">
+import Link from 'next/link';
+import {
+  Home,
+  Settings,
+  Menu,
+  X,
+  User,
+} from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Logo } from '@/components/logo';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { CircleUser } from 'lucide-react';
+
+function NavLink({ href, children, currentPath, onClick }: { href: string; children: React.ReactNode; currentPath: string, onClick?: () => void }) {
+    const isActive = href === '/' ? currentPath === href : currentPath.startsWith(href);
+    return (
+        <Link
+            href={href}
+            onClick={onClick}
+            className={cn(
+                'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold hover:bg-muted hover:text-primary',
+                isActive && 'bg-muted text-primary'
+            )}
+        >
             {children}
-          </main>
+        </Link>
+    );
+}
+
+function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onLinkClick?: () => void }) {
+    const navLinks = [
+        { href: "/dashboard", label: "Dashboard", icon: Home },
+        { href: "/vps", label: "Servers", icon: require("lucide-react").Server },
+        { href: "/apps", label: "Applications", icon: require("lucide-react").AppWindow },
+        { href: "/recommendations", label: "Recommendations", icon: require("lucide-react").Lightbulb },
+        { href: "/billing", label: "Billing", icon: require("lucide-react").CreditCard },
+    ];
+    return (
+        <nav className="flex flex-col gap-2">
+            {navLinks.map(({ href, label, icon: Icon }) => (
+              <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+                <Icon className="h-4 w-4" />
+                <span>{label}</span>
+              </NavLink>
+            ))}
+        </nav>
+    );
+}
+
+function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: boolean, toggleMobileMenu: () => void }) {
+  return (
+    <header className="sticky top-0 z-40 flex h-16 items-center border-b bg-background px-4 shadow-sm lg:px-6">
+        <div className="flex items-center gap-4">
+            <div className="md:hidden">
+                <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
+                    {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                </Button>
+            </div>
+            <Logo />
         </div>
+
+        <div className="ml-auto">
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="icon" className="rounded-full">
+                    <CircleUser className="h-5 w-5" />
+                    <span className="sr-only">Toggle user menu</span>
+                </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Settings</DropdownMenuItem>
+                <DropdownMenuItem>Support</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Logout</DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+    </header>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
+
+  const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+
+  return (
+    <div className="min-h-screen w-full bg-background text-foreground">
+      <Header isMobileMenuOpen={isMobileMenuOpen} toggleMobileMenu={toggleMobileMenu} />
+      
+      {/* Mobile Menu */}
+      <div className={cn(
+        "fixed top-16 left-0 right-0 bottom-0 z-30 bg-background/95 backdrop-blur-sm transition-all duration-300 ease-in-out md:hidden",
+        isMobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"
+      )}>
+        <ScrollArea className="h-full">
+            <div className="p-4">
+                 <MainNavContent currentPath={pathname} onLinkClick={closeMobileMenu} />
+            </div>
+        </ScrollArea>
       </div>
-    </SidebarProvider>
+
+      <div className="mx-auto grid w-full max-w-[1440px] lg:grid-cols-[280px_1fr]">
+        {/* Sidebar */}
+        <aside className="hidden h-[calc(100vh-4rem)] flex-col border-r bg-card lg:sticky lg:top-16 lg:flex">
+          <ScrollArea className="flex-1">
+            <div className="p-4">
+              <MainNavContent currentPath={pathname} />
+            </div>
+          </ScrollArea>
+        </aside>
+
+        {/* Main Content */}
+        <main className="min-h-[calc(100vh-4rem)] bg-muted/20 p-4 md:p-8">
+          <div className="w-full">{children}</div>
+        </main>
+      </div>
+    </div>
   );
 }
