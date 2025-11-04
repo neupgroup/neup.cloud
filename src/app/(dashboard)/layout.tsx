@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import {
   Home,
-  Settings,
   Menu,
   X,
-  User,
+  Server,
+  AppWindow,
+  Lightbulb,
+  CreditCard,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -43,10 +45,10 @@ function NavLink({ href, children, currentPath, onClick }: { href: string; child
 function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onLinkClick?: () => void }) {
     const navLinks = [
         { href: "/dashboard", label: "Dashboard", icon: Home },
-        { href: "/vps", label: "Servers", icon: require("lucide-react").Server },
-        { href: "/apps", label: "Applications", icon: require("lucide-react").AppWindow },
-        { href: "/recommendations", label: "Recommendations", icon: require("lucide-react").Lightbulb },
-        { href: "/billing", label: "Billing", icon: require("lucide-react").CreditCard },
+        { href: "/vps", label: "Servers", icon: Server },
+        { href: "/apps", label: "Applications", icon: AppWindow },
+        { href: "/recommendations", label: "Recommendations", icon: Lightbulb },
+        { href: "/billing", label: "Billing", icon: CreditCard },
     ];
     return (
         <nav className="flex flex-col gap-2">
@@ -64,15 +66,21 @@ function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: bool
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center border-b bg-background px-4 shadow-sm lg:px-6">
       <div className="mx-auto flex w-full max-w-[1440px] items-center">
-        <div className="flex items-center gap-4">
-            <div className="md:hidden">
-                <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
-                    {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                </Button>
-            </div>
-            <Logo />
+        <div className="flex items-center gap-4 md:hidden">
+            <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
+                {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </Button>
+        </div>
+        <div className='hidden md:flex'>
+          <Logo />
         </div>
 
+        <div className="flex w-full items-center md:hidden">
+          <div className="mx-auto">
+            <Logo />
+          </div>
+        </div>
+        
         <div className="ml-auto">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -141,7 +149,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
 
         {/* Main Content */}
-        <main className="min-h-[calc(100vh-4rem)] p-4 md:p-8">
+        <main className="min-h-[calc(100vh-4rem)] bg-white p-4 md:p-8">
           <div className="w-full">{children}</div>
         </main>
       </div>
