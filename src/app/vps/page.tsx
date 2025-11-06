@@ -48,41 +48,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { getServers } from "@/lib/server-data";
 
-const servers = [
-  {
-    name: "web-server-01",
-    ip: "192.168.1.101",
-    os: "Ubuntu 22.04",
-    status: "Running",
-  },
-  {
-    name: "db-server-main",
-    ip: "192.168.1.102",
-    os: "Debian 11",
-    status: "Running",
-  },
-  {
-    name: "worker-node-alpha",
-    ip: "192.168.1.103",
-    os: "CentOS 9",
-    status: "Stopped",
-  },
-  {
-    name: "staging-env",
-    ip: "192.168.1.104",
-    os: "Ubuntu 22.04",
-    status: "Running",
-  },
-  {
-    name: "legacy-app-server",
-    ip: "192.168.1.105",
-    os: "CentOS 7",
-    status: "Error",
-  },
-];
-
-export default function VpsPage() {
+export default async function VpsPage() {
+  const servers = await getServers();
+  
   return (
     <Card>
       <CardHeader>
@@ -163,6 +133,7 @@ export default function VpsPage() {
               <TableHead>Name</TableHead>
               <TableHead>IP Address</TableHead>
               <TableHead>OS</TableHead>
+              <TableHead>Specs</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>
                 <span className="sr-only">Actions</span>
@@ -171,10 +142,11 @@ export default function VpsPage() {
           </TableHeader>
           <TableBody>
             {servers.map((server) => (
-              <TableRow key={server.name}>
+              <TableRow key={server.id}>
                 <TableCell className="font-medium">{server.name}</TableCell>
                 <TableCell>{server.ip}</TableCell>
                 <TableCell>{server.os}</TableCell>
+                <TableCell>{server.cpu}, {server.ram}, {server.storage}</TableCell>
                 <TableCell>
                   <Badge
                     variant={
