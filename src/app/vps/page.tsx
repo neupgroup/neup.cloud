@@ -48,7 +48,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { getServers } from "@/lib/server-data";
+import { db, type Server } from "@/lib/db";
+
+async function getServers(): Promise<Server[]> {
+  try {
+    const servers = await db.select<Server>('servers');
+    return servers;
+  } catch (error) {
+    console.error("Failed to fetch servers:", error);
+    // In a real app, you'd want to handle this more gracefully.
+    // For now, we return an empty array and log the error.
+    return [];
+  }
+}
 
 export default async function VpsPage() {
   const servers = await getServers();
@@ -141,7 +153,7 @@ export default async function VpsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {servers.map((server) => (
+            {servers.length > 0 ? servers.map((server) => (
               <TableRow key={server.id}>
                 <TableCell className="font-medium">{server.name}</TableCell>
                 <TableCell>{server.ip}</TableCell>
@@ -183,7 +195,11 @@ export default async function VpsPage() {
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+            )) : (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center">No servers found. Please check your database connection or add some servers.</TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
