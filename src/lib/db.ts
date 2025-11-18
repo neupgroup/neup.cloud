@@ -1,4 +1,4 @@
-import { Mapper } from '@neupgroup/mapper';
+import Mapper from '@neupgroup/mapper';
 import mysql from 'mysql2/promise';
 
 const pool = mysql.createPool({
