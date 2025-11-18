@@ -14,7 +14,8 @@ import {
   HardDrive,
   FileCode,
   Terminal,
-  FileText
+  FileText,
+  Wind
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -53,8 +54,9 @@ function NavLink({ href, children, currentPath, onClick }: { href: string; child
 function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onLinkClick?: () => void }) {
     const navLinks = [
         { href: "/dashboard", label: "Dashboard", icon: Home },
-        { href: "/vps", label: "Servers", icon: Server },
-        { href: "/apps", label: "Applications", icon: AppWindow },
+        { href: "/servers", label: "Servers", icon: Server },
+        { href: "/application", label: "Applications", icon: AppWindow },
+        { href: "/balancer", label: "Balancer", icon: Wind },
         { href: "/recommendations", label: "Recommendations", icon: Lightbulb },
         { href: "/billing", label: "Billing", icon: CreditCard },
     ];
