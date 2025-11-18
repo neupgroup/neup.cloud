@@ -55,8 +55,8 @@ function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onL
     const navLinks = [
         { href: "/dashboard", label: "Dashboard", icon: Home },
         { href: "/servers", label: "Servers", icon: Server },
-        { href: "/application", label: "Applications", icon: AppWindow },
-        { href: "/balancer", label: "Balancer", icon: Wind },
+        { href: "/applications", label: "Applications", icon: AppWindow },
+        { href: "/balancers", label: "Balancers", icon: Wind },
         { href: "/recommendations", label: "Recommendations", icon: Lightbulb },
         { href: "/billing", label: "Billing", icon: CreditCard },
     ];
