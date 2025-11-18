@@ -48,22 +48,60 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { db, type Server } from "@/lib/db";
 
-async function getServers(): Promise<Server[]> {
-  try {
-    const servers = await db.select<Server>('servers');
-    return servers;
-  } catch (error) {
-    console.error("Failed to fetch servers:", error);
-    // In a real app, you'd want to handle this more gracefully.
-    // For now, we return an empty array and log the error.
-    return [];
-  }
-}
+const servers = [
+  {
+    id: "1",
+    name: "web-server-01",
+    ip: "192.168.1.1",
+    os: "Ubuntu 22.04",
+    status: "Running",
+    cpu: "2 Cores",
+    ram: "4 GB",
+    storage: "100 GB",
+    region: "us-east-1",
+    provider: "aws",
+  },
+  {
+    id: "2",
+    name: "db-server-01",
+    ip: "192.168.1.2",
+    os: "Debian 11",
+    status: "Running",
+    cpu: "4 Cores",
+    ram: "16 GB",
+    storage: "500 GB",
+    region: "eu-west-1",
+    provider: "gcp",
+  },
+  {
+    id: "3",
+    name: "app-server-01",
+    ip: "192.168.1.3",
+    os: "CentOS 9",
+    status: "Stopped",
+    cpu: "1 Core",
+    ram: "2 GB",
+    storage: "50 GB",
+    region: "us-west-2",
+    provider: "do",
+  },
+  {
+    id: "4",
+    name: "cache-server-01",
+    ip: "192.168.1.4",
+    os: "Ubuntu 22.04",
+    status: "Error",
+    cpu: "2 Cores",
+    ram: "8 GB",
+    storage: "100 GB",
+    region: "ap-southeast-1",
+    provider: "azure",
+  },
+];
+
 
 export default async function VpsPage() {
-  const servers = await getServers();
   
   return (
     <Card>
@@ -197,7 +235,7 @@ export default async function VpsPage() {
               </TableRow>
             )) : (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">No servers found. Please check your database connection or add some servers.</TableCell>
+                <TableCell colSpan={6} className="text-center">No servers found.</TableCell>
               </TableRow>
             )}
           </TableBody>
