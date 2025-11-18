@@ -9,6 +9,12 @@ import {
   AppWindow,
   Lightbulb,
   CreditCard,
+  CircleUser,
+  HeartPulse,
+  HardDrive,
+  FileCode,
+  Terminal,
+  FileText
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -24,7 +30,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CircleUser } from 'lucide-react';
 import type {Metadata} from 'next';
 import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
@@ -53,6 +58,14 @@ function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onL
         { href: "/recommendations", label: "Recommendations", icon: Lightbulb },
         { href: "/billing", label: "Billing", icon: CreditCard },
     ];
+
+    const systemLinks = [
+        { href: "/status", label: "Status", icon: HeartPulse },
+        { href: "/storage", label: "Storage", icon: HardDrive },
+        { href: "/processes", label: "Processes", icon: FileCode },
+        { href: "/commands", label: "Commands", icon: Terminal },
+        { href: "/logs", label: "Logs", icon: FileText },
+    ]
     return (
         <nav className="flex flex-col gap-2">
             {navLinks.map(({ href, label, icon: Icon }) => (
@@ -61,6 +74,18 @@ function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onL
                 <span>{label}</span>
               </NavLink>
             ))}
+
+            <div className="mt-4 space-y-2">
+                <div className="px-3 text-xs font-semibold uppercase text-muted-foreground">
+                    System
+                </div>
+                {systemLinks.map(({ href, label, icon: Icon }) => (
+                <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+                    <Icon className="h-4 w-4" />
+                    <span>{label}</span>
+                </NavLink>
+                ))}
+            </div>
         </nav>
     );
 }
@@ -74,16 +99,14 @@ function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: bool
                 {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </Button>
         </div>
-        <div className='hidden md:flex'>
-          <Logo />
+        <div className="hidden md:flex">
+             <Logo />
         </div>
-
         <div className="flex w-full items-center md:hidden">
-          <div className="mx-auto">
-            <Logo />
-          </div>
+            <div className="mx-auto">
+                <Logo />
+            </div>
         </div>
-        
         <div className="ml-auto">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
