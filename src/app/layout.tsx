@@ -94,7 +94,7 @@ function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onL
 
 function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: boolean, toggleMobileMenu: () => void }) {
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center border-b bg-background px-4 shadow-sm sm:px-6">
+    <header className="sticky top-0 z-40 flex h-16 items-center border-b bg-background px-4 shadow-sm sm:px-6 md:px-8">
       <div className="mx-auto flex w-full max-w-[1440px] items-center">
         <div className="flex items-center gap-4 md:hidden">
             <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
@@ -180,7 +180,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {/* Sidebar */}
             <aside className="hidden h-[calc(100vh-4rem)] flex-col border-r bg-card lg:sticky lg:top-16 lg:flex">
               <ScrollArea className="flex-1">
-                <div className="p-4 sm:p-6">
+                <div className="p-4 sm:p-6 md:p-8">
                   <MainNavContent currentPath={pathname} />
                 </div>
               </ScrollArea>
