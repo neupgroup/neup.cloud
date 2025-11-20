@@ -94,7 +94,7 @@ function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onL
 
 function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: boolean, toggleMobileMenu: () => void }) {
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center border-b bg-background px-4 shadow-sm lg:px-6">
+    <header className="sticky top-0 z-40 flex h-16 items-center border-b bg-background px-4 shadow-sm sm:px-6">
       <div className="mx-auto flex w-full max-w-[1440px] items-center">
         <div className="flex items-center gap-4 md:hidden">
             <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
@@ -170,7 +170,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             isMobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"
           )}>
             <ScrollArea className="h-full">
-                <div className="p-4">
+                <div className="p-4 sm:p-6">
                      <MainNavContent currentPath={pathname} onLinkClick={closeMobileMenu} />
                 </div>
             </ScrollArea>
@@ -180,14 +180,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {/* Sidebar */}
             <aside className="hidden h-[calc(100vh-4rem)] flex-col border-r bg-card lg:sticky lg:top-16 lg:flex">
               <ScrollArea className="flex-1">
-                <div className="p-4">
+                <div className="p-4 sm:p-6">
                   <MainNavContent currentPath={pathname} />
                 </div>
               </ScrollArea>
             </aside>
 
             {/* Main Content */}
-            <main className="min-h-[calc(100vh-4rem)] bg-white p-4 md:p-8">
+            <main className="min-h-[calc(100vh-4rem)] bg-white p-4 sm:p-6 md:p-8">
               <div className="w-full">{children}</div>
             </main>
           </div>
