@@ -16,7 +16,8 @@ import {
   FileCode,
   Terminal,
   FileText,
-  Wind
+  Wind,
+  ShieldAlert
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -69,6 +70,7 @@ function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onL
         { href: "/processes", label: "Processes", icon: FileCode },
         { href: "/commands", label: "Commands", icon: Terminal },
         { href: "/logs", label: "Logs", icon: FileText },
+        { href: "/errors", label: "Errors", icon: ShieldAlert },
     ]
     return (
         <nav className="flex flex-col gap-2">

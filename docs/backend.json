@@ -40,6 +40,35 @@
         }
       },
       "required": ["name", "type", "provider", "ram", "storage", "publicIp", "status"]
+    },
+    "error": {
+      "title": "Error Log",
+      "description": "Represents an application error log entry.",
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "The error message."
+        },
+        "level": {
+          "type": "string",
+          "description": "The severity level of the error (e.g., ERROR, WARNING, INFO)."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time when the error occurred."
+        },
+        "source": {
+          "type": "string",
+          "description": "The component or part of the app where the error originated."
+        },
+        "stack": {
+            "type": "string",
+            "description": "The stack trace of the error."
+        }
+      },
+      "required": ["message", "level", "timestamp", "source"]
     }
   },
   "auth": {
@@ -51,6 +80,12 @@
         "$ref": "#/entities/server"
       },
       "description": "Stores information about servers."
+    },
+    "/errors/{errorId}": {
+      "schema": {
+        "$ref": "#/entities/error"
+      },
+      "description": "Stores application error logs."
     }
   }
 }
