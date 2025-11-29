@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { addDoc, collection } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
@@ -32,7 +32,15 @@ export default function CreateServerPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const [name, setName] = useState('');
+  const [provider, setProvider] = useState('');
+  const [os, setOs] = useState('');
+  const [plan, setPlan] = useState('standard');
+  const [ram, setRam] = useState('');
+  const [storage, setStorage] = useState('');
+
 
   const handleCreateServer = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -40,14 +48,13 @@ export default function CreateServerPage() {
 
     setIsLoading(true);
 
-    const formData = new FormData(event.currentTarget);
     const serverData = {
-      name: formData.get('name') as string,
-      os: formData.get('os') as string,
-      plan: formData.get('plan') as string,
-      provider: formData.get('provider') as string,
-      ram: formData.get('ram') as string,
-      storage: formData.get('storage') as string,
+      name,
+      os,
+      plan,
+      provider,
+      ram,
+      storage,
       ip: `192.168.1.${Math.floor(Math.random() * 254) + 1}`, // Placeholder IP
       status: 'Running', // Default status
     };
@@ -104,11 +111,11 @@ export default function CreateServerPage() {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="name">Server Name</Label>
-                <Input id="name" name="name" placeholder="e.g., web-server-01" />
+                <Input id="name" name="name" placeholder="e.g., web-server-01" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="provider">Provider</Label>
-                <Select name="provider">
+                <Select name="provider" value={provider} onValueChange={setProvider}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a Provider" />
                   </SelectTrigger>
@@ -124,7 +131,7 @@ export default function CreateServerPage() {
             <div className="grid md:grid-cols-2 gap-6">
                  <div className="grid gap-2">
                     <Label htmlFor="os">Operating System</Label>
-                    <Select name="os">
+                    <Select name="os" value={os} onValueChange={setOs}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select an OS" />
                       </SelectTrigger>
@@ -137,7 +144,7 @@ export default function CreateServerPage() {
                 </div>
                  <div className="grid gap-2">
                     <Label>Plan</Label>
-                    <RadioGroup name="plan" defaultValue="standard" className="flex gap-4 pt-2">
+                    <RadioGroup name="plan" value={plan} onValueChange={setPlan} className="flex gap-4 pt-2">
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="basic" id="r1" />
                         <Label htmlFor="r1">Basic</Label>
@@ -157,11 +164,11 @@ export default function CreateServerPage() {
             <div className="grid md:grid-cols-2 gap-6">
                  <div className="grid gap-2">
                     <Label htmlFor="ram">RAM</Label>
-                    <Input id="ram" name="ram" placeholder="e.g., 8GB" />
+                    <Input id="ram" name="ram" placeholder="e.g., 8GB" value={ram} onChange={(e) => setRam(e.target.value)} />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="storage">Storage</Label>
-                    <Input id="storage" name="storage" placeholder="e.g., 160GB SSD" />
+                    <Input id="storage" name="storage" placeholder="e.g., 160GB SSD" value={storage} onChange={(e) => setStorage(e.target.value)} />
                   </div>
             </div>
 
