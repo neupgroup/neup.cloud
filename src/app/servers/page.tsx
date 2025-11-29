@@ -7,9 +7,10 @@ import {
   Power,
   Trash2,
 } from "lucide-react";
-import { addDoc, collection, deleteDoc, doc, updateDoc } from "firebase/firestore";
-import { useCollection } from "@/firebase/firestore/use-collection";
+import { collection, deleteDoc, doc, getDocs, updateDoc, type DocumentData } from "firebase/firestore";
 import { useFirestore } from "@/firebase";
+import Link from "next/link";
+import React, { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,15 +21,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,17 +36,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import React from "react";
 import { useToast } from "@/hooks/use-toast";
 
 type Server = {
@@ -71,10 +52,33 @@ type Server = {
 
 export default function VpsPage() {
   const firestore = useFirestore();
-  const { data: servers, error, isLoading } = useCollection<Server>(collection(firestore, "servers"));
   const { toast } = useToast();
+  const [servers, setServers] = useState<Server[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const fetchServers = async () => {
+    if (!firestore) return;
+    setIsLoading(true);
+    try {
+      const querySnapshot = await getDocs(collection(firestore, "servers"));
+      const serversData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Server));
+      setServers(serversData);
+    } catch (err: any) {
+      setError(err);
+      toast({
+        variant: "destructive",
+        title: "Error fetching servers",
+        description: err.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchServers();
+  }, [firestore]);
 
   const handleDelete = async (id: string) => {
     if (!firestore) return;
@@ -84,6 +88,7 @@ export default function VpsPage() {
         title: "Server Deleted",
         description: "The server has been successfully deleted.",
       });
+      fetchServers(); // Refetch servers after deletion
     } catch (error) {
       console.error("Error deleting document: ", error);
       toast({
@@ -104,6 +109,7 @@ export default function VpsPage() {
         title: "Server Status Updated",
         description: `The server is now ${newStatus.toLowerCase()}.`,
       });
+      fetchServers(); // Refetch servers after update
     } catch (error) {
       console.error("Error updating document: ", error);
       toast({
@@ -111,39 +117,6 @@ export default function VpsPage() {
         title: "Error",
         description: "There was a problem updating the server status.",
       });
-    }
-  };
-  
-  const handleCreateServer = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!firestore) return;
-
-    const formData = new FormData(event.currentTarget);
-    const serverData = {
-        name: formData.get('name') as string,
-        os: formData.get('os') as string,
-        plan: formData.get('plan') as string,
-        provider: formData.get('provider') as string,
-        ram: formData.get('ram') as string,
-        storage: formData.get('storage') as string,
-        ip: "192.168.1.1", // Placeholder
-        status: "Running", // Default status
-    };
-
-    try {
-        await addDoc(collection(firestore, "servers"), serverData);
-        toast({
-            title: "Server Created",
-            description: "Your new server has been provisioned.",
-        });
-        setIsDialogOpen(false);
-    } catch (e) {
-        console.error("Error adding document: ", e);
-        toast({
-            variant: "destructive",
-            title: "Uh oh! Something went wrong.",
-            description: "Could not create the server.",
-        });
     }
   };
 
@@ -157,96 +130,14 @@ export default function VpsPage() {
               Manage your virtual private servers.
             </CardDescription>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="gap-1">
-                <PlusCircle className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Create Server
-                </span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[480px]">
-              <form onSubmit={handleCreateServer}>
-                <DialogHeader>
-                  <DialogTitle className="font-headline">Create New Server</DialogTitle>
-                  <DialogDescription>
-                    Configure and launch a new VPS instance.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                      Name
-                    </Label>
-                    <Input id="name" name="name" defaultValue="web-server-02" className="col-span-3" />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="os" className="text-right">
-                      OS
-                    </Label>
-                    <Select name="os">
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select an OS" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ubuntu">Ubuntu 22.04</SelectItem>
-                        <SelectItem value="debian">Debian 11</SelectItem>
-                        <SelectItem value="centos">CentOS 9</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="provider" className="text-right">
-                      Provider
-                    </Label>
-                    <Select name="provider">
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select a Provider" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="digitalocean">DigitalOcean</SelectItem>
-                        <SelectItem value="aws">AWS</SelectItem>
-                        <SelectItem value="gcp">Google Cloud</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="ram" className="text-right">
-                      RAM
-                    </Label>
-                    <Input id="ram" name="ram" defaultValue="8GB" className="col-span-3" />
-                  </div>
-                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="storage" className="text-right">
-                      Storage
-                    </Label>
-                    <Input id="storage" name="storage" defaultValue="160GB" className="col-span-3" />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">Plan</Label>
-                    <RadioGroup name="plan" defaultValue="standard" className="col-span-3 flex gap-4">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="basic" id="r1" />
-                        <Label htmlFor="r1">Basic</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="standard" id="r2" />
-                        <Label htmlFor="r2">Standard</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="pro" id="r3" />
-                        <Label htmlFor="r3">Pro</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="submit">Create Server</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+           <Button size="sm" className="gap-1" asChild>
+            <Link href="/servers/create">
+              <PlusCircle className="h-3.5 w-3.5" />
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                Create Server
+              </span>
+            </Link>
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
