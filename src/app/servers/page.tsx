@@ -7,8 +7,6 @@ import {
   Power,
   Trash2,
 } from "lucide-react";
-import { collection, deleteDoc, doc, getDocs, updateDoc, type DocumentData } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
@@ -37,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { getServers, deleteServer, updateServerStatus } from "./actions";
 
 type Server = {
   id: string;
@@ -51,18 +50,15 @@ type Server = {
 };
 
 export default function VpsPage() {
-  const firestore = useFirestore();
   const { toast } = useToast();
   const [servers, setServers] = useState<Server[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchServers = async () => {
-    if (!firestore) return;
     setIsLoading(true);
     try {
-      const querySnapshot = await getDocs(collection(firestore, "servers"));
-      const serversData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Server));
+      const serversData = await getServers() as Server[];
       setServers(serversData);
     } catch (err: any) {
       setError(err);
@@ -78,17 +74,16 @@ export default function VpsPage() {
 
   useEffect(() => {
     fetchServers();
-  }, [firestore]);
+  }, []);
 
   const handleDelete = async (id: string) => {
-    if (!firestore) return;
     try {
-      await deleteDoc(doc(firestore, "servers", id));
+      await deleteServer(id);
       toast({
         title: "Server Deleted",
         description: "The server has been successfully deleted.",
       });
-      fetchServers(); // Refetch servers after deletion
+      fetchServers();
     } catch (error) {
       console.error("Error deleting document: ", error);
       toast({
@@ -100,16 +95,13 @@ export default function VpsPage() {
   };
 
   const handleRestart = async (id: string, currentStatus: string) => {
-    if (!firestore) return;
-    const newStatus = currentStatus === 'Running' ? 'Stopped' : 'Running';
     try {
-      const serverDoc = doc(firestore, "servers", id);
-      await updateDoc(serverDoc, { status: newStatus });
+      await updateServerStatus(id, currentStatus);
       toast({
         title: "Server Status Updated",
-        description: `The server is now ${newStatus.toLowerCase()}.`,
+        description: `The server status is being updated.`,
       });
-      fetchServers(); // Refetch servers after update
+      fetchServers();
     } catch (error) {
       console.error("Error updating document: ", error);
       toast({

@@ -3,8 +3,6 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { addDoc, collection } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -26,9 +24,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { createServer } from '../actions';
 
 export default function CreateServerPage() {
-  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -44,8 +42,6 @@ export default function CreateServerPage() {
 
   const handleCreateServer = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!firestore) return;
-
     setIsLoading(true);
 
     const serverData = {
@@ -70,7 +66,7 @@ export default function CreateServerPage() {
     }
 
     try {
-      await addDoc(collection(firestore, 'servers'), serverData);
+      await createServer(serverData);
       toast({
         title: 'Server Created',
         description: 'Your new server is being provisioned.',
