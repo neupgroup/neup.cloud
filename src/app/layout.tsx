@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -34,6 +35,7 @@ import {
 import type {Metadata} from 'next';
 import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
+import { FirebaseClientProvider } from '@/firebase';
 
 function NavLink({ href, children, currentPath, onClick }: { href: string; children: React.ReactNode; currentPath: string, onClick?: () => void }) {
     const isActive = href === '/' ? currentPath === href : currentPath.startsWith(href);
@@ -161,38 +163,40 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <div className="min-h-screen w-full bg-background text-foreground">
-          <Header isMobileMenuOpen={isMobileMenuOpen} toggleMobileMenu={toggleMobileMenu} />
-          
-          {/* Mobile Menu */}
-          <div className={cn(
-            "fixed top-16 left-0 right-0 bottom-0 z-30 bg-background/95 backdrop-blur-sm transition-all duration-300 ease-in-out md:hidden",
-            isMobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"
-          )}>
-            <ScrollArea className="h-full">
-                <div className="p-4 sm:p-6">
-                     <MainNavContent currentPath={pathname} onLinkClick={closeMobileMenu} />
-                </div>
-            </ScrollArea>
-          </div>
-
-          <div className="mx-auto grid w-full max-w-[1440px] lg:grid-cols-[280px_1fr]">
-            {/* Sidebar */}
-            <aside className="hidden h-[calc(100vh-4rem)] flex-col border-r bg-card lg:sticky lg:top-16 lg:flex">
-              <ScrollArea className="flex-1">
-                <div className="p-4 sm:p-6 md:p-8">
-                  <MainNavContent currentPath={pathname} />
-                </div>
+        <FirebaseClientProvider>
+          <div className="min-h-screen w-full bg-background text-foreground">
+            <Header isMobileMenuOpen={isMobileMenuOpen} toggleMobileMenu={toggleMobileMenu} />
+            
+            {/* Mobile Menu */}
+            <div className={cn(
+              "fixed top-16 left-0 right-0 bottom-0 z-30 bg-background/95 backdrop-blur-sm transition-all duration-300 ease-in-out md:hidden",
+              isMobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"
+            )}>
+              <ScrollArea className="h-full">
+                  <div className="p-4 sm:p-6">
+                       <MainNavContent currentPath={pathname} onLinkClick={closeMobileMenu} />
+                  </div>
               </ScrollArea>
-            </aside>
+            </div>
 
-            {/* Main Content */}
-            <main className="min-h-[calc(100vh-4rem)] bg-white p-4 sm:p-6 md:p-8">
-              <div className="w-full">{children}</div>
-            </main>
+            <div className="mx-auto grid w-full max-w-[1440px] lg:grid-cols-[280px_1fr]">
+              {/* Sidebar */}
+              <aside className="hidden h-[calc(100vh-4rem)] flex-col border-r bg-card lg:sticky lg:top-16 lg:flex">
+                <ScrollArea className="flex-1">
+                  <div className="p-6 md:p-8">
+                    <MainNavContent currentPath={pathname} />
+                  </div>
+                </ScrollArea>
+              </aside>
+
+              {/* Main Content */}
+              <main className="min-h-[calc(100vh-4rem)] bg-white p-6 md:p-8">
+                <div className="w-full">{children}</div>
+              </main>
+            </div>
           </div>
-        </div>
-        <Toaster />
+          <Toaster />
+        </FirebaseClientProvider>
       </body>
     </html>
   );
