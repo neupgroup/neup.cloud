@@ -14,23 +14,10 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { createApplication } from '../actions';
-import { getServers } from '@/app/servers/actions';
-
-type Server = {
-    id: string;
-    name: string;
-}
 
 export default function CreateApplicationPage() {
   const router = useRouter();
@@ -39,31 +26,12 @@ export default function CreateApplicationPage() {
   
   const [name, setName] = useState('');
   const [repo, setRepo] = useState('');
-  const [serverId, setServerId] = useState('');
-  const [servers, setServers] = useState<Server[]>([]);
-
-  useEffect(() => {
-    async function fetchServers() {
-        try {
-            const serversData = await getServers() as Server[];
-            setServers(serversData);
-        } catch (error) {
-            toast({
-                variant: 'destructive',
-                title: 'Error fetching servers',
-                description: 'Could not fetch the server list for selection.',
-            });
-        }
-    }
-    fetchServers();
-  }, [toast]);
-
 
   const handleCreateApplication = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
 
-    if (!name || !repo || !serverId) {
+    if (!name || !repo) {
         toast({
             variant: "destructive",
             title: "Missing fields",
@@ -76,7 +44,6 @@ export default function CreateApplicationPage() {
     const applicationData = {
       name,
       repo,
-      serverId,
       status: 'Building',
       url: '' // Default URL can be set later after deployment
     };
@@ -129,24 +96,6 @@ export default function CreateApplicationPage() {
                 <Label htmlFor="repo">Repository URL</Label>
                 <Input id="repo" name="repo" placeholder="e.g., https://github.com/user/repo.git" value={repo} onChange={(e) => setRepo(e.target.value)} />
               </div>
-            </div>
-
-            <div className="grid gap-2">
-                <Label htmlFor="server">Deploy to Server</Label>
-                <Select name="server" value={serverId} onValueChange={setServerId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a server" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {servers.length > 0 ? (
-                        servers.map(server => (
-                            <SelectItem key={server.id} value={server.id}>{server.name}</SelectItem>
-                        ))
-                    ) : (
-                        <SelectItem value="loading" disabled>Loading servers...</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
             </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-4">

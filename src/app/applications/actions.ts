@@ -4,6 +4,7 @@
 import { addDoc, collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { revalidatePath } from 'next/cache';
+import { getServers } from '../servers/actions';
 
 const { firestore } = initializeFirebase();
 
@@ -16,7 +17,7 @@ export async function getApplications() {
 export async function createApplication(appData: {
     name: string;
     repo: string;
-    serverId: string;
+    serverId?: string;
     status: string;
     url?: string;
 }) {

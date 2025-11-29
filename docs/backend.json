@@ -96,7 +96,7 @@
           "description": "The ID of the server this application is deployed to."
         }
       },
-      "required": ["name", "repo", "status", "serverId"]
+      "required": ["name", "repo", "status"]
     }
   },
   "auth": {
