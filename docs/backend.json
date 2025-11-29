@@ -69,6 +69,34 @@
         }
       },
       "required": ["message", "level", "timestamp", "source"]
+    },
+    "application": {
+      "title": "Application",
+      "description": "Represents a deployed application.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the application."
+        },
+        "repo": {
+          "type": "string",
+          "description": "The Git repository URL of the application."
+        },
+        "status": {
+          "type": "string",
+          "description": "The deployment status of the application."
+        },
+        "url": {
+            "type": "string",
+            "description": "The public URL of the application."
+        },
+        "serverId": {
+          "type": "string",
+          "description": "The ID of the server this application is deployed to."
+        }
+      },
+      "required": ["name", "repo", "status", "serverId"]
     }
   },
   "auth": {
@@ -86,6 +114,12 @@
         "$ref": "#/entities/error"
       },
       "description": "Stores application error logs."
+    },
+    "/applications/{applicationId}": {
+      "schema": {
+        "$ref": "#/entities/application"
+      },
+      "description": "Stores information about deployed applications."
     }
   }
 }
