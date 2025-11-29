@@ -41,13 +41,13 @@ import { useToast } from "@/hooks/use-toast";
 type Server = {
   id: string;
   name: string;
-  os: string;
-  plan: string;
+  type: string;
   provider: string;
   ram: string;
   storage: string;
-  ip: string;
-  status: 'Running' | 'Starting' | 'Error' | 'Stopped';
+  publicIp: string;
+  privateIp: string;
+  status: 'Running' | 'Provisioning' | 'Error' | 'Stopped';
 };
 
 export default function VpsPage() {
@@ -146,7 +146,7 @@ export default function VpsPage() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>IP Address</TableHead>
-              <TableHead>OS</TableHead>
+              <TableHead>OS Type</TableHead>
               <TableHead>Specs</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>
@@ -167,8 +167,8 @@ export default function VpsPage() {
               servers.map((server) => (
                 <TableRow key={server.id}>
                   <TableCell className="font-medium">{server.name}</TableCell>
-                  <TableCell>{server.ip}</TableCell>
-                  <TableCell>{server.os}</TableCell>
+                  <TableCell>{server.publicIp}</TableCell>
+                  <TableCell>{server.type}</TableCell>
                   <TableCell>{server.ram}, {server.storage}</TableCell>
                   <TableCell>
                     <Badge
@@ -179,7 +179,11 @@ export default function VpsPage() {
                           ? "destructive"
                           : "secondary"
                       }
-                      className={server.status === "Running" ? "bg-green-500/20 text-green-700 border-green-400 hover:bg-green-500/30" : ""}
+                      className={
+                        server.status === "Running" ? "bg-green-500/20 text-green-700 border-green-400 hover:bg-green-500/30" : 
+                        server.status === "Provisioning" ? "bg-blue-500/20 text-blue-700 border-blue-400 hover:bg-blue-500/30" :
+                        ""
+                      }
                     >
                       {server.status}
                     </Badge>
@@ -194,7 +198,7 @@ export default function VpsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleRestart(server.id, server.status)}>
+                        <DropdownMenuItem onClick={() => handleRestart(server.id, server.status)} disabled={server.status !== 'Running' && server.status !== 'Stopped'}>
                           <Power className="mr-2 h-4 w-4" />
                           {server.status === 'Running' ? 'Stop' : 'Start'}
                         </DropdownMenuItem>

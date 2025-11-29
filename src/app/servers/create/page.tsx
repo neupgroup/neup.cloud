@@ -23,7 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -36,10 +35,11 @@ export default function CreateServerPage() {
   
   const [name, setName] = useState('');
   const [provider, setProvider] = useState('');
-  const [os, setOs] = useState('');
-  const [plan, setPlan] = useState('standard');
+  const [type, setType] = useState('');
   const [ram, setRam] = useState('');
   const [storage, setStorage] = useState('');
+  const [publicIp, setPublicIp] = useState('');
+  const [privateIp, setPrivateIp] = useState('');
 
 
   const handleCreateServer = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -50,16 +50,16 @@ export default function CreateServerPage() {
 
     const serverData = {
       name,
-      os,
-      plan,
+      type,
       provider,
       ram,
       storage,
-      ip: `192.168.1.${Math.floor(Math.random() * 254) + 1}`, // Placeholder IP
-      status: 'Running', // Default status
+      publicIp,
+      privateIp,
+      status: 'Provisioning',
     };
 
-    if (!serverData.name || !serverData.os || !serverData.provider || !serverData.ram || !serverData.storage || !serverData.plan) {
+    if (!serverData.name || !serverData.type || !serverData.provider || !serverData.ram || !serverData.storage || !serverData.publicIp || !serverData.privateIp) {
         toast({
             variant: "destructive",
             title: "Missing fields",
@@ -73,7 +73,7 @@ export default function CreateServerPage() {
       await addDoc(collection(firestore, 'servers'), serverData);
       toast({
         title: 'Server Created',
-        description: 'Your new server has been provisioned.',
+        description: 'Your new server is being provisioned.',
       });
       router.push('/servers');
     } catch (e) {
@@ -129,47 +129,40 @@ export default function CreateServerPage() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
-                 <div className="grid gap-2">
-                    <Label htmlFor="os">Operating System</Label>
-                    <Select name="os" value={os} onValueChange={setOs}>
+                <div className="grid gap-2">
+                    <Label htmlFor="type">Operating System Type</Label>
+                    <Select name="type" value={type} onValueChange={setType}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select an OS" />
+                        <SelectValue placeholder="Select a type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Ubuntu 22.04">Ubuntu 22.04</SelectItem>
-                        <SelectItem value="Debian 11">Debian 11</SelectItem>
-                        <SelectItem value="CentOS 9">CentOS 9</SelectItem>
+                        <SelectItem value="Linux">Linux</SelectItem>
+                        <SelectItem value="Windows">Windows</SelectItem>
                       </SelectContent>
                     </Select>
                 </div>
                  <div className="grid gap-2">
-                    <Label>Plan</Label>
-                    <RadioGroup name="plan" value={plan} onValueChange={setPlan} className="flex gap-4 pt-2">
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="basic" id="r1" />
-                        <Label htmlFor="r1">Basic</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="standard" id="r2" />
-                        <Label htmlFor="r2">Standard</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="pro" id="r3" />
-                        <Label htmlFor="r3">Pro</Label>
-                      </div>
-                    </RadioGroup>
+                    <Label htmlFor="ram">RAM</Label>
+                    <Input id="ram" name="ram" placeholder="e.g., 8GB" value={ram} onChange={(e) => setRam(e.target.value)} />
                   </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
-                 <div className="grid gap-2">
-                    <Label htmlFor="ram">RAM</Label>
-                    <Input id="ram" name="ram" placeholder="e.g., 8GB" value={ram} onChange={(e) => setRam(e.target.value)} />
-                  </div>
                   <div className="grid gap-2">
                     <Label htmlFor="storage">Storage</Label>
                     <Input id="storage" name="storage" placeholder="e.g., 160GB SSD" value={storage} onChange={(e) => setStorage(e.target.value)} />
                   </div>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid gap-2">
+                    <Label htmlFor="publicIp">Public IP</Label>
+                    <Input id="publicIp" name="publicIp" placeholder="e.g., 8.8.8.8" value={publicIp} onChange={(e) => setPublicIp(e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="privateIp">Private IP</Label>
+                    <Input id="privateIp" name="privateIp" placeholder="e.g., 192.168.1.1" value={privateIp} onChange={(e) => setPrivateIp(e.target.value)} />
+                </div>
             </div>
 
           </CardContent>
