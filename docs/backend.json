@@ -1,0 +1,55 @@
+{
+  "entities": {
+    "server": {
+      "title": "Server",
+      "description": "Represents a virtual private server.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the server."
+        },
+        "os": {
+          "type": "string",
+          "description": "The operating system of the server."
+        },
+        "plan": {
+          "type": "string",
+          "description": "The plan for the server."
+        },
+        "provider": {
+          "type": "string",
+          "description": "The VPS provider."
+        },
+        "ram": {
+          "type": "string",
+          "description": "The amount of RAM."
+        },
+        "storage": {
+          "type": "string",
+          "description": "The amount of storage."
+        },
+        "ip": {
+          "type": "string",
+          "description": "The IP address of the server."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the server."
+        }
+      },
+      "required": ["name", "os", "plan", "provider", "ram", "storage", "ip", "status"]
+    }
+  },
+  "auth": {
+    "providers": []
+  },
+  "firestore": {
+    "/servers/{serverId}": {
+      "schema": {
+        "$ref": "#/entities/server"
+      },
+      "description": "Stores information about servers."
+    }
+  }
+}
