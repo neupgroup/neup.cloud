@@ -158,7 +158,11 @@ export default function VpsPage() {
             ) : servers && servers.length > 0 ? (
               servers.map((server) => (
                 <TableRow key={server.id}>
-                  <TableCell className="font-medium">{server.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <Link href={`/servers/${server.id}`} className="hover:underline">
+                      {server.name}
+                    </Link>
+                  </TableCell>
                   <TableCell>{server.publicIp}</TableCell>
                   <TableCell>{server.type}</TableCell>
                   <TableCell>{server.ram}, {server.storage}</TableCell>
