@@ -20,7 +20,8 @@ export async function getServer(id: string) {
     if (!serverDoc.exists()) {
         return null;
     }
-    return { id: serverDoc.id, ...serverDoc.data() };
+    const { privateKey, privateIp, ...serverData } = serverDoc.data();
+    return { id: serverDoc.id, ...serverData };
 }
 
 export async function createServer(serverData: {
@@ -48,9 +49,20 @@ export async function updateServer(id: string, serverData: Partial<{
     privateIp: string;
     privateKey: string;
 }>) {
-    await updateDoc(doc(firestore, 'servers', id), serverData);
-    revalidatePath(`/servers/${id}`);
-    revalidatePath('/servers');
+    const updateData: { [key: string]: any } = { ...serverData };
+
+    if (serverData.privateIp === '') {
+        delete updateData.privateIp;
+    }
+    if (serverData.privateKey === '') {
+        delete updateData.privateKey;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+        await updateDoc(doc(firestore, 'servers', id), updateData);
+        revalidatePath(`/servers/${id}`);
+        revalidatePath('/servers');
+    }
 }
 
 

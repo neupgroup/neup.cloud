@@ -47,21 +47,20 @@ type Server = {
   ram: string;
   storage: string;
   publicIp: string;
-  privateIp: string;
-  privateKey: string;
   status: 'Running' | 'Provisioning' | 'Error' | 'Stopped';
 };
+
+// Private fields are handled separately and not included in the main Server type
+type EditableServer = Partial<Server> & { privateIp?: string; privateKey?: string };
 
 export default function ServerDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { toast } = useToast();
   const [server, setServer] = useState<Server | null>(null);
-  const [editedServer, setEditedServer] = useState<Partial<Server>>({});
+  const [editedServer, setEditedServer] = useState<EditableServer>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showPrivateIp, setShowPrivateIp] = useState(false);
-  const [showPrivateKey, setShowPrivateKey] = useState(false);
 
   const fetchServer = useCallback(async () => {
     setIsLoading(true);
@@ -88,10 +87,7 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
 
   const handleEditToggle = () => {
     if (isEditMode) {
-        // Cancel edit
-        setEditedServer(server || {});
-        setShowPrivateIp(false);
-        setShowPrivateKey(false);
+      setEditedServer(server || {});
     }
     setIsEditMode(!isEditMode);
   };
@@ -109,12 +105,13 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
     if (!editedServer) return;
     setIsSaving(true);
     try {
-      const { id, status, ...updateData } = editedServer;
+      // Ensure ID is not passed in the update payload
+      const { id, ...updateData } = editedServer;
+      
       await updateServer(params.id, updateData);
+      
       toast({ title: 'Server Updated', description: 'Server details have been saved.' });
       setIsEditMode(false);
-      setShowPrivateIp(false);
-      setShowPrivateKey(false);
       fetchServer();
     } catch (e) {
       console.error(e);
@@ -148,22 +145,11 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
                 <Skeleton className="h-4 w-80" />
             </CardHeader>
             <CardContent className="grid gap-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                </div>
-                 <div className="grid md:grid-cols-2 gap-6">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                </div>
-                 <div className="grid md:grid-cols-2 gap-6">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                </div>
-                 <div className="grid md:grid-cols-2 gap-6">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                </div>
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-32 w-full" />
             </CardContent>
             <CardFooter className="border-t px-6 py-4 flex justify-between">
@@ -178,13 +164,6 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
   if (!server) {
     return null;
   }
-
-  const DetailItem = ({ label, value }: { label: string, value: string | undefined }) => (
-    <div className="grid gap-2">
-      <Label className="text-muted-foreground">{label}</Label>
-      <p className="text-base">{value || 'N/A'}</p>
-    </div>
-  );
   
   return (
     <div className="grid gap-6">
@@ -222,11 +201,11 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
             </div>
           </CardHeader>
           <CardContent className="grid gap-6">
-           <div className="grid md:grid-cols-2 gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="name">Server Name</Label>
                 {isEditMode ? <Input id="name" name="name" value={editedServer.name} onChange={handleInputChange} /> : <p className="text-base">{server.name}</p>}
               </div>
+
               <div className="grid gap-2">
                 <Label htmlFor="provider">Provider</Label>
                  {isEditMode ? (
@@ -240,72 +219,58 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
                     </Select>
                 ) : <p className="text-base">{server.provider}</p>}
               </div>
-            </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-                <div className="grid gap-2">
-                    <Label htmlFor="type">Operating System Type</Label>
-                     {isEditMode ? (
-                        <Select name="type" value={editedServer.type} onValueChange={(v) => handleSelectChange('type', v)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Linux">Linux</SelectItem>
-                            <SelectItem value="Windows">Windows</SelectItem>
-                          </SelectContent>
-                        </Select>
-                    ) : <p className="text-base">{server.type}</p>}
-                </div>
-                 <div className="grid gap-2">
-                    <Label htmlFor="ram">RAM</Label>
-                    {isEditMode ? (
-                         <div className="relative">
-                            <Input id="ram" name="ram" type="number" value={editedServer.ram?.replace('MB', '')} onChange={handleInputChange} className="pr-12"/>
-                            <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">MB</span>
-                        </div>
-                    ) : <p className="text-base">{server.ram}</p>}
-                  </div>
-            </div>
+              <div className="grid gap-2">
+                  <Label htmlFor="type">Operating System Type</Label>
+                   {isEditMode ? (
+                      <Select name="type" value={editedServer.type} onValueChange={(v) => handleSelectChange('type', v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Linux">Linux</SelectItem>
+                          <SelectItem value="Windows">Windows</SelectItem>
+                        </SelectContent>
+                      </Select>
+                  ) : <p className="text-base">{server.type}</p>}
+              </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-                <div className="grid gap-2">
-                    <Label htmlFor="storage">Storage</Label>
-                    {isEditMode ? (
-                        <div className="relative">
-                            <Input id="storage" name="storage" type="number" value={editedServer.storage?.replace('GB', '')} onChange={handleInputChange} className="pr-12" />
-                            <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">GB</span>
-                        </div>
-                    ) : <p className="text-base">{server.storage}</p>}
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="publicIp">Public IP</Label>
-                     {isEditMode ? <Input id="publicIp" name="publicIp" value={editedServer.publicIp} onChange={handleInputChange} /> : <p className="text-base">{server.publicIp}</p>}
-                </div>
-            </div>
+              <div className="grid gap-2">
+                  <Label htmlFor="ram">RAM</Label>
+                  {isEditMode ? (
+                       <div className="relative">
+                          <Input id="ram" name="ram" type="number" value={editedServer.ram?.replace('MB', '')} onChange={handleInputChange} className="pr-12"/>
+                          <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">MB</span>
+                      </div>
+                  ) : <p className="text-base">{server.ram}</p>}
+              </div>
+
+              <div className="grid gap-2">
+                  <Label htmlFor="storage">Storage</Label>
+                  {isEditMode ? (
+                      <div className="relative">
+                          <Input id="storage" name="storage" type="number" value={editedServer.storage?.replace('GB', '')} onChange={handleInputChange} className="pr-12" />
+                          <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">GB</span>
+                      </div>
+                  ) : <p className="text-base">{server.storage}</p>}
+              </div>
+
+              <div className="grid gap-2">
+                  <Label htmlFor="publicIp">Public IP</Label>
+                   {isEditMode ? <Input id="publicIp" name="publicIp" value={editedServer.publicIp} onChange={handleInputChange} /> : <p className="text-base">{server.publicIp}</p>}
+              </div>
             
-             <div className="grid md:grid-cols-2 gap-6">
-                <div className="grid gap-2">
-                    <Label htmlFor="privateIp">Private IP</Label>
-                    {isEditMode ? (
-                        showPrivateIp ? (
-                            <Input id="privateIp" name="privateIp" value={editedServer.privateIp} onChange={handleInputChange} />
-                        ) : (
-                            <Button variant="secondary" onClick={() => setShowPrivateIp(true)}>Edit Private IP</Button>
-                        )
-                    ) : ( <p className="text-base font-mono">************</p> )}
-                </div>
-            </div>
+              {isEditMode && (
+                <>
+                  <div className="grid gap-2">
+                      <Label htmlFor="privateIp">Private IP</Label>
+                      <Input id="privateIp" name="privateIp" value={editedServer.privateIp || ''} onChange={handleInputChange} placeholder="Enter new value to update" />
+                  </div>
 
-            <div className="grid gap-2">
-                <Label htmlFor="privateKey">Private Key</Label>
-                {isEditMode ? (
-                    showPrivateKey ? (
-                        <Textarea id="privateKey" name="privateKey" value={editedServer.privateKey} onChange={handleInputChange} className="font-mono h-32" />
-                    ) : (
-                        <Button variant="secondary" onClick={() => setShowPrivateKey(true)}>Edit Private Key</Button>
-                    )
-                ) : ( <p className="text-base font-mono">************</p> )}
-            </div>
-
+                  <div className="grid gap-2">
+                      <Label htmlFor="privateKey">Private Key</Label>
+                      <Textarea id="privateKey" name="privateKey" value={editedServer.privateKey || ''} onChange={handleInputChange} className="font-mono h-32" placeholder="Enter new value to update" />
+                  </div>
+                </>
+              )}
           </CardContent>
           <CardFooter className="border-t px-6 py-4 flex justify-end">
             <AlertDialog>
