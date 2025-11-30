@@ -1,7 +1,7 @@
+
 'use server';
 
 import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { getFirestore } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { revalidatePath } from 'next/cache';
 
@@ -23,6 +23,7 @@ export async function createServer(serverData: {
     storage: string;
     publicIp: string;
     privateIp: string;
+    privateKey: string;
     status: string;
 }) {
     await addDoc(collection(firestore, 'servers'), serverData);

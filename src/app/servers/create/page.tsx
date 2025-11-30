@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { createServer } from '../actions';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function CreateServerPage() {
   const router = useRouter();
@@ -34,10 +35,11 @@ export default function CreateServerPage() {
   const [name, setName] = useState('');
   const [provider, setProvider] = useState('');
   const [type, setType] = useState('');
-  const [ram, setRam] = useState('');
-  const [storage, setStorage] = useState('');
+  const [ram, setRam] = useState('4096');
+  const [storage, setStorage] = useState('100');
   const [publicIp, setPublicIp] = useState('');
   const [privateIp, setPrivateIp] = useState('');
+  const [privateKey, setPrivateKey] = useState('');
 
 
   const handleCreateServer = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -48,10 +50,11 @@ export default function CreateServerPage() {
       name,
       type,
       provider,
-      ram,
-      storage,
+      ram: `${ram}MB`,
+      storage: `${storage}GB`,
       publicIp,
       privateIp,
+      privateKey,
       status: 'Provisioning',
     };
 
@@ -139,14 +142,20 @@ export default function CreateServerPage() {
                 </div>
                  <div className="grid gap-2">
                     <Label htmlFor="ram">RAM</Label>
-                    <Input id="ram" name="ram" placeholder="e.g., 8GB" value={ram} onChange={(e) => setRam(e.target.value)} />
+                    <div className="relative">
+                        <Input id="ram" name="ram" type="number" placeholder="e.g., 4096" value={ram} onChange={(e) => setRam(e.target.value)} className="pr-12"/>
+                        <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">MB</span>
+                    </div>
                   </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
                   <div className="grid gap-2">
                     <Label htmlFor="storage">Storage</Label>
-                    <Input id="storage" name="storage" placeholder="e.g., 160GB SSD" value={storage} onChange={(e) => setStorage(e.target.value)} />
+                     <div className="relative">
+                        <Input id="storage" name="storage" type="number" placeholder="e.g., 100" value={storage} onChange={(e) => setStorage(e.target.value)} className="pr-12" />
+                        <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">GB</span>
+                    </div>
                   </div>
             </div>
             
@@ -159,6 +168,11 @@ export default function CreateServerPage() {
                     <Label htmlFor="privateIp">Private IP</Label>
                     <Input id="privateIp" name="privateIp" placeholder="e.g., 192.168.1.1" value={privateIp} onChange={(e) => setPrivateIp(e.target.value)} />
                 </div>
+            </div>
+
+            <div className="grid gap-2">
+                <Label htmlFor="privateKey">Private Key</Label>
+                <Textarea id="privateKey" name="privateKey" placeholder="Paste your SSH private key here" value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} className="font-mono h-32" />
             </div>
 
           </CardContent>
