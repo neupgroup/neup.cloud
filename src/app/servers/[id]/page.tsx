@@ -61,6 +61,8 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
   const [isLoading, setIsLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showPrivateIpInput, setShowPrivateIpInput] = useState(false);
+  const [showPrivateKeyInput, setShowPrivateKeyInput] = useState(false);
 
   const fetchServer = useCallback(async () => {
     setIsLoading(true);
@@ -88,6 +90,8 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
   const handleEditToggle = () => {
     if (isEditMode) {
       setEditedServer(server || {});
+      setShowPrivateIpInput(false);
+      setShowPrivateKeyInput(false);
     }
     setIsEditMode(!isEditMode);
   };
@@ -112,6 +116,8 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
       
       toast({ title: 'Server Updated', description: 'Server details have been saved.' });
       setIsEditMode(false);
+      setShowPrivateIpInput(false);
+      setShowPrivateKeyInput(false);
       fetchServer();
     } catch (e) {
       console.error(e);
@@ -203,13 +209,13 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
           <CardContent className="grid gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="name">Server Name</Label>
-                {isEditMode ? <Input id="name" name="name" value={editedServer.name} onChange={handleInputChange} /> : <p className="text-base">{server.name}</p>}
+                {isEditMode ? <Input id="name" name="name" value={editedServer.name || ''} onChange={handleInputChange} /> : <p className="text-base">{server.name}</p>}
               </div>
 
               <div className="grid gap-2">
                 <Label htmlFor="provider">Provider</Label>
                  {isEditMode ? (
-                    <Select name="provider" value={editedServer.provider} onValueChange={(v) => handleSelectChange('provider', v)}>
+                    <Select name="provider" value={editedServer.provider || ''} onValueChange={(v) => handleSelectChange('provider', v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="digitalocean">DigitalOcean</SelectItem>
@@ -223,7 +229,7 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
               <div className="grid gap-2">
                   <Label htmlFor="type">Operating System Type</Label>
                    {isEditMode ? (
-                      <Select name="type" value={editedServer.type} onValueChange={(v) => handleSelectChange('type', v)}>
+                      <Select name="type" value={editedServer.type || ''} onValueChange={(v) => handleSelectChange('type', v)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Linux">Linux</SelectItem>
@@ -237,7 +243,7 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
                   <Label htmlFor="ram">RAM</Label>
                   {isEditMode ? (
                        <div className="relative">
-                          <Input id="ram" name="ram" type="number" value={editedServer.ram?.replace('MB', '')} onChange={handleInputChange} className="pr-12"/>
+                          <Input id="ram" name="ram" type="number" value={editedServer.ram?.replace('MB', '') || ''} onChange={handleInputChange} className="pr-12"/>
                           <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">MB</span>
                       </div>
                   ) : <p className="text-base">{server.ram}</p>}
@@ -247,7 +253,7 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
                   <Label htmlFor="storage">Storage</Label>
                   {isEditMode ? (
                       <div className="relative">
-                          <Input id="storage" name="storage" type="number" value={editedServer.storage?.replace('GB', '')} onChange={handleInputChange} className="pr-12" />
+                          <Input id="storage" name="storage" type="number" value={editedServer.storage?.replace('GB', '') || ''} onChange={handleInputChange} className="pr-12" />
                           <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">GB</span>
                       </div>
                   ) : <p className="text-base">{server.storage}</p>}
@@ -255,19 +261,27 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
 
               <div className="grid gap-2">
                   <Label htmlFor="publicIp">Public IP</Label>
-                   {isEditMode ? <Input id="publicIp" name="publicIp" value={editedServer.publicIp} onChange={handleInputChange} /> : <p className="text-base">{server.publicIp}</p>}
+                   {isEditMode ? <Input id="publicIp" name="publicIp" value={editedServer.publicIp || ''} onChange={handleInputChange} /> : <p className="text-base">{server.publicIp}</p>}
               </div>
             
               {isEditMode && (
                 <>
                   <div className="grid gap-2">
-                      <Label htmlFor="privateIp">Private IP</Label>
-                      <Input id="privateIp" name="privateIp" value={editedServer.privateIp || ''} onChange={handleInputChange} placeholder="Enter new value to update" />
+                    <Label>Private IP</Label>
+                    {showPrivateIpInput ? (
+                      <Input id="privateIp" name="privateIp" value={editedServer.privateIp || ''} onChange={handleInputChange} placeholder="Enter new IP to update" />
+                    ) : (
+                      <Button variant="outline" onClick={() => setShowPrivateIpInput(true)}>Update Private IP</Button>
+                    )}
                   </div>
 
                   <div className="grid gap-2">
-                      <Label htmlFor="privateKey">Private Key</Label>
-                      <Textarea id="privateKey" name="privateKey" value={editedServer.privateKey || ''} onChange={handleInputChange} className="font-mono h-32" placeholder="Enter new value to update" />
+                      <Label>Private Key</Label>
+                      {showPrivateKeyInput ? (
+                        <Textarea id="privateKey" name="privateKey" value={editedServer.privateKey || ''} onChange={handleInputChange} className="font-mono h-32" placeholder="Enter new private key to update" />
+                      ) : (
+                        <Button variant="outline" onClick={() => setShowPrivateKeyInput(true)}>Update Private Key</Button>
+                      )}
                   </div>
                 </>
               )}
@@ -296,3 +310,5 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
     </div>
   );
 }
+
+    

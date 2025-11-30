@@ -51,10 +51,11 @@ export async function updateServer(id: string, serverData: Partial<{
 }>) {
     const updateData: { [key: string]: any } = { ...serverData };
 
-    if (serverData.privateIp === '') {
+    // Only include private IP and private key if they are not empty strings
+    if (serverData.privateIp === '' || serverData.privateIp === undefined) {
         delete updateData.privateIp;
     }
-    if (serverData.privateKey === '') {
+    if (serverData.privateKey === '' || serverData.privateKey === undefined) {
         delete updateData.privateKey;
     }
 
@@ -78,3 +79,5 @@ export async function updateServerStatus(id: string, currentStatus: string) {
     revalidatePath('/servers');
     revalidatePath(`/servers/${id}`);
 }
+
+    
