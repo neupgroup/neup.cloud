@@ -4,6 +4,7 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { revalidatePath } from 'next/cache';
+import { runCommandOnServer } from '@/services/ssh';
 
 // This is a temporary solution to get the firestore instance on the server.
 // In a real-world scenario, you would want to use the Firebase Admin SDK for server-side operations.
@@ -40,6 +41,31 @@ export async function getServerForRunner(id: string) {
         privateIp?: string;
         privateKey?: string;
     };
+}
+
+export async function getRamUsage(serverId: string) {
+  const server = await getServerForRunner(serverId);
+  if (!server || !server.privateKey) {
+    return { error: 'Server or private key not found.' };
+  }
+
+  try {
+    const result = await runCommandOnServer(server.publicIp, server.privateKey, 'free -m');
+    if (result.code !== 0) {
+      return { error: result.stderr || 'Failed to get RAM usage.' };
+    }
+    const lines = result.stdout.split('\n');
+    const memLine = lines.find(line => line.startsWith('Mem:'));
+    if (memLine) {
+      const parts = memLine.split(/\s+/);
+      // parts[0] is 'Mem:', parts[1] is total, parts[2] is used
+      const usedRam = parseInt(parts[2], 10);
+      return { usedRam };
+    }
+    return { error: 'Could not parse memory usage.' };
+  } catch (e: any) {
+    return { error: e.message };
+  }
 }
 
 export async function createServer(serverData: {

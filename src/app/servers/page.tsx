@@ -1,31 +1,20 @@
 
 'use client';
 
-import { MoreHorizontal, PlusCircle, Trash2, ServerIcon } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter
 } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { getServers, deleteServer } from "./actions";
+import { getServers } from "./actions";
+import { ServerCard } from "./server-card";
 
-type Server = {
+export type Server = {
   id: string;
   name: string;
   type: string;
@@ -63,22 +52,8 @@ export default function VpsPage() {
     fetchServers();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteServer(id);
-      toast({
-        title: "Server Deleted",
-        description: "The server has been successfully deleted.",
-      });
-      fetchServers();
-    } catch (error) {
-      console.error("Error deleting document: ", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "There was a problem deleting the server.",
-      });
-    }
+  const handleServerDeleted = (id: string) => {
+    setServers(prev => prev.filter(s => s.id !== id));
   };
 
   return (
@@ -106,47 +81,9 @@ export default function VpsPage() {
         <div className="text-center text-destructive">Error loading servers: {error.message}</div>
       ) : servers && servers.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {servers.map((server) => {
-            return (
-              <Card key={server.id} className="flex flex-col">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="font-headline text-xl">
-                        <Link href={`/servers/${server.id}`} className="hover:underline flex items-center gap-2">
-                           <ServerIcon className="h-5 w-5 text-muted-foreground" />
-                           {server.name}
-                        </Link>
-                      </CardTitle>
-                      <CardDescription>{server.publicIp}</CardDescription>
-                    </div>
-                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={() => handleDelete(server.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-grow space-y-4">
-                  <div className="text-sm text-muted-foreground space-y-1">
-                      <p><span className="font-semibold text-foreground">OS:</span> {server.type}</p>
-                      <p><span className="font-semibold text-foreground">Provider:</span> {server.provider}</p>
-                      <p><span className="font-semibold text-foreground">Specs:</span> {server.ram}, {server.storage}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+          {servers.map((server) => (
+            <ServerCard key={server.id} server={server} onServerDeleted={handleServerDeleted} />
+          ))}
         </div>
       ) : (
         <Card>
