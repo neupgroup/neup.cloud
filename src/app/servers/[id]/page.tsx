@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowLeft, Trash2, Edit, Save, X } from 'lucide-react';
+import { ArrowLeft, Trash2, Edit, Save, X, Terminal, Loader2 } from 'lucide-react';
 import { getServer, updateServer, deleteServer } from '../actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,7 +37,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { runCustomCommandOnServer, getServerLogs } from './actions';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { formatDistanceToNow } from 'date-fns';
 
 type Server = {
   id: string;
@@ -49,6 +53,14 @@ type Server = {
   storage: string;
   publicIp: string;
 };
+
+type ServerLog = {
+    id: string;
+    command: string;
+    output: string;
+    status: string;
+    runAt: string;
+}
 
 // Private fields are handled separately and not included in the main Server type
 type EditableServer = Partial<Server> & { privateIp?: string; privateKey?: string };
@@ -64,6 +76,11 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
   const [isSaving, setIsSaving] = useState(false);
   const [showPrivateIpInput, setShowPrivateIpInput] = useState(false);
   const [showPrivateKeyInput, setShowPrivateKeyInput] = useState(false);
+  const [command, setCommand] = useState('');
+  const [isCommandRunning, setIsCommandRunning] = useState(false);
+  const [commandOutput, setCommandOutput] = useState('');
+  const [serverLogs, setServerLogs] = useState<ServerLog[]>([]);
+  const [isLogsLoading, setIsLogsLoading] = useState(true);
 
   const fetchServer = useCallback(async (serverId: string) => {
     setIsLoading(true);
@@ -84,11 +101,26 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
     }
   }, [router, toast]);
 
+   const fetchServerLogs = useCallback(async (serverId: string) => {
+    setIsLogsLoading(true);
+    try {
+      const logs = await getServerLogs(serverId) as ServerLog[];
+      setServerLogs(logs);
+    } catch (e: any) {
+      console.error(e);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch server logs.' });
+    } finally {
+      setIsLogsLoading(false);
+    }
+  }, [toast]);
+
+
   useEffect(() => {
     if (id) {
       fetchServer(id);
+      fetchServerLogs(id);
     }
-  }, [id, fetchServer]);
+  }, [id, fetchServer, fetchServerLogs]);
 
   const handleEditToggle = () => {
     if (isEditMode) {
@@ -112,7 +144,6 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
     if (!editedServer) return;
     setIsSaving(true);
     try {
-      // Ensure ID is not passed in the update payload
       const { id: serverId, ...updateData } = editedServer;
       
       await updateServer(id, updateData);
@@ -141,6 +172,32 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
     }
   };
 
+  const handleRunCommand = async () => {
+    if (!command.trim()) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Command cannot be empty.' });
+        return;
+    }
+    setIsCommandRunning(true);
+    setCommandOutput('');
+    try {
+        const result = await runCustomCommandOnServer(id, command);
+        if (result.error) {
+            setCommandOutput(result.error);
+            toast({ variant: 'destructive', title: 'Command Failed', description: result.error });
+        } else {
+            setCommandOutput(result.output || 'Command executed successfully.');
+            toast({ title: 'Command Executed', description: 'The command has been run on the server.'});
+            fetchServerLogs(id); // Re-fetch logs
+        }
+    } catch (e: any) {
+        setCommandOutput(e.message);
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+        setIsCommandRunning(false);
+        setCommand('');
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="grid gap-4">
@@ -159,10 +216,9 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-10 w-full" />
             </CardContent>
-            <CardFooter className="border-t px-6 py-4 flex justify-between">
-                <Skeleton className="h-10 w-24" />
+            <CardFooter className="border-t px-6 py-4 flex justify-end">
                 <Skeleton className="h-10 w-24" />
             </CardFooter>
         </Card>
@@ -185,7 +241,7 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
         </Button>
         <div>
             <h1 className="text-3xl font-bold font-headline tracking-tight">{server.name}</h1>
-            <p className="text-muted-foreground">Manage your server details and settings.</p>
+            <p className="text-muted-foreground">Manage your server details, settings, and run commands.</p>
         </div>
       </div>
         <Card>
@@ -210,6 +266,7 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
             </div>
           </CardHeader>
           <CardContent className="grid gap-6">
+            <div className="grid md:grid-cols-2 gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="name">Server Name</Label>
                 {isEditMode ? <Input id="name" name="name" value={editedServer.name || ''} onChange={handleInputChange} /> : <p className="text-base">{server.name}</p>}
@@ -219,7 +276,9 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
                 <Label htmlFor="username">Username</Label>
                 {isEditMode ? <Input id="username" name="username" value={editedServer.username || ''} onChange={handleInputChange} /> : <p className="text-base">{server.username}</p>}
               </div>
+            </div>
 
+             <div className="grid md:grid-cols-2 gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="provider">Provider</Label>
                  {isEditMode ? (
@@ -246,7 +305,9 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
                       </Select>
                   ) : <p className="text-base">{server.type}</p>}
               </div>
+            </div>
 
+            <div className="grid md:grid-cols-2 gap-6">
               <div className="grid gap-2">
                   <Label htmlFor="ram">RAM</Label>
                   {isEditMode ? (
@@ -266,14 +327,15 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
                       </div>
                   ) : <p className="text-base">{server.storage}</p>}
               </div>
-
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-6">
               <div className="grid gap-2">
                   <Label htmlFor="publicIp">Public IP</Label>
                    {isEditMode ? <Input id="publicIp" name="publicIp" value={editedServer.publicIp || ''} onChange={handleInputChange} /> : <p className="text-base">{server.publicIp}</p>}
               </div>
             
               {isEditMode && (
-                <>
                   <div className="grid gap-2">
                     <Label>Private IP</Label>
                     {showPrivateIpInput ? (
@@ -282,17 +344,19 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
                       <Button variant="outline" onClick={() => setShowPrivateIpInput(true)}>Update Private IP</Button>
                     )}
                   </div>
-
-                  <div className="grid gap-2">
-                      <Label>Private Key</Label>
-                      {showPrivateKeyInput ? (
-                        <Textarea id="privateKey" name="privateKey" value={editedServer.privateKey || ''} onChange={handleInputChange} className="font-mono h-32" placeholder="Enter new private key to update" />
-                      ) : (
-                        <Button variant="outline" onClick={() => setShowPrivateKeyInput(true)}>Update Private Key</Button>
-                      )}
-                  </div>
-                </>
               )}
+            </div>
+
+             {isEditMode && (
+                <div className="grid gap-2">
+                    <Label>Private Key</Label>
+                    {showPrivateKeyInput ? (
+                    <Textarea id="privateKey" name="privateKey" value={editedServer.privateKey || ''} onChange={handleInputChange} className="font-mono h-32" placeholder="Enter new private key to update" />
+                    ) : (
+                    <Button variant="outline" onClick={() => setShowPrivateKeyInput(true)}>Update Private Key</Button>
+                    )}
+                </div>
+            )}
           </CardContent>
           <CardFooter className="border-t px-6 py-4 flex justify-end">
             <AlertDialog>
@@ -314,6 +378,75 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
               </AlertDialogContent>
             </AlertDialog>
           </CardFooter>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline flex items-center gap-2"><Terminal />Run Custom Command</CardTitle>
+                <CardDescription>Execute a command on this server.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <div className="flex gap-2">
+                    <Input 
+                        value={command}
+                        onChange={(e) => setCommand(e.target.value)}
+                        placeholder="e.g., ls -la"
+                        className="font-mono"
+                        disabled={isCommandRunning}
+                        onKeyDown={(e) => e.key === 'Enter' && handleRunCommand()}
+                    />
+                    <Button onClick={handleRunCommand} disabled={isCommandRunning}>
+                        {isCommandRunning ? <Loader2 className="animate-spin" /> : 'Run'}
+                    </Button>
+                 </div>
+                 {commandOutput && (
+                    <div className="mt-4">
+                        <Label>Output</Label>
+                        <div className="mt-2 bg-muted/50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap overflow-x-auto">
+                            {commandOutput}
+                        </div>
+                    </div>
+                 )}
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle className="font-headline">Command History</CardTitle>
+                <CardDescription>History of commands run on this server.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Command</TableHead>
+                            <TableHead>Output</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Time</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLogsLoading ? (
+                            <TableRow><TableCell colSpan={4} className="text-center">Loading logs...</TableCell></TableRow>
+                        ) : serverLogs.length > 0 ? (
+                            serverLogs.map(log => (
+                                <TableRow key={log.id}>
+                                    <TableCell className="font-mono">{log.command}</TableCell>
+                                    <TableCell className="font-mono text-xs whitespace-pre-wrap max-w-md overflow-x-auto">{log.output}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={log.status === 'Success' ? 'default' : 'destructive'} className={log.status === 'Success' ? 'bg-green-500/20 text-green-700 border-green-400' : ''}>
+                                            {log.status}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>{formatDistanceToNow(new Date(log.runAt), { addSuffix: true })}</TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                             <TableRow><TableCell colSpan={4} className="text-center">No commands have been run on this server yet.</TableCell></TableRow>
+                        )}
+                    </TableBody>
+                 </Table>
+            </CardContent>
         </Card>
     </div>
   );

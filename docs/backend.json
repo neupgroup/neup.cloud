@@ -101,6 +101,35 @@
         }
       },
       "required": ["name", "repo", "status"]
+    },
+    "serverLog": {
+        "title": "Server Log",
+        "description": "Represents a log of a command run on a server.",
+        "type": "object",
+        "properties": {
+            "serverId": {
+                "type": "string",
+                "description": "The ID of the server where the command was run."
+            },
+            "command": {
+                "type": "string",
+                "description": "The command that was executed."
+            },
+            "output": {
+                "type": "string",
+                "description": "The output of the command execution."
+            },
+            "status": {
+                "type": "string",
+                "description": "The exit status of the command (e.g., 'Success', 'Error')."
+            },
+            "runAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "The timestamp when the command was run."
+            }
+        },
+        "required": ["serverId", "command", "output", "status", "runAt"]
     }
   },
   "auth": {
@@ -124,6 +153,12 @@
         "$ref": "#/entities/application"
       },
       "description": "Stores information about deployed applications."
+    },
+    "/serverLogs/{serverLogId}": {
+      "schema": {
+        "$ref": "#/entities/serverLog"
+      },
+      "description": "Stores logs of commands run on servers."
     }
   }
 }
