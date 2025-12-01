@@ -46,8 +46,11 @@ export async function getServerForRunner(id: string) {
 
 export async function getRamUsage(serverId: string) {
   const server = await getServerForRunner(serverId);
-  if (!server || !server.privateKey || !server.username) {
-    return { error: 'Server details (IP, key, or username) not found.' };
+  if (!server) {
+    return { error: 'Server not found.' };
+  }
+  if (!server.username || !server.privateKey) {
+    return { error: 'Server is missing username or private key configuration for SSH access.' };
   }
 
   try {

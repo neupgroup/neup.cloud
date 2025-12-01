@@ -42,12 +42,12 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
       if (result.usedRam !== undefined) {
         setUsedRam(result.usedRam);
       } else {
-        console.error(result.error);
+        console.error(`Failed to fetch RAM for ${server.name} (${server.id}):`, result.error);
       }
       setIsRamLoading(false);
     }
     fetchRam();
-  }, [server.id]);
+  }, [server.id, server.name]);
 
   const handleDelete = async () => {
     try {
