@@ -53,6 +53,7 @@ type Server = {
 type EditableServer = Partial<Server> & { privateIp?: string; privateKey?: string };
 
 export default function ServerDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const router = useRouter();
   const { toast } = useToast();
   const [server, setServer] = useState<Server | null>(null);
@@ -63,10 +64,10 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
   const [showPrivateIpInput, setShowPrivateIpInput] = useState(false);
   const [showPrivateKeyInput, setShowPrivateKeyInput] = useState(false);
 
-  const fetchServer = useCallback(async (id: string) => {
+  const fetchServer = useCallback(async (serverId: string) => {
     setIsLoading(true);
     try {
-      const serverData = await getServer(id) as Server | null;
+      const serverData = await getServer(serverId) as Server | null;
       if (serverData) {
         setServer(serverData);
         setEditedServer(serverData);
@@ -83,10 +84,10 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
   }, [router, toast]);
 
   useEffect(() => {
-    if (params.id) {
-      fetchServer(params.id);
+    if (id) {
+      fetchServer(id);
     }
-  }, [params.id, fetchServer]);
+  }, [id, fetchServer]);
 
   const handleEditToggle = () => {
     if (isEditMode) {
@@ -111,15 +112,15 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
     setIsSaving(true);
     try {
       // Ensure ID is not passed in the update payload
-      const { id, ...updateData } = editedServer;
+      const { id: serverId, ...updateData } = editedServer;
       
-      await updateServer(params.id, updateData);
+      await updateServer(id, updateData);
       
       toast({ title: 'Server Updated', description: 'Server details have been saved.' });
       setIsEditMode(false);
       setShowPrivateIpInput(false);
       setShowPrivateKeyInput(false);
-      fetchServer(params.id);
+      fetchServer(id);
     } catch (e) {
       console.error(e);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to update server.' });
@@ -130,7 +131,7 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
 
    const handleDeleteServer = async () => {
     try {
-      await deleteServer(params.id);
+      await deleteServer(id);
       toast({ title: 'Server Deleted', description: 'The server has been permanently deleted.' });
       router.push('/servers');
     } catch (e) {
