@@ -42,6 +42,7 @@ import {
 type Server = {
   id: string;
   name: string;
+  username: string;
   type: string;
   provider: string;
   ram: string;
@@ -75,7 +76,7 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
         toast({ variant: 'destructive', title: 'Error', description: 'Server not found.' });
         router.push('/servers');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch server data.' });
     } finally {
@@ -121,7 +122,7 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
       setShowPrivateIpInput(false);
       setShowPrivateKeyInput(false);
       fetchServer(id);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to update server.' });
     } finally {
@@ -134,7 +135,7 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
       await deleteServer(id);
       toast({ title: 'Server Deleted', description: 'The server has been permanently deleted.' });
       router.push('/servers');
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete server.' });
     }
@@ -212,6 +213,11 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
               <div className="grid gap-2">
                 <Label htmlFor="name">Server Name</Label>
                 {isEditMode ? <Input id="name" name="name" value={editedServer.name || ''} onChange={handleInputChange} /> : <p className="text-base">{server.name}</p>}
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="username">Username</Label>
+                {isEditMode ? <Input id="username" name="username" value={editedServer.username || ''} onChange={handleInputChange} /> : <p className="text-base">{server.username}</p>}
               </div>
 
               <div className="grid gap-2">
@@ -312,5 +318,3 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
     </div>
   );
 }
-
-    

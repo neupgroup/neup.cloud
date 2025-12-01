@@ -17,6 +17,7 @@ import { ServerCard } from "./server-card";
 export type Server = {
   id: string;
   name: string;
+  username: string;
   type: string;
   provider: string;
   ram: string;

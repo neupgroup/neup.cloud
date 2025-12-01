@@ -10,6 +10,10 @@
           "type": "string",
           "description": "The name of the server."
         },
+        "username": {
+          "type": "string",
+          "description": "The username for SSH connections."
+        },
         "type": {
           "type": "string",
           "description": "The operating system type of the server (Linux/Windows)."
@@ -39,7 +43,7 @@
           "description": "The SSH private key for the server."
         }
       },
-      "required": ["name", "type", "provider", "ram", "storage", "publicIp"]
+      "required": ["name", "username", "type", "provider", "ram", "storage", "publicIp"]
     },
     "error": {
       "title": "Error Log",

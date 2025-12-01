@@ -33,6 +33,7 @@ export async function getServerForRunner(id: string) {
     return { id: serverDoc.id, ...serverDoc.data() } as {
         id: string;
         name: string;
+        username: string;
         type: string;
         provider: string;
         ram: string;
@@ -45,12 +46,12 @@ export async function getServerForRunner(id: string) {
 
 export async function getRamUsage(serverId: string) {
   const server = await getServerForRunner(serverId);
-  if (!server || !server.privateKey) {
-    return { error: 'Server or private key not found.' };
+  if (!server || !server.privateKey || !server.username) {
+    return { error: 'Server details (IP, key, or username) not found.' };
   }
 
   try {
-    const result = await runCommandOnServer(server.publicIp, server.privateKey, 'free -m');
+    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, 'free -m');
     if (result.code !== 0) {
       return { error: result.stderr || 'Failed to get RAM usage.' };
     }
@@ -70,6 +71,7 @@ export async function getRamUsage(serverId: string) {
 
 export async function createServer(serverData: {
     name: string;
+    username: string;
     type: string;
     provider: string;
     ram: string;
@@ -84,6 +86,7 @@ export async function createServer(serverData: {
 
 export async function updateServer(id: string, serverData: Partial<{
     name: string;
+    username: string;
     type: string;
     provider: string;
     ram: string;
@@ -114,4 +117,3 @@ export async function deleteServer(id: string) {
     await deleteDoc(doc(firestore, "servers", id));
     revalidatePath('/servers');
 }
-    

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { MoreHorizontal, Trash2, ServerIcon } from "lucide-react";
+import { MoreHorizontal, Trash2, ServerIcon, User } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
@@ -80,7 +80,10 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
                  {server.name}
               </Link>
             </CardTitle>
-            <CardDescription>{server.publicIp}</CardDescription>
+            <CardDescription className="flex items-center gap-2 pt-1">
+                <User className="h-4 w-4 text-muted-foreground" />
+                {server.username}@{server.publicIp}
+            </CardDescription>
           </div>
            <DropdownMenu>
               <DropdownMenuTrigger asChild>

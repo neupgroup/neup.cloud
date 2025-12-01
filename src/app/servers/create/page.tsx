@@ -33,6 +33,7 @@ export default function CreateServerPage() {
   const [isLoading, setIsLoading] = useState(false);
   
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('root');
   const [provider, setProvider] = useState('');
   const [type, setType] = useState('');
   const [ram, setRam] = useState('4096');
@@ -48,6 +49,7 @@ export default function CreateServerPage() {
 
     const serverData = {
       name,
+      username,
       type,
       provider,
       ram: `${ram}MB`,
@@ -57,7 +59,7 @@ export default function CreateServerPage() {
       privateKey,
     };
 
-    if (!serverData.name || !serverData.type || !serverData.provider || !serverData.ram || !serverData.storage || !serverData.publicIp) {
+    if (!serverData.name || !serverData.username || !serverData.type || !serverData.provider || !serverData.ram || !serverData.storage || !serverData.publicIp) {
         toast({
             variant: "destructive",
             title: "Missing fields",
@@ -74,7 +76,7 @@ export default function CreateServerPage() {
         description: 'Your new server is being provisioned.',
       });
       router.push('/servers');
-    } catch (e) {
+    } catch (e: any) {
       console.error('Error adding document: ', e);
       toast({
         variant: 'destructive',
@@ -112,6 +114,13 @@ export default function CreateServerPage() {
                 <Input id="name" name="name" placeholder="e.g., web-server-01" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="grid gap-2">
+                <Label htmlFor="username">Username</Label>
+                <Input id="username" name="username" placeholder="e.g., root" value={username} onChange={(e) => setUsername(e.target.value)} />
+              </div>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid gap-2">
                 <Label htmlFor="provider">Provider</Label>
                 <Select name="provider" value={provider} onValueChange={setProvider}>
                   <SelectTrigger>
@@ -124,10 +133,7 @@ export default function CreateServerPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-                <div className="grid gap-2">
+              <div className="grid gap-2">
                     <Label htmlFor="type">Operating System Type</Label>
                     <Select name="type" value={type} onValueChange={setType}>
                       <SelectTrigger>
@@ -139,6 +145,9 @@ export default function CreateServerPage() {
                       </SelectContent>
                     </Select>
                 </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
                  <div className="grid gap-2">
                     <Label htmlFor="ram">RAM</Label>
                     <div className="relative">
@@ -146,9 +155,6 @@ export default function CreateServerPage() {
                         <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">MB</span>
                     </div>
                   </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
                   <div className="grid gap-2">
                     <Label htmlFor="storage">Storage</Label>
                      <div className="relative">
@@ -156,13 +162,13 @@ export default function CreateServerPage() {
                         <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">GB</span>
                     </div>
                   </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
                    <div className="grid gap-2">
                     <Label htmlFor="publicIp">Public IP</Label>
                     <Input id="publicIp" name="publicIp" placeholder="e.g., 8.8.8.8" value={publicIp} onChange={(e) => setPublicIp(e.target.value)} />
                 </div>
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-6">
                 <div className="grid gap-2">
                     <Label htmlFor="privateIp">Private IP (Optional)</Label>
                     <Input id="privateIp" name="privateIp" placeholder="e.g., 192.168.1.1" value={privateIp} onChange={(e) => setPrivateIp(e.target.value)} />

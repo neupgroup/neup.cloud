@@ -5,6 +5,7 @@ import { NodeSSH } from 'node-ssh';
 
 export async function runCommandOnServer(
     host: string,
+    username: string,
     privateKey: string,
     command: string
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
@@ -13,7 +14,7 @@ export async function runCommandOnServer(
     try {
         await ssh.connect({
             host: host,
-            username: 'root', // Assuming root user, this might need to be configurable
+            username: username,
             privateKey: privateKey,
         });
 

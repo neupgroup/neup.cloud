@@ -14,6 +14,10 @@ export async function executeCommand(serverId: string, command: string) {
   if (!server) {
     return { error: 'Server not found.' };
   }
+  
+  if (!server.username) {
+    return { error: 'No username configured for this server.' };
+  }
 
   if (!server.privateKey) {
     return { error: 'No private key configured for this server.' };
@@ -22,6 +26,7 @@ export async function executeCommand(serverId: string, command: string) {
   try {
     const result = await runCommandOnServer(
       server.publicIp,
+      server.username,
       server.privateKey,
       command
     );
@@ -35,4 +40,3 @@ export async function executeCommand(serverId: string, command: string) {
     return { error: `Failed to execute command: ${e.message}` };
   }
 }
-
