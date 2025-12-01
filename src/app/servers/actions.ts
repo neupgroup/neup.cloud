@@ -24,6 +24,24 @@ export async function getServer(id: string) {
     return { id: serverDoc.id, ...serverData };
 }
 
+export async function getServerForRunner(id: string) {
+    const serverDoc = await getDoc(doc(firestore, "servers", id));
+    if (!serverDoc.exists()) {
+        return null;
+    }
+    return { id: serverDoc.id, ...serverDoc.data() } as {
+        id: string;
+        name: string;
+        type: string;
+        provider: string;
+        ram: string;
+        storage: string;
+        publicIp: string;
+        privateIp?: string;
+        privateKey?: string;
+    };
+}
+
 export async function createServer(serverData: {
     name: string;
     type: string;
