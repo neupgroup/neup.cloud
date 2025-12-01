@@ -1,7 +1,7 @@
 
 'use client';
 
-import { MoreHorizontal, PlusCircle, Power, Trash2, ServerIcon } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Trash2, ServerIcon } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { getServers, deleteServer, updateServerStatus } from "./actions";
+import { getServers, deleteServer } from "./actions";
 
 type Server = {
   id: string;
@@ -34,7 +34,6 @@ type Server = {
   storage: string;
   publicIp: string;
   privateIp: string;
-  status: 'Running' | 'Provisioning' | 'Error' | 'Stopped';
 };
 
 export default function VpsPage() {
@@ -82,24 +81,6 @@ export default function VpsPage() {
     }
   };
 
-  const handleStatusUpdate = async (id: string, currentStatus: string) => {
-    try {
-      await updateServerStatus(id, currentStatus);
-      toast({
-        title: "Server Status Updated",
-        description: `The server status is being updated.`,
-      });
-      fetchServers();
-    } catch (error) {
-      console.error("Error updating document: ", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "There was a problem updating the server status.",
-      });
-    }
-  };
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -126,19 +107,6 @@ export default function VpsPage() {
       ) : servers && servers.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {servers.map((server) => {
-            const statusVariant =
-              server.status === "Running"
-                ? "default"
-                : server.status === "Error"
-                ? "destructive"
-                : "secondary";
-            const statusClass =
-              server.status === "Running"
-                ? "bg-green-500/20 text-green-700 border-green-400 hover:bg-green-500/30"
-                : server.status === "Provisioning"
-                ? "bg-blue-500/20 text-blue-700 border-blue-400 hover:bg-blue-500/30"
-                : "";
-
             return (
               <Card key={server.id} className="flex flex-col">
                 <CardHeader>
@@ -161,10 +129,6 @@ export default function VpsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleStatusUpdate(server.id, server.status)} disabled={server.status !== 'Running' && server.status !== 'Stopped'}>
-                            <Power className="mr-2 h-4 w-4" />
-                            {server.status === 'Running' ? 'Stop' : 'Start'}
-                          </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={() => handleDelete(server.id)}>
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
@@ -174,9 +138,6 @@ export default function VpsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="flex-grow space-y-4">
-                  <Badge variant={statusVariant} className={statusClass}>
-                    {server.status}
-                  </Badge>
                   <div className="text-sm text-muted-foreground space-y-1">
                       <p><span className="font-semibold text-foreground">OS:</span> {server.type}</p>
                       <p><span className="font-semibold text-foreground">Provider:</span> {server.provider}</p>

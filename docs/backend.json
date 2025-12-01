@@ -34,16 +34,12 @@
           "type": "string",
           "description": "The private IP address of the server."
         },
-        "status": {
-          "type": "string",
-          "description": "The status of the server."
-        },
         "privateKey": {
           "type": "string",
           "description": "The SSH private key for the server."
         }
       },
-      "required": ["name", "type", "provider", "ram", "storage", "publicIp", "status"]
+      "required": ["name", "type", "provider", "ram", "storage", "publicIp"]
     },
     "error": {
       "title": "Error Log",

@@ -55,14 +55,13 @@ export default function CreateServerPage() {
       publicIp,
       privateIp,
       privateKey,
-      status: 'Provisioning',
     };
 
-    if (!serverData.name || !serverData.type || !serverData.provider || !serverData.ram || !serverData.storage || !serverData.publicIp || !serverData.privateIp) {
+    if (!serverData.name || !serverData.type || !serverData.provider || !serverData.ram || !serverData.storage || !serverData.publicIp) {
         toast({
             variant: "destructive",
             title: "Missing fields",
-            description: "Please fill out all required fields.",
+            description: "Please fill out all required fields except for Private IP and Private Key.",
         });
         setIsLoading(false);
         return;
@@ -157,21 +156,21 @@ export default function CreateServerPage() {
                         <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">GB</span>
                     </div>
                   </div>
+                   <div className="grid gap-2">
+                    <Label htmlFor="publicIp">Public IP</Label>
+                    <Input id="publicIp" name="publicIp" placeholder="e.g., 8.8.8.8" value={publicIp} onChange={(e) => setPublicIp(e.target.value)} />
+                </div>
             </div>
             
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="grid gap-2">
-                    <Label htmlFor="publicIp">Public IP</Label>
-                    <Input id="publicIp" name="publicIp" placeholder="e.g., 8.8.8.8" value={publicIp} onChange={(e) => setPublicIp(e.target.value)} />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="privateIp">Private IP</Label>
+                    <Label htmlFor="privateIp">Private IP (Optional)</Label>
                     <Input id="privateIp" name="privateIp" placeholder="e.g., 192.168.1.1" value={privateIp} onChange={(e) => setPrivateIp(e.target.value)} />
                 </div>
             </div>
 
             <div className="grid gap-2">
-                <Label htmlFor="privateKey">Private Key</Label>
+                <Label htmlFor="privateKey">Private Key (Optional)</Label>
                 <Textarea id="privateKey" name="privateKey" placeholder="Paste your SSH private key here" value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} className="font-mono h-32" />
             </div>
 

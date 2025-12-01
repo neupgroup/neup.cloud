@@ -33,7 +33,6 @@ export async function createServer(serverData: {
     publicIp: string;
     privateIp: string;
     privateKey: string;
-    status: string;
 }) {
     await addDoc(collection(firestore, 'servers'), serverData);
     revalidatePath('/servers');
@@ -71,13 +70,4 @@ export async function deleteServer(id: string) {
     await deleteDoc(doc(firestore, "servers", id));
     revalidatePath('/servers');
 }
-
-export async function updateServerStatus(id: string, currentStatus: string) {
-    const newStatus = currentStatus === 'Running' ? 'Stopped' : 'Running';
-    const serverDoc = doc(firestore, "servers", id);
-    await updateDoc(serverDoc, { status: newStatus });
-    revalidatePath('/servers');
-    revalidatePath(`/servers/${id}`);
-}
-
     

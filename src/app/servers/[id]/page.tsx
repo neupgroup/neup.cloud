@@ -47,7 +47,6 @@ type Server = {
   ram: string;
   storage: string;
   publicIp: string;
-  status: 'Running' | 'Provisioning' | 'Error' | 'Stopped';
 };
 
 // Private fields are handled separately and not included in the main Server type
@@ -310,5 +309,3 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
     </div>
   );
 }
-
-    
