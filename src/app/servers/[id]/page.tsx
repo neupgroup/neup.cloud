@@ -312,3 +312,5 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
     </div>
   );
 }
+
+    
