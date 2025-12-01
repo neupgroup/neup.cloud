@@ -54,19 +54,21 @@ export async function getRamUsage(serverId: string) {
   }
 
   try {
-    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, 'free -m');
+    // ps -eo rss= lists the resident set size (memory usage) of all processes in kilobytes
+    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, 'ps -eo rss=');
     if (result.code !== 0) {
       return { error: result.stderr || 'Failed to get RAM usage.' };
     }
-    const lines = result.stdout.split('\n');
-    const memLine = lines.find(line => line.startsWith('Mem:'));
-    if (memLine) {
-      const parts = memLine.split(/\s+/);
-      // parts[0] is 'Mem:', parts[1] is total, parts[2] is used
-      const usedRam = parseInt(parts[2], 10);
-      return { usedRam };
-    }
-    return { error: 'Could not parse memory usage.' };
+    
+    const lines = result.stdout.trim().split('\n');
+    const totalRamKb = lines.reduce((sum, line) => {
+      const ram = parseInt(line.trim(), 10);
+      return sum + (isNaN(ram) ? 0 : ram);
+    }, 0);
+
+    const usedRam = Math.round(totalRamKb / 1024); // Convert KB to MB
+    return { usedRam };
+
   } catch (e: any) {
     return { error: e.message };
   }
