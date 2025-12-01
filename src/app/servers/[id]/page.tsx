@@ -63,10 +63,10 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
   const [showPrivateIpInput, setShowPrivateIpInput] = useState(false);
   const [showPrivateKeyInput, setShowPrivateKeyInput] = useState(false);
 
-  const fetchServer = useCallback(async () => {
+  const fetchServer = useCallback(async (id: string) => {
     setIsLoading(true);
     try {
-      const serverData = await getServer(params.id) as Server | null;
+      const serverData = await getServer(id) as Server | null;
       if (serverData) {
         setServer(serverData);
         setEditedServer(serverData);
@@ -80,11 +80,13 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
     } finally {
       setIsLoading(false);
     }
-  }, [params.id, router, toast]);
+  }, [router, toast]);
 
   useEffect(() => {
-    fetchServer();
-  }, [fetchServer]);
+    if (params.id) {
+      fetchServer(params.id);
+    }
+  }, [params.id, fetchServer]);
 
   const handleEditToggle = () => {
     if (isEditMode) {
@@ -117,7 +119,7 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
       setIsEditMode(false);
       setShowPrivateIpInput(false);
       setShowPrivateKeyInput(false);
-      fetchServer();
+      fetchServer(params.id);
     } catch (e) {
       console.error(e);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to update server.' });
