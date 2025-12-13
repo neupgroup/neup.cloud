@@ -22,7 +22,7 @@ import {
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Logo } from '@/components/logo';
 import {
@@ -37,6 +37,7 @@ import type {Metadata} from 'next';
 import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
+import { ProgressBar } from '@/components/progress-bar';
 
 function NavLink({ href, children, currentPath, onClick }: { href: string; children: React.ReactNode; currentPath: string, onClick?: () => void }) {
     const isActive = href === '/' ? currentPath === href : currentPath.startsWith(href);
@@ -199,6 +200,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
           <Toaster />
         </FirebaseClientProvider>
+        <Suspense fallback={null}>
+            <ProgressBar />
+        </Suspense>
       </body>
     </html>
   );
