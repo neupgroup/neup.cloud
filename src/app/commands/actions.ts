@@ -3,7 +3,7 @@
 
 import { runCommandOnServer } from '@/services/ssh';
 import { getServerForRunner } from '../servers/actions';
-import { addDoc, collection, doc, getDoc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, serverTimestamp, updateDoc, deleteDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { revalidatePath } from 'next/cache';
 
@@ -17,6 +17,16 @@ export async function getSavedCommands() {
 
 export async function createSavedCommand(data: { name: string, command: string, description?: string, nextCommands?: string[] }) {
     await addDoc(collection(firestore, 'savedCommands'), data);
+    revalidatePath('/commands');
+}
+
+export async function updateSavedCommand(id: string, data: { name: string, command: string, description?: string, nextCommands?: string[] }) {
+    await updateDoc(doc(firestore, 'savedCommands', id), data);
+    revalidatePath('/commands');
+}
+
+export async function deleteSavedCommand(id: string) {
+    await deleteDoc(doc(firestore, 'savedCommands', id));
     revalidatePath('/commands');
 }
 
@@ -64,11 +74,13 @@ async function executeSingleCommand(serverId: string, command: string): Promise<
         }
         
         await updateDoc(logRef, { status: finalStatus, output: finalOutput });
+        revalidatePath(`/servers/${serverId}`);
 
         return { logId: logRef.id, status: finalStatus, output: finalOutput };
     } catch (e: any) {
         finalOutput = `Failed to execute command: ${e.message}`;
         await updateDoc(logRef, { status: 'Error', output: finalOutput });
+        revalidatePath(`/servers/${serverId}`);
         return { logId: logRef.id, status: 'Error', output: finalOutput };
     }
 }
