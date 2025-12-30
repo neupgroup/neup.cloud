@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -83,12 +82,27 @@ function formatBytes(bytes: number, decimals = 2) {
 
 function ServerFilesBrowser({ serverId }: { serverId: string }) {
   const { toast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
   const [files, setFiles] = useState<FileOrFolder[]>([]);
-  const [currentPath, setCurrentPath] = useState('/');
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+
+  const currentPath = searchParams.get('filesPath') || '/';
+
+  const createQueryString = useCallback(
+    (name: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set(name, value)
+ 
+      return params.toString()
+    },
+    [searchParams]
+  )
 
   const fetchFiles = useCallback(async (path: string) => {
     setIsLoading(true);
@@ -104,7 +118,6 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
             return a.name.localeCompare(b.name);
         });
         setFiles(sortedFiles);
-        setCurrentPath(path);
       }
     } catch (e: any) {
        toast({ variant: "destructive", title: "An unexpected error occurred", description: e.message });
@@ -114,8 +127,8 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
   }, [serverId, toast]);
 
   useEffect(() => {
-    fetchFiles('/');
-  }, [fetchFiles]);
+    fetchFiles(currentPath);
+  }, [currentPath, fetchFiles]);
   
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -175,14 +188,14 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
   const handleItemClick = (item: FileOrFolder) => {
     if (item.type === 'directory') {
       const newPath = `${currentPath.endsWith('/') ? currentPath : currentPath + '/'}${item.name}`;
-      fetchFiles(newPath);
+      router.push(pathname + '?' + createQueryString('filesPath', newPath));
     }
   };
 
   const handleBreadcrumbClick = (index: number) => {
     const pathSegments = currentPath.split('/').filter(Boolean);
     const newPath = '/' + pathSegments.slice(0, index + 1).join('/');
-    fetchFiles(newPath);
+    router.push(pathname + '?' + createQueryString('filesPath', newPath));
   }
   
   const breadcrumbSegments = currentPath.split('/').filter(Boolean);
@@ -217,7 +230,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
             <BreadcrumbList>
                 <BreadcrumbItem>
                     <BreadcrumbLink asChild>
-                        <button onClick={() => fetchFiles('/')} className="flex items-center gap-1">
+                         <button onClick={() => router.push(pathname + '?' + createQueryString('filesPath', '/'))} className="flex items-center gap-1">
                             <Home className="h-4 w-4" /> Root
                         </button>
                     </BreadcrumbLink>
@@ -280,11 +293,16 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
   );
 }
 
+const LOGS_PER_PAGE = 5;
+
 export default function ServerDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
+  
   const [server, setServer] = useState<Server | null>(null);
   const [editedServer, setEditedServer] = useState<EditableServer>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -297,6 +315,17 @@ export default function ServerDetailPage() {
   const [commandOutput, setCommandOutput] = useState('');
   const [serverLogs, setServerLogs] = useState<ServerLog[]>([]);
   const [isLogsLoading, setIsLogsLoading] = useState(true);
+  
+  const currentPage = parseInt(searchParams.get('commandLogPage') || '1', 10);
+  
+  const createQueryString = useCallback(
+    (name: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set(name, value)
+      return params.toString()
+    },
+    [searchParams]
+  )
 
   const fetchServer = useCallback(async (serverId: string) => {
     setIsLoading(true);
@@ -412,6 +441,16 @@ export default function ServerDetailPage() {
         setIsCommandRunning(false);
         setCommand('');
     }
+  }
+
+  const totalLogPages = Math.ceil(serverLogs.length / LOGS_PER_PAGE);
+  const displayedLogs = serverLogs.slice(
+    (currentPage - 1) * LOGS_PER_PAGE,
+    currentPage * LOGS_PER_PAGE
+  );
+
+  const handlePageChange = (newPage: number) => {
+      router.push(pathname + '?' + createQueryString('commandLogPage', newPage.toString()));
   }
 
   return (
@@ -631,8 +670,8 @@ export default function ServerDetailPage() {
                   <TableBody>
                       {isLogsLoading ? (
                           <TableRow><TableCell colSpan={4} className="text-center">Loading logs...</TableCell></TableRow>
-                      ) : serverLogs.length > 0 ? (
-                          serverLogs.map(log => (
+                      ) : displayedLogs.length > 0 ? (
+                          displayedLogs.map(log => (
                               <TableRow key={log.id}>
                                   <TableCell className="font-mono">{log.command}</TableCell>
                                   <TableCell className="font-mono text-xs whitespace-pre-wrap max-w-md overflow-x-auto">{log.output}</TableCell>
@@ -650,6 +689,26 @@ export default function ServerDetailPage() {
                   </TableBody>
                 </Table>
           </CardContent>
+          {totalLogPages > 1 && (
+            <CardFooter className="flex justify-end gap-2">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage <= 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                >
+                    Previous
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= totalLogPages}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                >
+                    Next
+                </Button>
+            </CardFooter>
+          )}
       </Card>
 
        <Card>
@@ -671,4 +730,3 @@ export default function ServerDetailPage() {
     </div>
   );
 }
-
