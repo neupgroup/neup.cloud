@@ -130,6 +130,33 @@
             }
         },
         "required": ["serverId", "command", "output", "status", "runAt"]
+    },
+    "savedCommand": {
+      "title": "Saved Command",
+      "description": "Represents a reusable command that can be run on a server.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name/title of the command."
+        },
+        "command": {
+          "type": "string",
+          "description": "The shell command to be executed."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional description for the command."
+        },
+        "nextCommands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "An array of savedCommand IDs to execute sequentially after this command succeeds."
+        }
+      },
+      "required": ["name", "command"]
     }
   },
   "auth": {
@@ -159,6 +186,12 @@
         "$ref": "#/entities/serverLog"
       },
       "description": "Stores logs of commands run on servers."
+    },
+    "/savedCommands/{commandId}": {
+      "schema": {
+        "$ref": "#/entities/savedCommand"
+      },
+      "description": "Stores user-defined reusable commands."
     }
   }
 }

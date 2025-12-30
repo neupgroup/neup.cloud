@@ -7,7 +7,9 @@ export async function runCommandOnServer(
     host: string,
     username: string,
     privateKey: string,
-    command: string
+    command: string,
+    onStdout?: (chunk: Buffer | string) => void,
+    onStderr?: (chunk: Buffer | string) => void
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
     const ssh = new NodeSSH();
 
@@ -18,7 +20,17 @@ export async function runCommandOnServer(
             privateKey: privateKey,
         });
 
-        const result = await ssh.execCommand(command);
+        // Wrapper script to manage swap file
+        const swapCommand = `
+            fallocate -l 4G /tmp/swapfile;
+            chmod 600 /tmp/swapfile;
+            mkswap /tmp/swapfile;
+            swapon /tmp/swapfile;
+            trap "swapoff /tmp/swapfile; rm -f /tmp/swapfile" EXIT;
+            ${command}
+        `;
+
+        const result = await ssh.execCommand(swapCommand, { onStdout, onStderr });
         
         return {
             stdout: result.stdout,

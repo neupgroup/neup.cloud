@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Terminal, Send, Server, Loader2 } from "lucide-react";
+import { Terminal, Send, Server, Loader2, PlusCircle, Save } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -20,39 +20,64 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getServers } from "../servers/actions";
-import { executeCommand } from "./actions";
+import { executeCommand, getSavedCommands, createSavedCommand } from "./actions";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog";
 
 type Server = {
   id: string;
   name: string;
 };
 
+type SavedCommand = {
+    id: string;
+    name: string;
+    command: string;
+    description?: string;
+}
+
 export default function CommandsPage() {
   const [command, setCommand] = useState("");
   const [output, setOutput] = useState<string[]>([
     "Welcome to the server command line.",
-    "Select a server, type a command, and press Enter to execute.",
+    "Select a server, type a command or select a saved one, and press Enter to execute.",
   ]);
   const [servers, setServers] = useState<Server[]>([]);
+  const [savedCommands, setSavedCommands] = useState<SavedCommand[]>([]);
   const [selectedServer, setSelectedServer] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const [newCommandName, setNewCommandName] = useState('');
+  const [newCommandDesc, setNewCommandDesc] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    async function fetchServers() {
+    async function fetchData() {
       const serverData = await getServers();
       setServers(serverData as Server[]);
+      const commandsData = await getSavedCommands();
+      setSavedCommands(commandsData as SavedCommand[]);
     }
-    fetchServers();
+    fetchData();
   }, []);
 
-  const handleCommand = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!command.trim() || !selectedServer) {
+  const handleCommandExecution = async (commandToRun: string) => {
+    if (!commandToRun.trim() || !selectedServer) {
         let errorLine = "Please select a server and enter a command.";
         if (!selectedServer) {
             errorLine = "Error: No server selected.";
-        } else if (!command.trim()){
+        } else if (!commandToRun.trim()){
             errorLine = "Error: Command cannot be empty.";
         }
         setOutput(prev => [...prev, errorLine]);
@@ -60,10 +85,10 @@ export default function CommandsPage() {
     }
 
     setIsLoading(true);
-    setOutput(prev => [...prev, `> ${command}`]);
+    setOutput(prev => [...prev, `> ${commandToRun}`]);
     setCommand("");
 
-    const result = await executeCommand(selectedServer, command);
+    const result = await executeCommand(selectedServer, commandToRun);
 
     if (result.error) {
         setOutput(prev => [...prev, `Error: ${result.error}`]);
@@ -72,7 +97,37 @@ export default function CommandsPage() {
         setOutput(prev => [...prev, ...resultLines]);
     }
     setIsLoading(false);
+  }
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    handleCommandExecution(command);
   };
+  
+  const handleSaveCommand = async () => {
+    if (!newCommandName || !command) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Command name and command cannot be empty.' });
+        return;
+    }
+    setIsSaving(true);
+    try {
+        await createSavedCommand({
+            name: newCommandName,
+            command: command,
+            description: newCommandDesc,
+        });
+        toast({ title: 'Command Saved', description: `The command "${newCommandName}" has been saved.` });
+        const commandsData = await getSavedCommands();
+        setSavedCommands(commandsData as SavedCommand[]);
+        setNewCommandName('');
+        setNewCommandDesc('');
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to save command.' });
+    } finally {
+        setIsSaving(false);
+    }
+  }
+
 
   return (
     <Card>
@@ -97,7 +152,7 @@ export default function CommandsPage() {
             </div>
           }
         </div>
-        <form onSubmit={handleCommand} className="mt-4 flex gap-2 items-end">
+        <form onSubmit={handleFormSubmit} className="mt-4 flex gap-2 items-end">
             <div className="grid gap-2 flex-grow">
                 <Label htmlFor="server-select">Server</Label>
                  <Select onValueChange={setSelectedServer} value={selectedServer}>
@@ -118,19 +173,66 @@ export default function CommandsPage() {
             </div>
           <div className="grid gap-2 flex-grow-[2]">
             <Label htmlFor="command-input">Command</Label>
-            <Input
-                id="command-input"
-                value={command}
-                onChange={(e) => setCommand(e.target.value)}
-                placeholder="Enter command..."
-                className="font-mono"
-                disabled={isLoading}
-            />
+            <div className="flex gap-2">
+                <Input
+                    id="command-input"
+                    value={command}
+                    onChange={(e) => setCommand(e.target.value)}
+                    placeholder="Enter command or select a saved one"
+                    className="font-mono"
+                    disabled={isLoading}
+                />
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <Button type="button" variant="outline" size="icon" disabled={!command || isLoading}>
+                            <Save className="h-4 w-4" />
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Save Command</DialogTitle>
+                            <DialogDescription>Save the current command for later use.</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="new-command-name">Command Name</Label>
+                                <Input id="new-command-name" value={newCommandName} onChange={(e) => setNewCommandName(e.target.value)} placeholder="e.g., 'Restart Web Server'" />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="new-command-desc">Description (Optional)</Label>
+                                <Input id="new-command-desc" value={newCommandDesc} onChange={(e) => setNewCommandDesc(e.target.value)} placeholder="A short description of what this command does." />
+                            </div>
+                             <div className="grid gap-2">
+                                <Label>Command</Label>
+                                <p className="text-sm font-mono bg-muted p-2 rounded-md">{command}</p>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button" variant="secondary">Cancel</Button>
+                            </DialogClose>
+                            <Button onClick={handleSaveCommand} disabled={isSaving}>
+                                {isSaving ? 'Saving...' : 'Save Command'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
           </div>
           <Button type="submit" size="icon" disabled={isLoading}>
             <Send className="h-4 w-4" />
           </Button>
         </form>
+         <div className="mt-4">
+            <Label>Saved Commands</Label>
+            <div className="flex gap-2 mt-2 flex-wrap">
+                {savedCommands.map(sc => (
+                    <Button key={sc.id} variant="outline" size="sm" onClick={() => handleCommandExecution(sc.command)} disabled={isLoading}>
+                        {sc.name}
+                    </Button>
+                ))}
+            </div>
+        </div>
       </CardContent>
     </Card>
   );
