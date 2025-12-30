@@ -76,3 +76,72 @@ export async function getServerLogs(serverId: string) {
     });
     return logsData;
 }
+
+
+export type FileOrFolder = {
+    name: string;
+    type: 'file' | 'directory' | 'symlink';
+    size: number;
+    lastModified: string;
+    permissions: string;
+};
+
+function parseLsOutput(output: string): FileOrFolder[] {
+  if (!output) return [];
+  const lines = output.trim().split('\n');
+  
+  // Skip the first line which is typically "total X"
+  return lines.slice(1).map(line => {
+    const parts = line.split(/\s+/);
+    if (parts.length < 9) return null;
+
+    const permissions = parts[0];
+    const type = permissions.startsWith('d') ? 'directory' : permissions.startsWith('l') ? 'symlink' : 'file';
+    const size = parseInt(parts[4], 10);
+    
+    // Date parts are at index 5, 6, 7. e.g., 2024-07-30 12:34:56.123456789 +0000
+    const lastModified = `${parts[5]} ${parts[6]}`;
+    
+    // The name could be the 9th part, or later if there are spaces in user/group names
+    let nameIndex = 8;
+    // For symlinks, name is before '->'
+    const symlinkArrowIndex = parts.indexOf('->');
+    if (symlinkArrowIndex !== -1) {
+        nameIndex = symlinkArrowIndex - 1;
+    }
+
+    const name = parts.slice(nameIndex).join(' ').replace(/ ->.*/, '');
+
+    return {
+      name,
+      type,
+      size,
+      lastModified,
+      permissions
+    };
+  }).filter((item): item is FileOrFolder => item !== null);
+}
+
+export async function browseDirectory(serverId: string, path: string): Promise<{ files: FileOrFolder[], error?: string }> {
+  const server = await getServerForRunner(serverId);
+  if (!server) {
+    return { files: [], error: 'Server not found.' };
+  }
+   if (!server.username || !server.privateKey) {
+    return { files: [], error: 'No username or private key configured for this server.' };
+  }
+
+  try {
+    // Use ls -lA to include hidden files except . and ..
+    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, `ls -lA --full-time ${path}`);
+
+    if (result.code !== 0) {
+      return { files: [], error: result.stderr || `Failed to list directory contents. Exit code: ${result.code}` };
+    }
+
+    const files = parseLsOutput(result.stdout);
+    return { files };
+  } catch (e: any) {
+    return { files: [], error: `Failed to browse directory: ${e.message}` };
+  }
+}
