@@ -42,3 +42,46 @@ export async function runCommandOnServer(
         ssh.dispose();
     }
 }
+
+export async function uploadFileToServer(
+    host: string,
+    username: string,
+    privateKey: string,
+    localPath: string,
+    remotePath: string
+): Promise<void> {
+    const ssh = new NodeSSH();
+    try {
+        await ssh.connect({
+            host: host,
+            username: username,
+            privateKey: privateKey,
+        });
+        await ssh.putFile(localPath, remotePath);
+    } finally {
+        ssh.dispose();
+    }
+}
+
+export async function uploadDirectoryToServer(
+    host: string,
+    username: string,
+    privateKey: string,
+    localPath: string,
+    remotePath: string
+): Promise<void> {
+    const ssh = new NodeSSH();
+    try {
+        await ssh.connect({
+            host: host,
+            username: username,
+            privateKey: privateKey,
+        });
+        await ssh.putDirectory(localPath, remotePath, {
+            recursive: true,
+            concurrency: 10,
+        });
+    } finally {
+        ssh.dispose();
+    }
+}

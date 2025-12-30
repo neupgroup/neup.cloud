@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { browseDirectory, type FileOrFolder } from '../actions';
+import { browseDirectory, uploadFile, type FileOrFolder } from '../actions';
 import { useToast } from '@/hooks/use-toast';
 import {
   Card,
@@ -26,6 +26,8 @@ import {
     FileSymlink,
     Loader2,
     Home,
+    UploadCloud,
+    FolderUp,
 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import {
@@ -54,6 +56,10 @@ export default function ServerFilesPage() {
   const [files, setFiles] = useState<FileOrFolder[]>([]);
   const [currentPath, setCurrentPath] = useState('/');
   const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const fetchFiles = useCallback(async (path: string) => {
     setIsLoading(true);
@@ -65,10 +71,8 @@ export default function ServerFilesPage() {
           title: "Failed to browse directory",
           description: error,
         });
-        // If error, stay in the current directory
         setFiles([]);
       } else {
-        // Sort with directories first
         const sortedFiles = fetchedFiles.sort((a, b) => {
             if (a.type === 'directory' && b.type !== 'directory') return -1;
             if (a.type !== 'directory' && b.type === 'directory') return 1;
@@ -91,6 +95,74 @@ export default function ServerFilesPage() {
   useEffect(() => {
     fetchFiles('/');
   }, [fetchFiles]);
+  
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (!selectedFile) return;
+
+    setIsUploading(true);
+    
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+        const result = await uploadFile(serverId, currentPath, formData);
+        if (result.error) {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: result.error });
+        } else {
+            toast({ title: 'Upload Successful', description: `File "${selectedFile.name}" has been uploaded.` });
+            await fetchFiles(currentPath);
+        }
+    } catch(e: any) {
+        toast({ variant: 'destructive', title: 'Upload Error', description: e.message });
+    } finally {
+        setIsUploading(false);
+        // Reset file input
+        if(fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+  
+  const handleFolderUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFiles = event.target.files;
+      if (!selectedFiles || selectedFiles.length === 0) return;
+
+      setIsUploading(true);
+      toast({ title: 'Folder Upload Started', description: `Starting to upload ${selectedFiles.length} files.` });
+      
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const file of Array.from(selectedFiles)) {
+          const formData = new FormData();
+          // The webkitRelativePath includes the folder structure
+          const remoteFilePath = file.webkitRelativePath ? currentPath + '/' + file.webkitRelativePath.substring(0, file.webkitRelativePath.lastIndexOf('/')) : currentPath;
+
+          formData.append('file', file);
+          try {
+            const result = await uploadFile(serverId, remoteFilePath, formData);
+            if (result.error) {
+              errorCount++;
+              console.error(`Failed to upload ${file.name}: ${result.error}`);
+            } else {
+              successCount++;
+            }
+          } catch(e) {
+              errorCount++;
+               console.error(`Failed to upload ${file.name}: ${e}`);
+          }
+      }
+      
+      toast({ 
+        title: 'Folder Upload Complete', 
+        description: `${successCount} files uploaded successfully. ${errorCount} files failed.` 
+      });
+
+      await fetchFiles(currentPath);
+      setIsUploading(false);
+      // Reset file input
+      if(folderInputRef.current) folderInputRef.current.value = '';
+  }
+
 
   const handleItemClick = (item: FileOrFolder) => {
     if (item.type === 'directory') {
@@ -111,14 +183,30 @@ export default function ServerFilesPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-headline flex items-center gap-2">
-            <FolderIcon className="h-6 w-6" />
-            File Browser
-        </CardTitle>
-        <CardDescription>
-          Browse and manage files on your server.
-        </CardDescription>
-        <Breadcrumb className="pt-2">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+            <div>
+                <CardTitle className="font-headline flex items-center gap-2">
+                    <FolderIcon className="h-6 w-6" />
+                    File Browser
+                </CardTitle>
+                <CardDescription>
+                Browse and manage files on your server.
+                </CardDescription>
+            </div>
+            <div className="flex gap-2">
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+                <input type="file" ref={folderInputRef} onChange={handleFolderUpload} className="hidden" multiple webkitdirectory="" />
+                <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} variant="outline">
+                    <UploadCloud className="mr-2 h-4 w-4" />
+                    {isUploading ? 'Uploading...' : 'Upload File'}
+                </Button>
+                 <Button onClick={() => folderInputRef.current?.click()} disabled={isUploading} variant="outline">
+                    <FolderUp className="mr-2 h-4 w-4" />
+                    {isUploading ? 'Uploading...' : 'Upload Folder'}
+                </Button>
+            </div>
+        </div>
+        <Breadcrumb className="pt-4">
             <BreadcrumbList>
                 <BreadcrumbItem>
                     <BreadcrumbLink asChild>
@@ -141,9 +229,10 @@ export default function ServerFilesPage() {
         </Breadcrumb>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {isLoading || isUploading ? (
             <div className="flex justify-center items-center h-48">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                 <span className="ml-2">{isUploading ? "Uploading files..." : "Loading..."}</span>
             </div>
         ) : (
              <Table>

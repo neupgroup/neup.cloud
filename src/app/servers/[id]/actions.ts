@@ -4,8 +4,12 @@
 import { addDoc, collection, getDocs, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { revalidatePath } from 'next/cache';
-import { runCommandOnServer } from '@/services/ssh';
+import { runCommandOnServer, uploadFileToServer } from '@/services/ssh';
 import { getServerForRunner } from '../actions';
+import fs from 'fs/promises';
+import path from 'path';
+import os from 'os';
+
 
 const { firestore } = initializeFirebase();
 
@@ -143,5 +147,47 @@ export async function browseDirectory(serverId: string, path: string): Promise<{
     return { files };
   } catch (e: any) {
     return { files: [], error: `Failed to browse directory: ${e.message}` };
+  }
+}
+
+export async function uploadFile(serverId: string, remotePath: string, formData: FormData) {
+  const server = await getServerForRunner(serverId);
+  if (!server) {
+    return { error: 'Server not found.' };
+  }
+  if (!server.username || !server.privateKey) {
+    return { error: 'No username or private key configured for this server.' };
+  }
+
+  const file = formData.get('file') as File | null;
+  if (!file) {
+    return { error: 'No file provided.' };
+  }
+  
+  const tempDir = path.join(os.tmpdir(), 'neup-uploads');
+  await fs.mkdir(tempDir, { recursive: true });
+  const tempFilePath = path.join(tempDir, file.name);
+
+  try {
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    await fs.writeFile(tempFilePath, fileBuffer);
+
+    const remoteFilePath = path.join(remotePath, file.name);
+
+    await uploadFileToServer(
+      server.publicIp,
+      server.username,
+      server.privateKey,
+      tempFilePath,
+      remoteFilePath
+    );
+
+    revalidatePath(`/servers/${serverId}/files`);
+    return { success: true };
+  } catch (e: any) {
+    return { error: `Failed to upload file: ${e.message}` };
+  } finally {
+    // Clean up the temporary file
+    await fs.unlink(tempFilePath).catch(console.error);
   }
 }
