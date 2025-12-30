@@ -216,7 +216,7 @@ export default function CommandsPage() {
       {isLoading ? (
         <p className="text-center">Loading commands...</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           <Card 
             className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed hover:border-primary hover:bg-muted/50 cursor-pointer transition-colors"
             onClick={openCreateForm}
@@ -347,3 +347,5 @@ export default function CommandsPage() {
     </div>
   );
 }
+
+    
