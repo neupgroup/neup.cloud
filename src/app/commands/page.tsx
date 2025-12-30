@@ -6,13 +6,12 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  Terminal,
-  Send,
   Server,
   Loader2,
   PlusCircle,
@@ -50,14 +49,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -212,69 +203,80 @@ export default function CommandsPage() {
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader className='flex-row items-center justify-between'>
-            <div>
-                <CardTitle className="font-headline">Saved Commands</CardTitle>
-                <CardDescription>
-                Create, manage, and run your reusable server commands.
-                </CardDescription>
-            </div>
-            <Button size="sm" onClick={openCreateForm}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create Command
-            </Button>
-        </CardHeader>
-        <CardContent>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Command</TableHead>
-                        <TableHead><span className="sr-only">Actions</span></TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {isLoading ? (
-                        <TableRow><TableCell colSpan={4} className="text-center">Loading commands...</TableCell></TableRow>
-                    ) : savedCommands.length > 0 ? (
-                        savedCommands.map(sc => (
-                            <TableRow key={sc.id}>
-                                <TableCell className="font-medium">{sc.name}</TableCell>
-                                <TableCell className="text-muted-foreground">{sc.description || 'N/A'}</TableCell>
-                                <TableCell className="font-mono text-xs">{sc.command}</TableCell>
-                                <TableCell className="text-right">
-                                     <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button size="icon" variant="ghost">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                            <DropdownMenuItem onClick={() => openRunDialog(sc)}>
-                                                <Play className="mr-2 h-4 w-4" /> Run
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => openEditForm(sc)}>
-                                                <Edit className="mr-2 h-4 w-4" /> Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteCommand(sc.id)} disabled={isDeleting}>
-                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
-                            </TableRow>
-                        ))
-                    ) : (
-                         <TableRow><TableCell colSpan={4} className="text-center">No saved commands yet.</TableCell></TableRow>
-                    )}
-                </TableBody>
-            </Table>
-        </CardContent>
-      </Card>
+    <div className="grid gap-6">
+      <div className="flex items-center justify-between">
+        <div>
+            <h1 className="text-3xl font-bold font-headline tracking-tight">Saved Commands</h1>
+            <p className="text-muted-foreground">
+            Create, manage, and run your reusable server commands.
+            </p>
+        </div>
+        <Button size="sm" onClick={openCreateForm}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Command
+        </Button>
+      </div>
+      
+      {isLoading ? (
+        <p className="text-center">Loading commands...</p>
+      ) : savedCommands.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {savedCommands.map(sc => (
+            <Card key={sc.id} className="flex flex-col">
+              <CardHeader>
+                  <div className="flex justify-between items-start">
+                       <div>
+                            <CardTitle className="font-headline text-xl">{sc.name}</CardTitle>
+                            <CardDescription>{sc.description || 'No description'}</CardDescription>
+                       </div>
+                       <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button size="icon" variant="ghost">
+                                  <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => openRunDialog(sc)}>
+                                  <Play className="mr-2 h-4 w-4" /> Run
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEditForm(sc)}>
+                                  <Edit className="mr-2 h-4 w-4" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteCommand(sc.id)} disabled={isDeleting}>
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                          </DropdownMenuContent>
+                      </DropdownMenu>
+                  </div>
+              </CardHeader>
+              <CardContent className="flex-grow">
+                 <div className="bg-muted p-3 rounded-md font-mono text-xs border whitespace-pre-wrap overflow-x-auto">
+                    {sc.command}
+                 </div>
+              </CardContent>
+              <CardFooter>
+                  <Button variant="outline" className="w-full" onClick={() => openRunDialog(sc)}>
+                      <Play className="mr-2 h-4 w-4" />
+                      Run Command
+                  </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      ) : (
+          <Card>
+              <CardContent className="p-10 text-center">
+                  <h3 className="text-lg font-semibold">No Saved Commands</h3>
+                  <p className="text-muted-foreground mt-2">Get started by creating your first reusable command.</p>
+                  <Button className="mt-4" onClick={openCreateForm}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Create Command
+                  </Button>
+              </CardContent>
+          </Card>
+      )}
+
 
     {/* Create/Edit Dialog */}
     <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -321,7 +323,7 @@ export default function CommandsPage() {
                 <DialogDescription>Select a server to execute this command on.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-                <p className="text-sm font-mono bg-muted p-3 rounded-md border">{commandToRun?.command}</p>
+                <div className="text-sm font-mono bg-muted p-3 rounded-md border">{commandToRun?.command}</div>
                 <div className="grid gap-2">
                     <Label htmlFor="server-select">Server</Label>
                     <Select onValueChange={setSelectedServer} value={selectedServer}>
@@ -349,7 +351,8 @@ export default function CommandsPage() {
             </DialogFooter>
         </DialogContent>
     </Dialog>
-
-    </>
+    </div>
   );
 }
+
+    
