@@ -22,8 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
-import { ArrowLeft, Trash2, Edit, Save, X, Terminal, Loader2 } from 'lucide-react';
+import { Trash2, Edit, Save, X, Terminal, Loader2 } from 'lucide-react';
 import { getServer, updateServer, deleteServer } from '../actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -200,29 +199,23 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
 
   if (isLoading) {
     return (
-      <div className="grid gap-4">
-        <div className="flex items-center gap-4">
-            <Skeleton className="h-10 w-10" />
-            <Skeleton className="h-8 w-48" />
-        </div>
-        <Card>
-            <CardHeader>
-                <Skeleton className="h-8 w-64" />
-                <Skeleton className="h-4 w-80" />
-            </CardHeader>
-            <CardContent className="grid gap-6">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-            </CardContent>
-            <CardFooter className="border-t px-6 py-4 flex justify-end">
-                <Skeleton className="h-10 w-24" />
-            </CardFooter>
-        </Card>
-      </div>
+      <Card>
+          <CardHeader>
+              <Skeleton className="h-8 w-64" />
+              <Skeleton className="h-4 w-80" />
+          </CardHeader>
+          <CardContent className="grid gap-6">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+          </CardContent>
+          <CardFooter className="border-t px-6 py-4 flex justify-end">
+              <Skeleton className="h-10 w-24" />
+          </CardFooter>
+      </Card>
     )
   }
 
@@ -232,222 +225,210 @@ export default function ServerDetailPage({ params }: { params: { id: string } })
   
   return (
     <div className="grid gap-6">
-       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
-            <Link href="/servers">
-                <ArrowLeft className="h-4 w-4" />
-                <span className="sr-only">Back</span>
-            </Link>
-        </Button>
-        <div>
-            <h1 className="text-3xl font-bold font-headline tracking-tight">{server.name}</h1>
-            <p className="text-muted-foreground">Manage your server details, settings, and run commands.</p>
-        </div>
-      </div>
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-                <div>
-                    <CardTitle className="font-headline">Server Details</CardTitle>
-                    <CardDescription>
-                        {isEditMode ? "You are currently in edit mode." : "View your server configuration."}
-                    </CardDescription>
-                </div>
-                 <div className="flex gap-2">
-                  {isEditMode ? (
-                    <>
-                      <Button variant="outline" onClick={handleEditToggle} disabled={isSaving}><X className="mr-2 h-4 w-4" />Cancel</Button>
-                      <Button onClick={handleSaveChanges} disabled={isSaving}>{isSaving ? 'Saving...' : <><Save className="mr-2 h-4 w-4" />Save</>}</Button>
-                    </>
-                  ) : (
-                    <Button onClick={handleEditToggle}><Edit className="mr-2 h-4 w-4" />Edit</Button>
-                  )}
-                </div>
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+              <div>
+                  <CardTitle className="font-headline">Server Details</CardTitle>
+                  <CardDescription>
+                      {isEditMode ? "You are currently in edit mode." : "View your server configuration."}
+                  </CardDescription>
+              </div>
+                <div className="flex gap-2">
+                {isEditMode ? (
+                  <>
+                    <Button variant="outline" onClick={handleEditToggle} disabled={isSaving}><X className="mr-2 h-4 w-4" />Cancel</Button>
+                    <Button onClick={handleSaveChanges} disabled={isSaving}>{isSaving ? 'Saving...' : <><Save className="mr-2 h-4 w-4" />Save</>}</Button>
+                  </>
+                ) : (
+                  <Button onClick={handleEditToggle}><Edit className="mr-2 h-4 w-4" />Edit</Button>
+                )}
+              </div>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Server Name</Label>
+              {isEditMode ? <Input id="name" name="name" value={editedServer.name || ''} onChange={handleInputChange} /> : <p className="text-base">{server.name}</p>}
             </div>
-          </CardHeader>
-          <CardContent className="grid gap-6">
+
+            <div className="grid gap-2">
+              <Label htmlFor="username">Username</Label>
+              {isEditMode ? <Input id="username" name="username" value={editedServer.username || ''} onChange={handleInputChange} /> : <p className="text-base">{server.username}</p>}
+            </div>
+          </div>
+
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Server Name</Label>
-                {isEditMode ? <Input id="name" name="name" value={editedServer.name || ''} onChange={handleInputChange} /> : <p className="text-base">{server.name}</p>}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="username">Username</Label>
-                {isEditMode ? <Input id="username" name="username" value={editedServer.username || ''} onChange={handleInputChange} /> : <p className="text-base">{server.username}</p>}
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="provider">Provider</Label>
+                {isEditMode ? (
+                  <Select name="provider" value={editedServer.provider || ''} onValueChange={(v) => handleSelectChange('provider', v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="digitalocean">DigitalOcean</SelectItem>
+                      <SelectItem value="aws">AWS</SelectItem>
+                      <SelectItem value="gcp">Google Cloud</SelectItem>
+                    </SelectContent>
+                  </Select>
+              ) : <p className="text-base">{server.provider}</p>}
             </div>
 
-             <div className="grid md:grid-cols-2 gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="provider">Provider</Label>
-                 {isEditMode ? (
-                    <Select name="provider" value={editedServer.provider || ''} onValueChange={(v) => handleSelectChange('provider', v)}>
+            <div className="grid gap-2">
+                <Label htmlFor="type">Operating System Type</Label>
+                  {isEditMode ? (
+                    <Select name="type" value={editedServer.type || ''} onValueChange={(v) => handleSelectChange('type', v)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="digitalocean">DigitalOcean</SelectItem>
-                        <SelectItem value="aws">AWS</SelectItem>
-                        <SelectItem value="gcp">Google Cloud</SelectItem>
+                        <SelectItem value="Linux">Linux</SelectItem>
+                        <SelectItem value="Windows">Windows</SelectItem>
                       </SelectContent>
                     </Select>
-                ) : <p className="text-base">{server.provider}</p>}
-              </div>
-
-              <div className="grid gap-2">
-                  <Label htmlFor="type">Operating System Type</Label>
-                   {isEditMode ? (
-                      <Select name="type" value={editedServer.type || ''} onValueChange={(v) => handleSelectChange('type', v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Linux">Linux</SelectItem>
-                          <SelectItem value="Windows">Windows</SelectItem>
-                        </SelectContent>
-                      </Select>
-                  ) : <p className="text-base">{server.type}</p>}
-              </div>
+                ) : <p className="text-base">{server.type}</p>}
             </div>
+          </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="grid gap-2">
-                  <Label htmlFor="ram">RAM</Label>
-                  {isEditMode ? (
-                       <div className="relative">
-                          <Input id="ram" name="ram" type="number" value={editedServer.ram?.replace('MB', '') || ''} onChange={handleInputChange} className="pr-12"/>
-                          <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">MB</span>
-                      </div>
-                  ) : <p className="text-base">{server.ram}</p>}
-              </div>
-
-              <div className="grid gap-2">
-                  <Label htmlFor="storage">Storage</Label>
-                  {isEditMode ? (
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid gap-2">
+                <Label htmlFor="ram">RAM</Label>
+                {isEditMode ? (
                       <div className="relative">
-                          <Input id="storage" name="storage" type="number" value={editedServer.storage?.replace('GB', '') || ''} onChange={handleInputChange} className="pr-12" />
-                          <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">GB</span>
-                      </div>
-                  ) : <p className="text-base">{server.storage}</p>}
-              </div>
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="grid gap-2">
-                  <Label htmlFor="publicIp">Public IP</Label>
-                   {isEditMode ? <Input id="publicIp" name="publicIp" value={editedServer.publicIp || ''} onChange={handleInputChange} /> : <p className="text-base">{server.publicIp}</p>}
-              </div>
-            
-              {isEditMode && (
-                  <div className="grid gap-2">
-                    <Label>Private IP</Label>
-                    {showPrivateIpInput ? (
-                      <Input id="privateIp" name="privateIp" value={editedServer.privateIp || ''} onChange={handleInputChange} placeholder="Enter new IP to update" />
-                    ) : (
-                      <Button variant="outline" onClick={() => setShowPrivateIpInput(true)}>Update Private IP</Button>
-                    )}
-                  </div>
-              )}
+                        <Input id="ram" name="ram" type="number" value={editedServer.ram?.replace('MB', '') || ''} onChange={handleInputChange} className="pr-12"/>
+                        <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">MB</span>
+                    </div>
+                ) : <p className="text-base">{server.ram}</p>}
             </div>
 
-             {isEditMode && (
+            <div className="grid gap-2">
+                <Label htmlFor="storage">Storage</Label>
+                {isEditMode ? (
+                    <div className="relative">
+                        <Input id="storage" name="storage" type="number" value={editedServer.storage?.replace('GB', '') || ''} onChange={handleInputChange} className="pr-12" />
+                        <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">GB</span>
+                    </div>
+                ) : <p className="text-base">{server.storage}</p>}
+            </div>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid gap-2">
+                <Label htmlFor="publicIp">Public IP</Label>
+                  {isEditMode ? <Input id="publicIp" name="publicIp" value={editedServer.publicIp || ''} onChange={handleInputChange} /> : <p className="text-base">{server.publicIp}</p>}
+            </div>
+          
+            {isEditMode && (
                 <div className="grid gap-2">
-                    <Label>Private Key</Label>
-                    {showPrivateKeyInput ? (
-                    <Textarea id="privateKey" name="privateKey" value={editedServer.privateKey || ''} onChange={handleInputChange} className="font-mono h-32" placeholder="Enter new private key to update" />
-                    ) : (
-                    <Button variant="outline" onClick={() => setShowPrivateKeyInput(true)}>Update Private Key</Button>
-                    )}
+                  <Label>Private IP</Label>
+                  {showPrivateIpInput ? (
+                    <Input id="privateIp" name="privateIp" value={editedServer.privateIp || ''} onChange={handleInputChange} placeholder="Enter new IP to update" />
+                  ) : (
+                    <Button variant="outline" onClick={() => setShowPrivateIpInput(true)}>Update Private IP</Button>
+                  )}
                 </div>
             )}
+          </div>
+
+            {isEditMode && (
+              <div className="grid gap-2">
+                  <Label>Private Key</Label>
+                  {showPrivateKeyInput ? (
+                  <Textarea id="privateKey" name="privateKey" value={editedServer.privateKey || ''} onChange={handleInputChange} className="font-mono h-32" placeholder="Enter new private key to update" />
+                  ) : (
+                  <Button variant="outline" onClick={() => setShowPrivateKeyInput(true)}>Update Private Key</Button>
+                  )}
+              </div>
+          )}
+        </CardContent>
+        <CardFooter className="border-t px-6 py-4 flex justify-end">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete Server</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the server
+                  and all associated data.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteServer}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardFooter>
+      </Card>
+
+      <Card>
+          <CardHeader>
+              <CardTitle className="font-headline flex items-center gap-2"><Terminal />Run Custom Command</CardTitle>
+              <CardDescription>Execute a command on this server.</CardDescription>
+          </CardHeader>
+          <CardContent>
+                <div className="flex gap-2">
+                  <Input 
+                      value={command}
+                      onChange={(e) => setCommand(e.target.value)}
+                      placeholder="e.g., ls -la"
+                      className="font-mono"
+                      disabled={isCommandRunning}
+                      onKeyDown={(e) => e.key === 'Enter' && handleRunCommand()}
+                  />
+                  <Button onClick={handleRunCommand} disabled={isCommandRunning}>
+                      {isCommandRunning ? <Loader2 className="animate-spin" /> : 'Run'}
+                  </Button>
+                </div>
+                {commandOutput && (
+                  <div className="mt-4">
+                      <Label>Output</Label>
+                      <div className="mt-2 bg-muted/50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap overflow-x-auto">
+                          {commandOutput}
+                      </div>
+                  </div>
+                )}
           </CardContent>
-          <CardFooter className="border-t px-6 py-4 flex justify-end">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete Server</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the server
-                    and all associated data.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteServer}>Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardFooter>
-        </Card>
+      </Card>
 
-        <Card>
-            <CardHeader>
-                <CardTitle className="font-headline flex items-center gap-2"><Terminal />Run Custom Command</CardTitle>
-                <CardDescription>Execute a command on this server.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                 <div className="flex gap-2">
-                    <Input 
-                        value={command}
-                        onChange={(e) => setCommand(e.target.value)}
-                        placeholder="e.g., ls -la"
-                        className="font-mono"
-                        disabled={isCommandRunning}
-                        onKeyDown={(e) => e.key === 'Enter' && handleRunCommand()}
-                    />
-                    <Button onClick={handleRunCommand} disabled={isCommandRunning}>
-                        {isCommandRunning ? <Loader2 className="animate-spin" /> : 'Run'}
-                    </Button>
-                 </div>
-                 {commandOutput && (
-                    <div className="mt-4">
-                        <Label>Output</Label>
-                        <div className="mt-2 bg-muted/50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap overflow-x-auto">
-                            {commandOutput}
-                        </div>
-                    </div>
-                 )}
-            </CardContent>
-        </Card>
-
-        <Card>
-            <CardHeader>
-                <CardTitle className="font-headline">Command History</CardTitle>
-                <CardDescription>History of commands run on this server.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Command</TableHead>
-                            <TableHead>Output</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Time</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLogsLoading ? (
-                            <TableRow><TableCell colSpan={4} className="text-center">Loading logs...</TableCell></TableRow>
-                        ) : serverLogs.length > 0 ? (
-                            serverLogs.map(log => (
-                                <TableRow key={log.id}>
-                                    <TableCell className="font-mono">{log.command}</TableCell>
-                                    <TableCell className="font-mono text-xs whitespace-pre-wrap max-w-md overflow-x-auto">{log.output}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={log.status === 'Success' ? 'default' : 'destructive'} className={log.status === 'Success' ? 'bg-green-500/20 text-green-700 border-green-400' : ''}>
-                                            {log.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>{formatDistanceToNow(new Date(log.runAt), { addSuffix: true })}</TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
-                             <TableRow><TableCell colSpan={4} className="text-center">No commands have been run on this server yet.</TableCell></TableRow>
-                        )}
-                    </TableBody>
-                 </Table>
-            </CardContent>
-        </Card>
+      <Card>
+          <CardHeader>
+              <CardTitle className="font-headline">Command History</CardTitle>
+              <CardDescription>History of commands run on this server.</CardDescription>
+          </CardHeader>
+          <CardContent>
+                <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>Command</TableHead>
+                          <TableHead>Output</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Time</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {isLogsLoading ? (
+                          <TableRow><TableCell colSpan={4} className="text-center">Loading logs...</TableCell></TableRow>
+                      ) : serverLogs.length > 0 ? (
+                          serverLogs.map(log => (
+                              <TableRow key={log.id}>
+                                  <TableCell className="font-mono">{log.command}</TableCell>
+                                  <TableCell className="font-mono text-xs whitespace-pre-wrap max-w-md overflow-x-auto">{log.output}</TableCell>
+                                  <TableCell>
+                                      <Badge variant={log.status === 'Success' ? 'default' : 'destructive'} className={log.status === 'Success' ? 'bg-green-500/20 text-green-700 border-green-400' : ''}>
+                                          {log.status}
+                                      </Badge>
+                                  </TableCell>
+                                  <TableCell>{formatDistanceToNow(new Date(log.runAt), { addSuffix: true })}</TableCell>
+                              </TableRow>
+                          ))
+                      ) : (
+                            <TableRow><TableCell colSpan={4} className="text-center">No commands have been run on this server yet.</TableCell></TableRow>
+                      )}
+                  </TableBody>
+                </Table>
+          </CardContent>
+      </Card>
     </div>
   );
 }
