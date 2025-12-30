@@ -211,16 +211,20 @@ export default function CommandsPage() {
             Create, manage, and run your reusable server commands.
             </p>
         </div>
-        <Button size="sm" onClick={openCreateForm}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create Command
-        </Button>
       </div>
       
       {isLoading ? (
         <p className="text-center">Loading commands...</p>
-      ) : savedCommands.length > 0 ? (
+      ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card 
+            className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed hover:border-primary hover:bg-muted/50 cursor-pointer transition-colors"
+            onClick={openCreateForm}
+          >
+            <PlusCircle className="h-10 w-10 text-muted-foreground mb-2"/>
+            <h3 className="text-lg font-semibold">Create New Command</h3>
+            <p className="text-muted-foreground text-sm">Save a new reusable command.</p>
+          </Card>
           {savedCommands.map(sc => (
             <Card key={sc.id} className="flex flex-col">
               <CardHeader>
@@ -264,17 +268,6 @@ export default function CommandsPage() {
             </Card>
           ))}
         </div>
-      ) : (
-          <Card>
-              <CardContent className="p-10 text-center">
-                  <h3 className="text-lg font-semibold">No Saved Commands</h3>
-                  <p className="text-muted-foreground mt-2">Get started by creating your first reusable command.</p>
-                  <Button className="mt-4" onClick={openCreateForm}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Create Command
-                  </Button>
-              </CardContent>
-          </Card>
       )}
 
 
@@ -354,5 +347,3 @@ export default function CommandsPage() {
     </div>
   );
 }
-
-    
