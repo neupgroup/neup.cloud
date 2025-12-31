@@ -107,7 +107,7 @@ function parseLsOutput(output: string): FileOrFolder[] {
     const type = permissions.startsWith('d') ? 'directory' : permissions.startsWith('l') ? 'symlink' : 'file';
     const size = parseInt(parts[4], 10);
     
-    const lastModified = `${parts[5]} ${parts[6]}`;
+    const lastModified = `${parts[5]} ${parts[6]} ${parts[7]}`;
     
     const nameIndex = 8;
     let name = parts.slice(nameIndex).join(' ');

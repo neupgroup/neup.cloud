@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -762,7 +763,7 @@ export default function ServerDetailPage() {
                     <Accordion type="single" collapsible className="w-full space-y-2">
                         {displayedLogs.map(log => (
                             <AccordionItem key={log.id} value={log.id} className="border rounded-md px-4">
-                                <AccordionTrigger className="w-full text-left py-3 hover:no-underline">
+                                <AccordionTrigger className="w-full text-left py-3 hover:no-underline group">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 text-sm">
                                             <LogStatusBadge status={log.status} />
@@ -772,19 +773,19 @@ export default function ServerDetailPage() {
                                         </div>
                                         <p className="font-semibold text-base mt-1 truncate">Custom Command</p>
                                     </div>
-                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                                 </AccordionTrigger>
                                 <AccordionContent className="pt-2 pb-4">
                                     <div className="space-y-4">
                                         <div>
                                             <h4 className="font-semibold text-sm mb-1">Command</h4>
-                                            <div className="bg-muted p-3 rounded-md font-mono text-xs border whitespace-pre-wrap overflow-x-auto">
+                                            <div className="bg-black text-white p-3 rounded-md font-mono text-xs border whitespace-pre-wrap overflow-x-auto">
                                                 {log.command}
                                             </div>
                                         </div>
                                         <div>
                                             <h4 className="font-semibold text-sm mb-1">Output</h4>
-                                            <div className="bg-muted p-3 rounded-md font-mono text-xs border whitespace-pre-wrap overflow-x-auto max-h-64">
+                                            <div className="bg-black text-white p-3 rounded-md font-mono text-xs border whitespace-pre-wrap overflow-x-auto max-h-64">
                                                 {log.output || "No output."}
                                             </div>
                                         </div>
@@ -838,5 +839,3 @@ export default function ServerDetailPage() {
     </div>
   );
 }
-
-    
