@@ -63,6 +63,10 @@ export async function runCustomCommandOnServer(serverId: string, command: string
   return { output: output || `Command executed with status code ${result.code}.` };
 }
 
+export async function rebootServer(serverId: string) {
+    return await runCustomCommandOnServer(serverId, 'sudo reboot');
+}
+
 export async function getServerLogs(serverId: string) {
     const logsQuery = query(
         collection(firestore, "serverLogs"), 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -21,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Edit, Save, X, Terminal, Loader2, ArrowLeft, HardDrive, Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp } from 'lucide-react';
+import { Trash2, Edit, Save, X, Terminal, Loader2, ArrowLeft, HardDrive, Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Power } from 'lucide-react';
 import { getServer, updateServer, deleteServer } from '../actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,7 +37,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { runCustomCommandOnServer, getServerLogs, browseDirectory, uploadFile, type FileOrFolder } from './actions';
+import { runCustomCommandOnServer, getServerLogs, browseDirectory, uploadFile, rebootServer, type FileOrFolder } from './actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
@@ -308,6 +309,7 @@ export default function ServerDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRebooting, setIsRebooting] = useState(false);
   const [showPrivateIpInput, setShowPrivateIpInput] = useState(false);
   const [showPrivateKeyInput, setShowPrivateKeyInput] = useState(false);
   const [command, setCommand] = useState('');
@@ -417,6 +419,23 @@ export default function ServerDetailPage() {
     }
   };
 
+  const handleRebootServer = async () => {
+    setIsRebooting(true);
+    try {
+        const result = await rebootServer(id);
+        if (result.error) {
+            toast({ variant: 'destructive', title: 'Reboot Failed', description: result.error });
+        } else {
+            toast({ title: 'Reboot Initiated', description: 'The server has started the reboot process.' });
+            fetchServerLogs(id); // Refresh logs to show the reboot command
+        }
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } finally {
+        setIsRebooting(false);
+    }
+  }
+
   const handleRunCommand = async () => {
     if (!command.trim()) {
         toast({ variant: 'destructive', title: 'Error', description: 'Command cannot be empty.' });
@@ -501,7 +520,29 @@ export default function ServerDetailPage() {
                         <Button onClick={handleSaveChanges} disabled={isSaving}>{isSaving ? 'Saving...' : <><Save className="mr-2 h-4 w-4" />Save</>}</Button>
                     </>
                     ) : (
-                    <Button onClick={handleEditToggle}><Edit className="mr-2 h-4 w-4" />Edit</Button>
+                    <>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" disabled={isRebooting}>
+                                    {isRebooting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Power className="mr-2 h-4 w-4"/>}
+                                    Reboot
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure you want to reboot?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will gracefully restart the server. This may cause a temporary service disruption.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleRebootServer}>Reboot</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                        <Button onClick={handleEditToggle}><Edit className="mr-2 h-4 w-4" />Edit</Button>
+                    </>
                     )}
                 </div>
             </div>
