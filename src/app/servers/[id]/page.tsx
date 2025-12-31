@@ -342,7 +342,13 @@ const LogStatusBadge = ({ status }: { status: ServerLog['status'] }) => {
     },
   } as const;
 
-  const { variant, className, text } = badgeMap[status];
+  const badgeInfo = badgeMap[status];
+
+  if (!badgeInfo) {
+    return <Badge variant="secondary">{status || 'Unknown'}</Badge>;
+  }
+
+  const { variant, className, text } = badgeInfo;
 
   return <Badge variant={variant} className={className}>{text}</Badge>;
 };
@@ -764,14 +770,14 @@ export default function ServerDetailPage() {
                         {displayedLogs.map(log => (
                             <AccordionItem key={log.id} value={log.id} className="border rounded-md px-4">
                                 <AccordionTrigger className="w-full text-left py-3 hover:no-underline group">
-                                    <div className="flex-1">
+                                    <div className="flex-1 flex justify-between items-center pr-4">
                                         <div className="flex items-center gap-2 text-sm">
                                             <LogStatusBadge status={log.status} />
-                                            <span className="text-muted-foreground">
-                                                {formatDistanceToNow(new Date(log.runAt), { addSuffix: true })}
-                                            </span>
+                                            <p className="font-semibold text-base truncate">Custom Command</p>
                                         </div>
-                                        <p className="font-semibold text-base mt-1 truncate">Custom Command</p>
+                                        <span className="text-muted-foreground text-sm">
+                                            {formatDistanceToNow(new Date(log.runAt), { addSuffix: true })}
+                                        </span>
                                     </div>
                                     <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                                 </AccordionTrigger>
