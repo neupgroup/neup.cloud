@@ -5,14 +5,13 @@ import { PlusCircle } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { getServers } from "./actions";
 import { ServerCard } from "./server-card";
+import { ServerCardSkeleton } from "./server-card-skeleton";
 
 export type Server = {
   id: string;
@@ -68,26 +67,30 @@ export default function VpsPage() {
         </div>
       </div>
       
-      {isLoading ? (
-        <div className="text-center">Loading servers...</div>
-      ) : error ? (
-        <div className="text-center text-destructive">Error loading servers: {error.message}</div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6">
-           <Link href="/servers/create">
-                <Card 
-                    className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed hover:border-primary hover:bg-muted/50 cursor-pointer transition-colors"
-                >
-                    <PlusCircle className="h-10 w-10 text-muted-foreground mb-2"/>
-                    <h3 className="text-lg font-semibold">Create New Server</h3>
-                    <p className="text-muted-foreground text-sm">Provision a new virtual server.</p>
-                </Card>
-           </Link>
-          {servers.map((server) => (
-            <ServerCard key={server.id} server={server} onServerDeleted={handleServerDeleted} />
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-1 gap-6">
+        <Link href="/servers/create">
+            <Card 
+                className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed hover:border-primary hover:bg-muted/50 cursor-pointer transition-colors"
+            >
+                <PlusCircle className="h-10 w-10 text-muted-foreground mb-2"/>
+                <h3 className="text-lg font-semibold">Create New Server</h3>
+                <p className="text-muted-foreground text-sm">Provision a new virtual server.</p>
+            </Card>
+        </Link>
+        {isLoading ? (
+            <>
+                <ServerCardSkeleton />
+                <ServerCardSkeleton />
+                <ServerCardSkeleton />
+            </>
+        ) : error ? (
+            <Card className="text-center p-6 text-destructive">Error loading servers: {error.message}</Card>
+        ) : (
+            servers.map((server) => (
+                <ServerCard key={server.id} server={server} onServerDeleted={handleServerDeleted} />
+            ))
+        )}
+      </div>
     </div>
   );
 }
