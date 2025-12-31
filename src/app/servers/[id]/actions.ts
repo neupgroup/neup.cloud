@@ -92,13 +92,13 @@ export type FileOrFolder = {
     size: number;
     lastModified: string;
     permissions: string;
+    linkTarget?: string;
 };
 
 function parseLsOutput(output: string): FileOrFolder[] {
   if (!output) return [];
   const lines = output.trim().split('\n');
   
-  // Skip the first line which is typically "total X"
   return lines.slice(1).map(line => {
     const parts = line.split(/\s+/);
     if (parts.length < 9) return null;
@@ -107,25 +107,27 @@ function parseLsOutput(output: string): FileOrFolder[] {
     const type = permissions.startsWith('d') ? 'directory' : permissions.startsWith('l') ? 'symlink' : 'file';
     const size = parseInt(parts[4], 10);
     
-    // Date parts are at index 5, 6, 7. e.g., 2024-07-30 12:34:56.123456789 +0000
     const lastModified = `${parts[5]} ${parts[6]}`;
     
-    // The name could be the 9th part, or later if there are spaces in user/group names
-    let nameIndex = 8;
-    // For symlinks, name is before '->'
-    const symlinkArrowIndex = parts.indexOf('->');
-    if (symlinkArrowIndex !== -1) {
-        nameIndex = symlinkArrowIndex - 1;
-    }
+    const nameIndex = 8;
+    let name = parts.slice(nameIndex).join(' ');
+    let linkTarget: string | undefined = undefined;
 
-    const name = parts.slice(nameIndex).join(' ').replace(/ ->.*/, '');
+    if (type === 'symlink') {
+        const arrowIndex = name.indexOf(' -> ');
+        if (arrowIndex !== -1) {
+            linkTarget = name.substring(arrowIndex + 4);
+            name = name.substring(0, arrowIndex);
+        }
+    }
 
     return {
       name,
       type,
       size,
       lastModified,
-      permissions
+      permissions,
+      linkTarget,
     };
   }).filter((item): item is FileOrFolder => item !== null);
 }

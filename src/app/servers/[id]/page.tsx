@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Edit, Save, X, Terminal, Loader2, ArrowLeft, HardDrive, Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Power } from 'lucide-react';
+import { Trash2, Edit, Save, X, Terminal, Loader2, ArrowLeft, HardDrive, Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Power, ArrowRight } from 'lucide-react';
 import { getServer, updateServer, deleteServer } from '../actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,6 +42,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
+import path from 'path';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -186,17 +187,30 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       if(folderInputRef.current) folderInputRef.current.value = '';
   }
 
+  const navigateTo = (newPath: string) => {
+    router.push(pathname + '?' + createQueryString('filesPath', newPath));
+  };
+
   const handleItemClick = (item: FileOrFolder) => {
     if (item.type === 'directory') {
-      const newPath = `${currentPath.endsWith('/') ? currentPath : currentPath + '/'}${item.name}`;
-      router.push(pathname + '?' + createQueryString('filesPath', newPath));
+      navigateTo(path.join(currentPath, item.name));
+    } else if (item.type === 'symlink' && item.linkTarget) {
+      // For now, let's assume if it's a symlink, we try to navigate to it.
+      // A more robust solution would check if the target is a directory.
+      navigateTo(item.linkTarget.startsWith('/') ? item.linkTarget : path.join(currentPath, item.linkTarget));
     }
   };
+  
+  const handleTargetContainerClick = (e: React.MouseEvent, target: string) => {
+    e.stopPropagation(); // Prevent row click
+    navigateTo(path.dirname(target));
+  };
+
 
   const handleBreadcrumbClick = (index: number) => {
     const pathSegments = currentPath.split('/').filter(Boolean);
     const newPath = '/' + pathSegments.slice(0, index + 1).join('/');
-    router.push(pathname + '?' + createQueryString('filesPath', newPath));
+    navigateTo(newPath);
   }
   
   const breadcrumbSegments = currentPath.split('/').filter(Boolean);
@@ -231,7 +245,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
             <BreadcrumbList>
                 <BreadcrumbItem>
                     <BreadcrumbLink asChild>
-                         <button onClick={() => router.push(pathname + '?' + createQueryString('filesPath', '/'))} className="flex items-center gap-1">
+                         <button onClick={() => navigateTo('/')} className="flex items-center gap-1">
                             <Home className="h-4 w-4" /> Root
                         </button>
                     </BreadcrumbLink>
@@ -267,13 +281,24 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
                 </TableHeader>
                 <TableBody>
                     {files.map((item, index) => (
-                    <TableRow key={index} onClick={() => handleItemClick(item)} className={item.type === 'directory' ? 'cursor-pointer' : ''}>
+                    <TableRow key={index} onClick={() => handleItemClick(item)} className={item.type === 'directory' || item.type === 'symlink' ? 'cursor-pointer' : ''}>
                         <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                                 {item.type === 'directory' && <FolderIcon className="h-4 w-4 text-primary" />}
                                 {item.type === 'file' && <FileIcon className="h-4 w-4 text-muted-foreground" />}
                                 {item.type === 'symlink' && <FileSymlink className="h-4 w-4 text-accent" />}
                                 <span>{item.name}</span>
+                                {item.linkTarget && (
+                                    <>
+                                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                                        <span 
+                                            className="text-muted-foreground hover:text-primary hover:underline"
+                                            onClick={(e) => handleTargetContainerClick(e, item.linkTarget!)}
+                                        >
+                                            {item.linkTarget}
+                                        </span>
+                                    </>
+                                )}
                             </div>
                         </TableCell>
                         <TableCell>{item.type === 'file' ? formatBytes(item.size) : '-'}</TableCell>
