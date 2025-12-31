@@ -327,7 +327,7 @@ const LogStatusBadge = ({ status }: { status: ServerLog['status'] }) => {
   const badgeMap = {
     Success: {
       variant: "default",
-      className: "bg-green-500/20 text-green-700 border-green-400",
+      className: "bg-green-600 hover:bg-green-700 text-white border-green-600",
       text: "Completed",
     },
     Error: {
@@ -737,7 +737,7 @@ export default function ServerDetailPage() {
                 {commandOutput && (
                   <div className="mt-4">
                       <Label>Output</Label>
-                      <div className="mt-2 bg-muted/50 p-4 rounded-md font-mono text-sm whitespace-pre-wrap overflow-x-auto">
+                      <div className="mt-2 bg-black text-white p-4 rounded-md font-mono text-sm whitespace-pre-wrap overflow-x-auto">
                           {commandOutput}
                       </div>
                   </div>
@@ -773,7 +773,7 @@ export default function ServerDetailPage() {
                                         </div>
                                         <p className="font-semibold text-base mt-1 truncate">Custom Command</p>
                                     </div>
-                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                                 </AccordionTrigger>
                                 <AccordionContent className="pt-2 pb-4">
                                     <div className="space-y-4">
