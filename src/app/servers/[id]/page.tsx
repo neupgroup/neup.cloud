@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Edit, Save, X, Terminal, Loader2, ArrowLeft, HardDrive, Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Power, ArrowRight } from 'lucide-react';
+import { Trash2, Edit, Save, X, Terminal, Loader2, ArrowLeft, HardDrive, Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Power, ArrowRight, RefreshCw, ChevronDown } from 'lucide-react';
 import { getServer, updateServer, deleteServer } from '../actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -50,6 +50,7 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 type Server = {
   id: string;
@@ -66,7 +67,7 @@ type ServerLog = {
     id: string;
     command: string;
     output: string;
-    status: string;
+    status: 'Success' | 'Error' | 'pending';
     runAt: string;
 }
 
@@ -320,6 +321,31 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
 }
 
 const LOGS_PER_PAGE = 5;
+
+const LogStatusBadge = ({ status }: { status: ServerLog['status'] }) => {
+  const badgeMap = {
+    Success: {
+      variant: "default",
+      className: "bg-green-500/20 text-green-700 border-green-400",
+      text: "Completed",
+    },
+    Error: {
+      variant: "destructive",
+      className: "",
+      text: "Failed",
+    },
+    pending: {
+      variant: "secondary",
+      className: "",
+      text: "Pending",
+    },
+  } as const;
+
+  const { variant, className, text } = badgeMap[status];
+
+  return <Badge variant={variant} className={className}>{text}</Badge>;
+};
+
 
 export default function ServerDetailPage() {
   const params = useParams();
@@ -719,63 +745,79 @@ export default function ServerDetailPage() {
       </Card>
 
       <Card>
-          <CardHeader>
-              <CardTitle className="font-headline">Command History</CardTitle>
-              <CardDescription>History of commands run on this server.</CardDescription>
-          </CardHeader>
-          <CardContent>
-                <Table>
-                  <TableHeader>
-                      <TableRow>
-                          <TableHead>Command</TableHead>
-                          <TableHead>Output</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Time</TableHead>
-                      </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                      {isLogsLoading ? (
-                          <TableRow><TableCell colSpan={4} className="text-center">Loading logs...</TableCell></TableRow>
-                      ) : displayedLogs.length > 0 ? (
-                          displayedLogs.map(log => (
-                              <TableRow key={log.id}>
-                                  <TableCell className="font-mono">{log.command}</TableCell>
-                                  <TableCell className="font-mono text-xs whitespace-pre-wrap max-w-md overflow-x-auto">{log.output}</TableCell>
-                                  <TableCell>
-                                      <Badge variant={log.status === 'Success' ? 'default' : 'destructive'} className={log.status === 'Success' ? 'bg-green-500/20 text-green-700 border-green-400' : ''}>
-                                          {log.status}
-                                      </Badge>
-                                  </TableCell>
-                                  <TableCell>{formatDistanceToNow(new Date(log.runAt), { addSuffix: true })}</TableCell>
-                              </TableRow>
-                          ))
-                      ) : (
-                            <TableRow><TableCell colSpan={4} className="text-center">No commands have been run on this server yet.</TableCell></TableRow>
-                      )}
-                  </TableBody>
-                </Table>
-          </CardContent>
-          {totalLogPages > 1 && (
-            <CardFooter className="flex justify-end gap-2">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage <= 1}
-                    onClick={() => handlePageChange(currentPage - 1)}
-                >
-                    Previous
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                    <CardTitle className="font-headline">Command History</CardTitle>
+                    <CardDescription>History of all commands run on this server.</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => fetchServerLogs(id)}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Reload
                 </Button>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage >= totalLogPages}
-                    onClick={() => handlePageChange(currentPage + 1)}
-                >
-                    Next
-                </Button>
-            </CardFooter>
-          )}
-      </Card>
+            </CardHeader>
+            <CardContent>
+                 {isLogsLoading ? (
+                    <div className="text-center p-8">Loading logs...</div>
+                ) : displayedLogs.length > 0 ? (
+                    <Accordion type="single" collapsible className="w-full space-y-2">
+                        {displayedLogs.map(log => (
+                            <AccordionItem key={log.id} value={log.id} className="border rounded-md px-4">
+                                <AccordionTrigger className="w-full text-left py-3 hover:no-underline">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <LogStatusBadge status={log.status} />
+                                            <span className="text-muted-foreground">
+                                                {formatDistanceToNow(new Date(log.runAt), { addSuffix: true })}
+                                            </span>
+                                        </div>
+                                        <p className="font-semibold text-base mt-1 truncate">Custom Command</p>
+                                    </div>
+                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                </AccordionTrigger>
+                                <AccordionContent className="pt-2 pb-4">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <h4 className="font-semibold text-sm mb-1">Command</h4>
+                                            <div className="bg-muted p-3 rounded-md font-mono text-xs border whitespace-pre-wrap overflow-x-auto">
+                                                {log.command}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-sm mb-1">Output</h4>
+                                            <div className="bg-muted p-3 rounded-md font-mono text-xs border whitespace-pre-wrap overflow-x-auto max-h-64">
+                                                {log.output || "No output."}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
+                 ) : (
+                    <div className="text-center p-8 text-muted-foreground">No commands have been run on this server yet.</div>
+                )}
+            </CardContent>
+            {totalLogPages > 1 && (
+                <CardFooter className="flex justify-end gap-2 pt-4">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage <= 1}
+                        onClick={() => handlePageChange(currentPage - 1)}
+                    >
+                        Previous
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage >= totalLogPages}
+                        onClick={() => handlePageChange(currentPage + 1)}
+                    >
+                        Next
+                    </Button>
+                </CardFooter>
+            )}
+        </Card>
 
        <Card>
             <CardHeader>
@@ -796,3 +838,5 @@ export default function ServerDetailPage() {
     </div>
   );
 }
+
+    
