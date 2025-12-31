@@ -1,38 +1,17 @@
 
 'use client';
 
-import { MoreHorizontal, PlusCircle, Trash2, GitBranch } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { getApplications, deleteApplication } from "./actions";
+import { getApplications } from "./actions";
+import { ApplicationCard } from "./application-card";
+import { ApplicationCardSkeleton } from "./application-card-skeleton";
 
-type Application = {
+export type Application = {
   id: string;
   name: string;
   repo: string;
@@ -68,131 +47,47 @@ export default function AppsPage() {
     fetchApplications();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteApplication(id);
-      toast({
-        title: "Application Deleted",
-        description: "The application has been successfully deleted.",
-      });
-      fetchApplications();
-    } catch (error) {
-      console.error("Error deleting document: ", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "There was a problem deleting the application.",
-      });
-    }
+  const handleApplicationDeleted = (id: string) => {
+    setApplications(prev => prev.filter(app => app.id !== id));
   };
   
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="font-headline">Applications</CardTitle>
-            <CardDescription>
+            <h1 className="text-3xl font-bold font-headline tracking-tight">Applications</h1>
+            <p className="text-muted-foreground">
               Deploy and manage your applications.
-            </CardDescription>
+            </p>
           </div>
-          <Button size="sm" className="gap-1" asChild>
-            <Link href="/applications/create">
-              <PlusCircle className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Deploy App
-              </span>
-            </Link>
-          </Button>
         </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Repository</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>URL</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center">Loading applications...</TableCell>
-              </TableRow>
-            ) : error ? (
-               <TableRow>
-                <TableCell colSpan={5} className="text-center text-destructive">Error loading applications: {error.message}</TableCell>
-              </TableRow>
-            ) : applications && applications.length > 0 ? (
-              applications.map((app) => (
-                <TableRow key={app.id}>
-                  <TableCell className="font-medium">{app.name}</TableCell>
-                  <TableCell>{app.repo}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        app.status === "Running"
-                          ? "default"
-                          : app.status === "Crashed"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                      className={
-                        app.status === "Running"
-                          ? "bg-green-500/20 text-green-700 border-green-400 hover:bg-green-500/30"
-                          : app.status === "Building"
-                          ? "bg-blue-500/20 text-blue-700 border-blue-400 hover:bg-blue-500/30"
-                          : ""
-                      }
-                    >
-                      {app.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {app.url ? (
-                      <Link href={app.url} className="underline" target="_blank">
-                        {app.url}
-                      </Link>
-                    ) : (
-                      "N/A"
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>
-                          <GitBranch className="mr-2 h-4 w-4" />
-                          Redeploy
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={() => handleDelete(app.id)}>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-                <TableRow>
-                    <TableCell colSpan={5} className="text-center">No applications found.</TableCell>
-                </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+      
+      <div className="grid grid-cols-1 gap-6">
+         <Link href="/applications/create">
+            <Card 
+                className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed hover:border-primary hover:bg-muted/50 cursor-pointer transition-colors"
+            >
+                <PlusCircle className="h-10 w-10 text-muted-foreground mb-2"/>
+                <h3 className="text-lg font-semibold">Deploy New Application</h3>
+                <p className="text-muted-foreground text-sm">Deploy a new application from a repository.</p>
+            </Card>
+        </Link>
+        {isLoading ? (
+            <>
+                <ApplicationCardSkeleton />
+                <ApplicationCardSkeleton />
+            </>
+        ) : error ? (
+            <Card className="text-center p-6 text-destructive">Error loading applications: {error.message}</Card>
+        ) : (
+            applications.map((app) => (
+                <ApplicationCard key={app.id} application={app} onApplicationDeleted={handleApplicationDeleted} />
+            ))
+        )}
+        {!isLoading && !error && applications.length === 0 && (
+             <Card className="text-center p-8 text-muted-foreground">You haven't deployed any applications yet.</Card>
+        )}
+      </div>
+    </div>
   );
 }
