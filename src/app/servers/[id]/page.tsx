@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Edit, Save, X, Terminal, Loader2, ArrowLeft, HardDrive, Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Power, ArrowRight, RefreshCw, ChevronDown } from 'lucide-react';
+import { Trash2, Edit, Save, X, Terminal, Loader2, ArrowLeft, HardDrive, Power, RefreshCw, ChevronDown, FolderKanban } from 'lucide-react';
 import { getServer, updateServer, deleteServer } from '../actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -38,19 +38,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { runCustomCommandOnServer, getServerLogs, browseDirectory, uploadFile, rebootServer, type FileOrFolder } from './actions';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { runCustomCommandOnServer, getServerLogs, rebootServer } from './actions';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import path from 'path';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 type Server = {
@@ -75,251 +66,6 @@ type ServerLog = {
 // Private fields are handled separately and not included in the main Server type
 type EditableServer = Partial<Server> & { privateIp?: string; privateKey?: string };
 
-function formatBytes(bytes: number, decimals = 2) {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-}
-
-function ServerFilesBrowser({ serverId }: { serverId: string }) {
-  const { toast } = useToast();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  
-  const [files, setFiles] = useState<FileOrFolder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
-
-  const currentPath = searchParams.get('filesPath') || '/';
-
-  const createQueryString = useCallback(
-    (name: string, value: string) => {
-      const params = new URLSearchParams(searchParams.toString())
-      params.set(name, value)
- 
-      return params.toString()
-    },
-    [searchParams]
-  )
-
-  const fetchFiles = useCallback(async (path: string) => {
-    setIsLoading(true);
-    try {
-      const { files: fetchedFiles, error } = await browseDirectory(serverId, path);
-      if (error) {
-        toast({ variant: "destructive", title: "Failed to browse directory", description: error });
-        setFiles([]);
-      } else {
-        const sortedFiles = fetchedFiles.sort((a, b) => {
-            if (a.type === 'directory' && b.type !== 'directory') return -1;
-            if (a.type !== 'directory' && b.type === 'directory') return 1;
-            return a.name.localeCompare(b.name);
-        });
-        setFiles(sortedFiles);
-      }
-    } catch (e: any) {
-       toast({ variant: "destructive", title: "An unexpected error occurred", description: e.message });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [serverId, toast]);
-
-  useEffect(() => {
-    fetchFiles(currentPath);
-  }, [currentPath, fetchFiles]);
-  
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (!selectedFile) return;
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    try {
-        const result = await uploadFile(serverId, currentPath, formData);
-        if (result.error) {
-            toast({ variant: 'destructive', title: 'Upload Failed', description: result.error });
-        } else {
-            toast({ title: 'Upload Successful', description: `File "${selectedFile.name}" has been uploaded.` });
-            await fetchFiles(currentPath);
-        }
-    } catch(e: any) {
-        toast({ variant: 'destructive', title: 'Upload Error', description: e.message });
-    } finally {
-        setIsUploading(false);
-        if(fileInputRef.current) fileInputRef.current.value = '';
-    }
-  }
-  
-  const handleFolderUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const selectedFiles = event.target.files;
-      if (!selectedFiles || selectedFiles.length === 0) return;
-      setIsUploading(true);
-      toast({ title: 'Folder Upload Started', description: `Starting to upload ${selectedFiles.length} files.` });
-      let successCount = 0;
-      let errorCount = 0;
-      for (const file of Array.from(selectedFiles)) {
-          const formData = new FormData();
-          const remoteFilePath = file.webkitRelativePath ? currentPath + '/' + file.webkitRelativePath.substring(0, file.webkitRelativePath.lastIndexOf('/')) : currentPath;
-          formData.append('file', file);
-          try {
-            const result = await uploadFile(serverId, remoteFilePath, formData);
-            if (result.error) {
-              errorCount++;
-              console.error(`Failed to upload ${file.name}: ${result.error}`);
-            } else {
-              successCount++;
-            }
-          } catch(e) {
-              errorCount++;
-               console.error(`Failed to upload ${file.name}: ${e}`);
-          }
-      }
-      toast({ 
-        title: 'Folder Upload Complete', 
-        description: `${successCount} files uploaded successfully. ${errorCount} files failed.` 
-      });
-      await fetchFiles(currentPath);
-      setIsUploading(false);
-      if(folderInputRef.current) folderInputRef.current.value = '';
-  }
-
-  const navigateTo = (newPath: string) => {
-    router.push(pathname + '?' + createQueryString('filesPath', newPath));
-  };
-
-  const handleItemClick = (item: FileOrFolder) => {
-    if (item.type === 'directory') {
-      navigateTo(path.join(currentPath, item.name));
-    } else if (item.type === 'symlink' && item.linkTarget) {
-      // For now, let's assume if it's a symlink, we try to navigate to it.
-      // A more robust solution would check if the target is a directory.
-      navigateTo(item.linkTarget.startsWith('/') ? item.linkTarget : path.join(currentPath, item.linkTarget));
-    }
-  };
-  
-  const handleTargetContainerClick = (e: React.MouseEvent, target: string) => {
-    e.stopPropagation(); // Prevent row click
-    navigateTo(path.dirname(target));
-  };
-
-
-  const handleBreadcrumbClick = (index: number) => {
-    const pathSegments = currentPath.split('/').filter(Boolean);
-    const newPath = '/' + pathSegments.slice(0, index + 1).join('/');
-    navigateTo(newPath);
-  }
-  
-  const breadcrumbSegments = currentPath.split('/').filter(Boolean);
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-            <div>
-                <CardTitle className="font-headline flex items-center gap-2">
-                    <FolderIcon className="h-6 w-6" />
-                    File Browser
-                </CardTitle>
-                <CardDescription>
-                Browse and manage files on your server.
-                </CardDescription>
-            </div>
-            <div className="flex gap-2">
-                <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-                <input type="file" ref={folderInputRef} onChange={handleFolderUpload} className="hidden" multiple webkitdirectory="" />
-                <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} variant="outline">
-                    <UploadCloud className="mr-2 h-4 w-4" />
-                    {isUploading ? 'Uploading...' : 'Upload File'}
-                </Button>
-                 <Button onClick={() => folderInputRef.current?.click()} disabled={isUploading} variant="outline">
-                    <FolderUp className="mr-2 h-4 w-4" />
-                    {isUploading ? 'Uploading...' : 'Upload Folder'}
-                </Button>
-            </div>
-        </div>
-        <Breadcrumb className="pt-4">
-            <BreadcrumbList>
-                <BreadcrumbItem>
-                    <BreadcrumbLink asChild>
-                         <button onClick={() => navigateTo('/')} className="flex items-center gap-1">
-                            <Home className="h-4 w-4" /> Root
-                        </button>
-                    </BreadcrumbLink>
-                </BreadcrumbItem>
-                {breadcrumbSegments.map((segment, index) => (
-                    <React.Fragment key={index}>
-                        <BreadcrumbSeparator />
-                        <BreadcrumbItem>
-                            <BreadcrumbLink asChild>
-                                <button onClick={() => handleBreadcrumbClick(index)}>{segment}</button>
-                            </BreadcrumbLink>
-                        </BreadcrumbItem>
-                    </React.Fragment>
-                ))}
-            </BreadcrumbList>
-        </Breadcrumb>
-      </CardHeader>
-      <CardContent>
-        {isLoading || isUploading ? (
-            <div className="flex justify-center items-center h-48">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                 <span className="ml-2">{isUploading ? "Uploading files..." : "Loading..."}</span>
-            </div>
-        ) : (
-             <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Size</TableHead>
-                    <TableHead>Last Modified</TableHead>
-                    <TableHead>Permissions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {files.map((item, index) => (
-                    <TableRow key={index} onClick={() => handleItemClick(item)} className={item.type === 'directory' || item.type === 'symlink' ? 'cursor-pointer' : ''}>
-                        <TableCell className="font-medium">
-                            <div className="flex items-center gap-2">
-                                {item.type === 'directory' && <FolderIcon className="h-4 w-4 text-primary" />}
-                                {item.type === 'file' && <FileIcon className="h-4 w-4 text-muted-foreground" />}
-                                {item.type === 'symlink' && <FileSymlink className="h-4 w-4 text-accent" />}
-                                <span>{item.name}</span>
-                                {item.linkTarget && (
-                                    <>
-                                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                        <span 
-                                            className="text-muted-foreground hover:text-primary hover:underline"
-                                            onClick={(e) => handleTargetContainerClick(e, item.linkTarget!)}
-                                        >
-                                            {item.linkTarget}
-                                        </span>
-                                    </>
-                                )}
-                            </div>
-                        </TableCell>
-                        <TableCell>{item.type === 'file' ? formatBytes(item.size) : '-'}</TableCell>
-                        <TableCell>{item.lastModified}</TableCell>
-                        <TableCell className="font-mono text-xs">{item.permissions}</TableCell>
-                    </TableRow>
-                    ))}
-                    {files.length === 0 && (
-                        <TableRow>
-                            <TableCell colSpan={4} className="text-center h-24">This directory is empty.</TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 const LOGS_PER_PAGE = 5;
 
@@ -794,6 +540,7 @@ export default function ServerDetailPage() {
                                             <div className="bg-black text-white p-3 rounded-md font-mono text-xs border whitespace-pre-wrap overflow-x-auto max-h-64">
                                                 {log.output || "No output."}
                                             </div>
+
                                         </div>
                                     </div>
                                 </AccordionContent>
@@ -841,7 +588,22 @@ export default function ServerDetailPage() {
             </CardContent>
         </Card>
 
-        <ServerFilesBrowser serverId={id} />
+        <Card>
+            <CardHeader>
+                 <CardTitle className="font-headline flex items-center gap-2">
+                    <FolderKanban className="h-6 w-6" />
+                    File Manager
+                </CardTitle>
+                <CardDescription>
+                    Browse and manage files on the server.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button asChild>
+                    <Link href={`/servers/${id}/files`}>Open File Manager</Link>
+                </Button>
+            </CardContent>
+        </Card>
     </div>
   );
 }
