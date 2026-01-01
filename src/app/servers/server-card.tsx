@@ -1,7 +1,7 @@
 
 'use client';
 
-import { MoreHorizontal, Trash2, ServerIcon, User } from "lucide-react";
+import { MoreHorizontal, Trash2, ServerIcon, User, RefreshCcw } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import NProgress from 'nprogress';
@@ -14,6 +14,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -23,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { deleteServer, getRamUsage } from "./actions";
+import { deleteServer, getRamUsage, selectServer } from "./actions";
 import type { Server } from './page';
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -66,6 +67,23 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
         variant: "destructive",
         title: "Error",
         description: "There was a problem deleting the server.",
+      });
+    }
+  };
+  
+  const handleSelect = async () => {
+    try {
+      await selectServer(server.id, server.name);
+      toast({
+        title: "Server Selected",
+        description: `You are now managing "${server.name}".`,
+      });
+    } catch (error) {
+       console.error("Error selecting server: ", error);
+       toast({
+        variant: "destructive",
+        title: "Error",
+        description: "There was a problem selecting the server.",
       });
     }
   };
@@ -129,6 +147,12 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
              <p><span className="font-semibold text-foreground">Storage:</span> {server.storage}</p>
         </div>
       </CardContent>
+      <CardFooter>
+        <Button className="w-full" onClick={handleSelect}>
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Switch
+        </Button>
+      </CardFooter>
     </Card>
   );
 }

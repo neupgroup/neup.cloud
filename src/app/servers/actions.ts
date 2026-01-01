@@ -5,10 +5,18 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, updateDoc, serverT
 import { initializeFirebase } from '@/firebase';
 import { revalidatePath } from 'next/cache';
 import { runCommandOnServer } from '@/services/ssh';
+import { cookies } from 'next/headers';
 
 // This is a temporary solution to get the firestore instance on the server.
 // In a real-world scenario, you would want to use the Firebase Admin SDK for server-side operations.
 const { firestore } = initializeFirebase();
+
+export async function selectServer(serverId: string, serverName: string) {
+    cookies().set('selected_server', serverId);
+    cookies().set('selected_server_name', serverName);
+    revalidatePath('/');
+    return { success: true };
+}
 
 export async function getServers() {
   const querySnapshot = await getDocs(collection(firestore, "servers"));

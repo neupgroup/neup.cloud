@@ -18,7 +18,8 @@ import {
   FileText,
   Wind,
   ShieldAlert,
-  FolderKanban
+  FolderKanban,
+  History
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -82,6 +83,7 @@ function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onL
         { href: "/storage", label: "Storage", icon: HardDrive },
         { href: "/processes", label: "Processes", icon: FileCode },
         { href: "/commands", label: "Commands", icon: Terminal },
+        { href: "/history", label: "History", icon: History },
         { href: "/logs", label: "Logs", icon: FileText },
         { href: "/errors", label: "Errors", icon: ShieldAlert },
         { href: "/files", label: "File Manager", icon: FolderKanban },
