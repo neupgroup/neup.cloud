@@ -92,13 +92,6 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
     }
   };
 
-  const handleLinkClick = () => {
-    const targetPath = `/servers/${server.id}`;
-    if (pathname !== targetPath) {
-      NProgress.start();
-    }
-  };
-
   const totalRam = parseInt(server.ram.replace('MB', ''), 10);
 
   return (
@@ -106,11 +99,9 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
       <CardHeader>
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="font-headline text-xl">
-              <Link href={`/servers/${server.id}`} onClick={handleLinkClick} className="hover:underline flex items-center gap-2">
+            <CardTitle className="font-headline text-xl flex items-center gap-2">
                  <ServerIcon className="h-5 w-5 text-muted-foreground" />
                  {server.name}
-              </Link>
             </CardTitle>
             <CardDescription className="flex items-center gap-2 pt-1">
                 <User className="h-4 w-4 text-muted-foreground" />
