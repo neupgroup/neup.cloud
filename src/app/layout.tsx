@@ -39,13 +39,24 @@ import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
 import { ProgressBar } from '@/components/progress-bar';
+import NProgress from 'nprogress';
 
 function NavLink({ href, children, currentPath, onClick }: { href: string; children: React.ReactNode; currentPath: string, onClick?: () => void }) {
     const isActive = href === '/' ? currentPath === href : currentPath.startsWith(href);
+    
+    const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+        if (onClick) {
+            onClick();
+        }
+        if (currentPath !== href) {
+            NProgress.start();
+        }
+    };
+
     return (
         <Link
             href={href}
-            onClick={onClick}
+            onClick={handleClick}
             className={cn(
                 'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold hover:bg-muted hover:text-primary',
                 isActive && 'bg-muted text-primary'

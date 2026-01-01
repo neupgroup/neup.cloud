@@ -4,6 +4,8 @@
 import { MoreHorizontal, Trash2, ServerIcon, User } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
+import NProgress from 'nprogress';
+import { usePathname } from 'next/navigation';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +34,7 @@ type ServerCardProps = {
 
 export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
   const { toast } = useToast();
+  const pathname = usePathname();
   const [usedRam, setUsedRam] = useState<number | null>(null);
   const [isRamLoading, setIsRamLoading] = useState(true);
 
@@ -67,6 +70,13 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
     }
   };
 
+  const handleLinkClick = () => {
+    const targetPath = `/servers/${server.id}`;
+    if (pathname !== targetPath) {
+      NProgress.start();
+    }
+  };
+
   const totalRam = parseInt(server.ram.replace('MB', ''), 10);
 
   return (
@@ -75,7 +85,7 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
         <div className="flex justify-between items-start">
           <div>
             <CardTitle className="font-headline text-xl">
-              <Link href={`/servers/${server.id}`} className="hover:underline flex items-center gap-2">
+              <Link href={`/servers/${server.id}`} onClick={handleLinkClick} className="hover:underline flex items-center gap-2">
                  <ServerIcon className="h-5 w-5 text-muted-foreground" />
                  {server.name}
               </Link>
