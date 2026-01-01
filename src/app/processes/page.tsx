@@ -24,7 +24,6 @@ import { getProcesses, type Process } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
-
 function ProcessesList({ processes }: { processes: Process[] }) {
     return (
         <Card>
@@ -196,4 +195,3 @@ export default function ProcessesPage() {
     </div>
   );
 }
-

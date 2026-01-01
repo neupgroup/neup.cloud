@@ -17,6 +17,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Download } from "lucide-react";
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Billing, Neup.Cloud',
+};
 
 const invoices = [
   {

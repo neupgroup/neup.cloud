@@ -9,6 +9,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Link2 } from "lucide-react";
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Linked Accounts, Neup.Cloud',
+};
+
 
 export default function LinkedAccountsPage() {
   return (

@@ -2,6 +2,7 @@
 import React from 'react';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 
 import {
   Card,
@@ -13,6 +14,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { FolderKanban, Server } from 'lucide-react';
 import ServerFilesPageContent from './files-client';
+
+export const metadata: Metadata = {
+  title: 'File Manager, Neup.Cloud',
+};
+
 
 export default async function FilesPage() {
   const cookieStore = cookies();

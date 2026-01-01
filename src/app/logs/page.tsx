@@ -7,6 +7,11 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Logs, Neup.Cloud',
+};
 
 const logEntries = [
   { level: "INFO", message: "Server started successfully on port 3000.", timestamp: "2024-07-22 10:00:00" },

@@ -11,6 +11,11 @@ import { HardDrive, Folder, File, Database, Server } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Storage, Neup.Cloud',
+};
 
 const storageItems = [
     { name: "System Files", size: "25 GB", usage: 50, icon: <HardDrive className="h-5 w-5 text-muted-foreground" /> },

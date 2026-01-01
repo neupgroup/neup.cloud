@@ -14,6 +14,11 @@ import { Button } from '@/components/ui/button';
 import { History, Server } from 'lucide-react';
 import { getServerLogs } from '../servers/[id]/actions';
 import { HistoryClient } from './history-client';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'History, Neup.Cloud',
+};
 
 
 export type ServerLog = {
