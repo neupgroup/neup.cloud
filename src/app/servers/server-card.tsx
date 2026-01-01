@@ -1,7 +1,7 @@
 
 'use client';
 
-import { MoreHorizontal, Trash2, ServerIcon, User, RefreshCcw } from "lucide-react";
+import { MoreHorizontal, Trash2, ServerIcon, User, RefreshCcw, Loader2 } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import NProgress from 'nprogress';
@@ -38,6 +38,7 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
   const pathname = usePathname();
   const [usedRam, setUsedRam] = useState<number | null>(null);
   const [isRamLoading, setIsRamLoading] = useState(true);
+  const [isSwitching, setIsSwitching] = useState(false);
 
   useEffect(() => {
     async function fetchRam() {
@@ -72,6 +73,7 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
   };
   
   const handleSelect = async () => {
+    setIsSwitching(true);
     try {
       await selectServer(server.id, server.name);
       toast({
@@ -85,6 +87,8 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
         title: "Error",
         description: "There was a problem selecting the server.",
       });
+    } finally {
+        setIsSwitching(false);
     }
   };
 
@@ -148,9 +152,13 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
         </div>
       </CardContent>
       <CardFooter>
-        <Button className="w-full" onClick={handleSelect}>
-            <RefreshCcw className="mr-2 h-4 w-4" />
-            Switch
+        <Button className="w-full" onClick={handleSelect} disabled={isSwitching}>
+            {isSwitching ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+                <RefreshCcw className="mr-2 h-4 w-4" />
+            )}
+            {isSwitching ? 'Switching...' : 'Switch'}
         </Button>
       </CardFooter>
     </Card>
