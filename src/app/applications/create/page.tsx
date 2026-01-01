@@ -20,6 +20,7 @@ import { ArrowLeft } from 'lucide-react';
 import { createApplication } from '../actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function CreateApplicationPage() {
   const router = useRouter();
@@ -28,6 +29,7 @@ export default function CreateApplicationPage() {
   
   const [name, setName] = useState('');
   const [repo, setRepo] = useState('');
+  const [language, setLanguage] = useState('');
   const [applicationLocation, setApplicationLocation] = useState('');
   const [startCommand, setStartCommand] = useState('');
   const [stopCommand, setStopCommand] = useState('');
@@ -55,6 +57,7 @@ export default function CreateApplicationPage() {
     const applicationData = {
       name,
       repo,
+      language,
       status: 'Building',
       applicationLocation,
       commands: {
@@ -87,8 +90,8 @@ export default function CreateApplicationPage() {
   };
 
   return (
-    <div className="grid gap-4">
-       <div className="flex items-center gap-4">
+    <div className="max-w-2xl mx-auto">
+       <div className="flex items-center gap-4 mb-4">
         <Button variant="outline" size="icon" asChild>
             <Link href="/applications">
                 <ArrowLeft className="h-4 w-4" />
@@ -97,16 +100,15 @@ export default function CreateApplicationPage() {
         </Button>
         <h1 className="text-3xl font-bold font-headline tracking-tight">Deploy Application</h1>
       </div>
-      <form onSubmit={handleCreateApplication}>
-        <Card>
+      <Card>
+        <form onSubmit={handleCreateApplication}>
           <CardHeader>
-            <CardTitle className="font-headline">New Application</CardTitle>
+            <CardTitle className="font-headline">Application Details</CardTitle>
             <CardDescription>
-              Configure and deploy a new application.
+              Configure and deploy a new application from a Git repository.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6">
-            <div className="grid md:grid-cols-2 gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="name">Application Name</Label>
                 <Input id="name" name="name" placeholder="e.g., my-awesome-app" value={name} onChange={(e) => setName(e.target.value)} />
@@ -116,41 +118,58 @@ export default function CreateApplicationPage() {
                 <Input id="repo" name="repo" placeholder="e.g., https://github.com/user/repo.git" value={repo} onChange={(e) => setRepo(e.target.value)} />
               </div>
                <div className="grid gap-2">
+                <Label htmlFor="language">Language / Framework</Label>
+                <Select onValueChange={setLanguage} value={language}>
+                    <SelectTrigger id="language">
+                        <SelectValue placeholder="Select a language or framework" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="html_css">HTML/CSS Only</SelectItem>
+                        <SelectItem value="javascript">JavaScript</SelectItem>
+                        <SelectItem value="next">Next.js</SelectItem>
+                        <SelectItem value="react">React</SelectItem>
+                        <SelectItem value="python">Python</SelectItem>
+                        <SelectItem value="php">PHP</SelectItem>
+                        <SelectItem value="lint">Lint</SelectItem>
+                    </SelectContent>
+                </Select>
+              </div>
+               <div className="grid gap-2">
                 <Label htmlFor="applicationLocation">Application Location (Folder)</Label>
                 <Input id="applicationLocation" name="applicationLocation" placeholder="e.g., /var/www/my-app" value={applicationLocation} onChange={(e) => setApplicationLocation(e.target.value)} />
               </div>
-            </div>
 
             <div className="grid gap-4">
-                <Label>Commands</Label>
-                <div className="grid md:grid-cols-3 gap-4">
+                <Label>Management Commands</Label>
+                <div className="grid gap-4">
                     <div className="grid gap-2">
                         <Label htmlFor="startCommand" className="text-sm font-normal">Start Command</Label>
-                        <Textarea id="startCommand" placeholder="npm start" value={startCommand} onChange={e => setStartCommand(e.target.value)} rows={2} />
+                        <Textarea id="startCommand" placeholder="e.g., npm start" value={startCommand} onChange={e => setStartCommand(e.target.value)} rows={2} />
                     </div>
                      <div className="grid gap-2">
                         <Label htmlFor="stopCommand" className="text-sm font-normal">Stop Command (Optional)</Label>
-                        <Textarea id="stopCommand" placeholder="npm stop" value={stopCommand} onChange={e => setStopCommand(e.target.value)} rows={2} />
+                        <Textarea id="stopCommand" placeholder="e.g., npm stop" value={stopCommand} onChange={e => setStopCommand(e.target.value)} rows={2} />
                     </div>
                      <div className="grid gap-2">
                         <Label htmlFor="restartCommand" className="text-sm font-normal">Restart Command (Optional)</Label>
-                        <Textarea id="restartCommand" placeholder="npm restart" value={restartCommand} onChange={e => setRestartCommand(e.target.value)} rows={2} />
+                        <Textarea id="restartCommand" placeholder="e.g., npm restart" value={restartCommand} onChange={e => setRestartCommand(e.target.value)} rows={2} />
                     </div>
                 </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid gap-6">
                 <div className="grid gap-2">
-                    <Label>Network Access</Label>
+                    <Label>Network</Label>
                     <div className="flex items-center space-x-2 mt-2">
                         <Switch id="allow-network" checked={allowNetwork} onCheckedChange={setAllowNetwork} />
-                        <Label htmlFor="allow-network">Allow Network</Label>
+                        <Label htmlFor="allow-network">Allow Network Access</Label>
                     </div>
                 </div>
                 <div className="grid gap-2">
                     <Label htmlFor="allowed-ports">Allowed Ports</Label>
                     <Input id="allowed-ports" placeholder="e.g., 80, 443, 3000" value={allowedPorts} onChange={e => setAllowedPorts(e.target.value)} disabled={!allowNetwork} />
-                    <p className="text-xs text-muted-foreground">Comma-separated list of ports.</p>
+                    <p className="text-xs text-muted-foreground">Provide a comma-separated list of ports.</p>
                 </div>
             </div>
 
@@ -160,8 +179,8 @@ export default function CreateApplicationPage() {
               {isLoading ? 'Deploying...' : 'Deploy Application'}
             </Button>
           </CardFooter>
-        </Card>
-      </form>
+        </form>
+      </Card>
     </div>
   );
 }

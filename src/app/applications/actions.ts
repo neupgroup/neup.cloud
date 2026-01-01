@@ -17,6 +17,7 @@ export async function getApplications() {
 export async function createApplication(appData: {
     name: string;
     repo: string;
+    language: string;
     status: string;
     applicationLocation: string;
     commands: {
