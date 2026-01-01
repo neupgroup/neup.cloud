@@ -41,6 +41,7 @@ import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
 import { ProgressBar } from '@/components/progress-bar';
 import NProgress from 'nprogress';
+import Cookies from 'universal-cookie';
 
 function NavLink({ href, children, currentPath, onClick }: { href: string; children: React.ReactNode; currentPath: string, onClick?: () => void }) {
     const isActive = href === '/' ? currentPath === href : currentPath.startsWith(href);
@@ -68,7 +69,7 @@ function NavLink({ href, children, currentPath, onClick }: { href: string; child
     );
 }
 
-function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onLinkClick?: () => void }) {
+function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { currentPath: string, onLinkClick?: () => void, isServerSelected: boolean }) {
     const navLinks = [
         { href: "/dashboard", label: "Dashboard", icon: Home },
         { href: "/servers", label: "Servers", icon: Server },
@@ -97,17 +98,19 @@ function MainNavContent({ currentPath, onLinkClick }: { currentPath: string, onL
               </NavLink>
             ))}
 
-            <div className="mt-4 space-y-2">
-                <div className="px-3 text-xs font-semibold uppercase text-muted-foreground">
-                    System
-                </div>
-                {systemLinks.map(({ href, label, icon: Icon }) => (
-                <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
-                    <Icon className="h-4 w-4" />
-                    <span>{label}</span>
-                </NavLink>
-                ))}
-            </div>
+            {isServerSelected && (
+              <div className="mt-4 space-y-2">
+                  <div className="px-3 text-xs font-semibold uppercase text-muted-foreground">
+                      System
+                  </div>
+                  {systemLinks.map(({ href, label, icon: Icon }) => (
+                  <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+                      <Icon className="h-4 w-4" />
+                      <span>{label}</span>
+                  </NavLink>
+                  ))}
+              </div>
+            )}
         </nav>
     );
 }
@@ -155,6 +158,20 @@ function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: bool
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isServerSelected, setIsServerSelected] = useState(false);
+
+  useEffect(() => {
+    const cookies = new Cookies(null, { path: '/' });
+    const checkCookie = () => {
+        const serverCookie = cookies.get('selected_server');
+        setIsServerSelected(!!serverCookie);
+    };
+    checkCookie();
+    
+    // It's a bit of a hack, but since we can't easily listen to cookie changes
+    // across server actions, we'll just poll on navigation changes.
+    // A more robust solution might involve a global state management library.
+  }, [pathname]);
 
   useEffect(() => {
     if (isMobileMenuOpen) {
@@ -192,7 +209,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             )}>
               <ScrollArea className="h-full">
                   <div className="p-4 sm:p-6">
-                       <MainNavContent currentPath={pathname} onLinkClick={closeMobileMenu} />
+                       <MainNavContent currentPath={pathname} onLinkClick={closeMobileMenu} isServerSelected={isServerSelected} />
                   </div>
               </ScrollArea>
             </div>
@@ -202,7 +219,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <aside className="hidden h-[calc(100vh-4rem)] flex-col border-r bg-card lg:sticky lg:top-16 lg:flex">
                 <ScrollArea className="flex-1">
                   <div className="p-6 md:p-8">
-                    <MainNavContent currentPath={pathname} />
+                    <MainNavContent currentPath={pathname} isServerSelected={isServerSelected} />
                   </div>
                 </ScrollArea>
               </aside>
