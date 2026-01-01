@@ -19,7 +19,8 @@ import {
   Wind,
   ShieldAlert,
   FolderKanban,
-  History
+  History,
+  Link2
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -35,7 +36,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type {Metadata} from 'next';
 import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
@@ -72,12 +72,16 @@ function NavLink({ href, children, currentPath, onClick }: { href: string; child
 function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { currentPath: string, onLinkClick?: () => void, isServerSelected: boolean }) {
     const navLinks = [
         { href: "/dashboard", label: "Dashboard", icon: Home },
-        { href: "/servers", label: "Servers", icon: Server },
         { href: "/applications", label: "Applications", icon: AppWindow },
         { href: "/balancers", label: "Balancers", icon: Wind },
         { href: "/recommendations", label: "Recommendations", icon: Lightbulb },
-        { href: "/billing", label: "Billing", icon: CreditCard },
     ];
+
+    const accountLinks = [
+        { href: "/servers", label: "Servers", icon: Server },
+        { href: "/billing", label: "Billing", icon: CreditCard },
+        { href: "/linked-accounts", label: "Linked Accounts", icon: Link2 },
+    ]
 
     const systemLinks = [
         { href: "/status", label: "Status", icon: HeartPulse },
@@ -90,16 +94,33 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
         { href: "/files", label: "File Manager", icon: FolderKanban },
     ]
     return (
-        <nav className="flex flex-col gap-2">
-            {navLinks.map(({ href, label, icon: Icon }) => (
-              <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
-                <Icon className="h-4 w-4" />
-                <span>{label}</span>
-              </NavLink>
-            ))}
+        <nav className="flex flex-col gap-4">
+             <div className="space-y-2">
+                <div className="px-3 text-xs font-semibold uppercase text-muted-foreground">
+                    Main
+                </div>
+                {navLinks.map(({ href, label, icon: Icon }) => (
+                  <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+                    <Icon className="h-4 w-4" />
+                    <span>{label}</span>
+                  </NavLink>
+                ))}
+            </div>
+
+            <div className="space-y-2">
+                  <div className="px-3 text-xs font-semibold uppercase text-muted-foreground">
+                      Account
+                  </div>
+                  {accountLinks.map(({ href, label, icon: Icon }) => (
+                  <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+                      <Icon className="h-4 w-4" />
+                      <span>{label}</span>
+                  </NavLink>
+                  ))}
+              </div>
 
             {isServerSelected && (
-              <div className="mt-4 space-y-2">
+              <div className="space-y-2">
                   <div className="px-3 text-xs font-semibold uppercase text-muted-foreground">
                       System
                   </div>
