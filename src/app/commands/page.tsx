@@ -405,7 +405,9 @@ export default function CommandsPage() {
               </div>
             </ScrollArea>
             <DialogFooter className="border-t pt-4">
-                <DialogClose asChild><Button type="button" variant="secondary">Cancel</Button></DialogClose>
+                <DialogClose asChild>
+                  <Button type="button" variant="secondary">Cancel</Button>
+                </DialogClose>
                 <Button onClick={handleFormSubmit} disabled={isSaving}>
                     {isSaving ? 'Saving...' : 'Save Command'}
                 </Button>
