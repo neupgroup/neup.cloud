@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -20,7 +19,9 @@ import {
   ShieldAlert,
   FolderKanban,
   History,
-  Link2
+  Link2,
+  Network,
+  Settings
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -87,11 +88,15 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
         { href: "/status", label: "Status", icon: HeartPulse },
         { href: "/storage", label: "Storage", icon: HardDrive },
         { href: "/processes", label: "Processes", icon: FileCode },
+        { href: "/network", label: "Network", icon: Network },
         { href: "/commands", label: "Commands", icon: Terminal },
         { href: "/history", label: "History", icon: History },
         { href: "/logs", label: "Logs", icon: FileText },
         { href: "/errors", label: "Errors", icon: ShieldAlert },
         { href: "/files", label: "File Manager", icon: FolderKanban },
+    ]
+    const rootLinks = [
+        { href: "/root/servers", label: "Manage Servers", icon: Settings },
     ]
     return (
         <nav className="flex flex-col gap-4">
@@ -123,6 +128,17 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
                       Account
                   </div>
                   {accountLinks.map(({ href, label, icon: Icon }) => (
+                  <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+                      <Icon className="h-4 w-4" />
+                      <span>{label}</span>
+                  </NavLink>
+                  ))}
+              </div>
+             <div className="space-y-2">
+                  <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
+                      Root
+                  </div>
+                  {rootLinks.map(({ href, label, icon: Icon }) => (
                   <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
                       <Icon className="h-4 w-4" />
                       <span>{label}</span>
