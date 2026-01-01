@@ -473,17 +473,16 @@ export default function ServerDetailPage() {
               <CardDescription>Execute a command on this server.</CardDescription>
           </CardHeader>
           <CardContent>
-                <div className="flex gap-2">
-                  <Input 
+                <div className="grid gap-2">
+                  <Textarea
                       value={command}
                       onChange={(e) => setCommand(e.target.value)}
                       placeholder="e.g., ls -la"
-                      className="font-mono"
+                      className="font-mono h-24"
                       disabled={isCommandRunning}
-                      onKeyDown={(e) => e.key === 'Enter' && handleRunCommand()}
                   />
-                  <Button onClick={handleRunCommand} disabled={isCommandRunning}>
-                      {isCommandRunning ? <Loader2 className="animate-spin" /> : 'Run'}
+                  <Button onClick={handleRunCommand} disabled={isCommandRunning} className="w-fit">
+                      {isCommandRunning ? <><Loader2 className="animate-spin mr-2"/>Running...</> : 'Run'}
                   </Button>
                 </div>
                 {commandOutput && (
@@ -607,3 +606,5 @@ export default function ServerDetailPage() {
     </div>
   );
 }
+
+    
