@@ -83,7 +83,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
         { href: "/linked-accounts", label: "Linked Accounts", icon: Link2 },
     ]
 
-    const systemLinks = [
+    const serverLinks = [
         { href: "/status", label: "Status", icon: HeartPulse },
         { href: "/storage", label: "Storage", icon: HardDrive },
         { href: "/processes", label: "Processes", icon: FileCode },
@@ -96,9 +96,6 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
     return (
         <nav className="flex flex-col gap-4">
              <div className="space-y-2">
-                <div className="px-3 text-xs font-semibold uppercase text-muted-foreground">
-                    Main
-                </div>
                 {navLinks.map(({ href, label, icon: Icon }) => (
                   <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
                     <Icon className="h-4 w-4" />
@@ -107,6 +104,20 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
                 ))}
             </div>
 
+            {isServerSelected && (
+              <div className="space-y-2">
+                  <div className="px-3 text-xs font-semibold uppercase text-muted-foreground">
+                      Server
+                  </div>
+                  {serverLinks.map(({ href, label, icon: Icon }) => (
+                  <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+                      <Icon className="h-4 w-4" />
+                      <span>{label}</span>
+                  </NavLink>
+                  ))}
+              </div>
+            )}
+            
             <div className="space-y-2">
                   <div className="px-3 text-xs font-semibold uppercase text-muted-foreground">
                       Account
@@ -118,20 +129,6 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
                   </NavLink>
                   ))}
               </div>
-
-            {isServerSelected && (
-              <div className="space-y-2">
-                  <div className="px-3 text-xs font-semibold uppercase text-muted-foreground">
-                      System
-                  </div>
-                  {systemLinks.map(({ href, label, icon: Icon }) => (
-                  <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
-                      <Icon className="h-4 w-4" />
-                      <span>{label}</span>
-                  </NavLink>
-                  ))}
-              </div>
-            )}
         </nav>
     );
 }
