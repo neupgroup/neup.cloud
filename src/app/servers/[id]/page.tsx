@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Edit, Save, X, Terminal, Loader2, ArrowLeft, HardDrive, Power, RefreshCw, ChevronDown, FolderKanban } from 'lucide-react';
+import { Trash2, Edit, Save, X, Terminal, Loader2, ArrowLeft, HardDrive, Power, RefreshCw, ChevronDown, FolderKanban, File as FileIcon, Folder as FolderIcon, FileSymlink, Home, UploadCloud, FolderUp } from 'lucide-react';
 import { getServer, updateServer, deleteServer } from '../actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -38,7 +38,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { runCustomCommandOnServer, getServerLogs, rebootServer } from './actions';
+import { runCustomCommandOnServer, getServerLogs, rebootServer, browseDirectory, uploadFile, type FileOrFolder } from './actions';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
@@ -98,6 +98,15 @@ const LogStatusBadge = ({ status }: { status: ServerLog['status'] }) => {
 
   return <Badge variant={variant} className={className}>{text}</Badge>;
 };
+
+function formatBytes(bytes: number, decimals = 2) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
 
 
 export default function ServerDetailPage() {
@@ -509,7 +518,17 @@ export default function ServerDetailPage() {
             </CardHeader>
             <CardContent>
                  {isLogsLoading ? (
-                    <div className="text-center p-8">Loading logs...</div>
+                     <div className="space-y-2">
+                        {[...Array(3)].map((_, i) => (
+                             <div key={i} className="border rounded-md px-4 py-3 flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                    <Skeleton className="h-5 w-20 rounded-full" />
+                                    <Skeleton className="h-6 w-32" />
+                                </div>
+                                <Skeleton className="h-4 w-28" />
+                            </div>
+                        ))}
+                    </div>
                 ) : displayedLogs.length > 0 ? (
                     <Accordion type="single" collapsible className="w-full space-y-2">
                         {displayedLogs.map(log => (
@@ -524,7 +543,7 @@ export default function ServerDetailPage() {
                                             {formatDistanceToNow(new Date(log.runAt), { addSuffix: true })}
                                         </span>
                                     </div>
-                                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200" />
                                 </AccordionTrigger>
                                 <AccordionContent className="pt-2 pb-4">
                                     <div className="space-y-4">
