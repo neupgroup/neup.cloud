@@ -15,12 +15,12 @@ export async function getSavedCommands() {
     return commandsData;
 }
 
-export async function createSavedCommand(data: { name: string, command: string, description?: string, nextCommands?: string[] }) {
+export async function createSavedCommand(data: { name: string, command: string, os: string, description?: string, nextCommands?: string[] }) {
     await addDoc(collection(firestore, 'savedCommands'), data);
     revalidatePath('/commands');
 }
 
-export async function updateSavedCommand(id: string, data: { name: string, command: string, description?: string, nextCommands?: string[] }) {
+export async function updateSavedCommand(id: string, data: { name: string, command: string, os: string, description?: string, nextCommands?: string[] }) {
     await updateDoc(doc(firestore, 'savedCommands', id), data);
     revalidatePath('/commands');
 }

@@ -144,6 +144,10 @@
           "type": "string",
           "description": "The shell command to be executed."
         },
+        "os": {
+            "type": "string",
+            "description": "The operating system this command is for (e.g., 'Linux', 'Windows')."
+        },
         "description": {
           "type": "string",
           "description": "An optional description for the command."
@@ -156,7 +160,7 @@
           "description": "An array of savedCommand IDs to execute sequentially after this command succeeds."
         }
       },
-      "required": ["name", "command"]
+      "required": ["name", "command", "os"]
     }
   },
   "auth": {
