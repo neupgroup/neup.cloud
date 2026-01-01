@@ -2,9 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { cookies } from 'next/headers';
 import Link from 'next/link';
-import type { Metadata } from 'next';
 
 import {
   Card,
@@ -55,23 +53,21 @@ export default function StatusPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isToggling, setIsToggling] = useState(false);
   
-  // This is a client component, so we can't use `cookies()` directly.
-  // We'll need to read it from document.cookie or another client-side method.
   const [serverId, setServerId] = useState<string | null>(null);
   const [serverName, setServerName] = useState<string | null>(null);
 
   useEffect(() => {
-    const cookieValue = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('selected_server='))
-      ?.split('=')[1];
-    const serverNameValue = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('selected_server_name='))
-      ?.split('=')[1];
+    const getCookie = (name: string) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift();
+    }
+    
+    const serverIdCookie = getCookie('selected_server');
+    const serverNameCookie = getCookie('selected_server_name');
 
-    setServerId(cookieValue || null);
-    setServerName(serverNameValue ? decodeURIComponent(serverNameValue) : null);
+    setServerId(serverIdCookie || null);
+    setServerName(serverNameCookie ? decodeURIComponent(serverNameCookie) : null);
   }, []);
 
   useEffect(() => {
