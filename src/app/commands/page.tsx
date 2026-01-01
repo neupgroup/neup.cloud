@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -20,6 +20,7 @@ import {
   Edit,
   Play,
   Monitor,
+  Variable,
 } from 'lucide-react';
 import {
   Select,
@@ -58,10 +59,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type Server = {
   id: string;
   name: string;
+};
+
+type CommandVariable = {
+    name: string;
+    title: string;
+    description?: string;
+    hint?: string;
 };
 
 type SavedCommand = {
@@ -71,6 +80,7 @@ type SavedCommand = {
   description?: string;
   nextCommands?: string[];
   os: 'Linux' | 'Windows';
+  variables?: CommandVariable[];
 };
 
 type CommandFormData = {
@@ -79,7 +89,10 @@ type CommandFormData = {
     description: string;
     nextCommands: string;
     os: string;
+    variables: Record<string, Omit<CommandVariable, 'name'>>;
 };
+
+const VARIABLE_REGEX = /\{\{\[\[([a-zA-Z0-9_]+)\]\]\}\}/g;
 
 export default function CommandsPage() {
   const [servers, setServers] = useState<Server[]>([]);
@@ -102,10 +115,35 @@ export default function CommandsPage() {
     command: '',
     description: '',
     nextCommands: '',
-    os: ''
+    os: 'Linux',
+    variables: {}
   });
+  
+  const [runtimeVariableValues, setRuntimeVariableValues] = useState<Record<string, string>>({});
 
-  const fetchAllData = async () => {
+  const detectedVariables = useMemo(() => {
+    const matches = formData.command.matchAll(VARIABLE_REGEX);
+    return Array.from(matches, m => m[1]);
+  }, [formData.command]);
+
+  const handleFormDataChange = (field: keyof Omit<CommandFormData, 'variables'>, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }
+
+  const handleVariableDataChange = (varName: string, field: keyof Omit<CommandVariable, 'name'>, value: string) => {
+    setFormData(prev => ({
+        ...prev,
+        variables: {
+            ...prev.variables,
+            [varName]: {
+                ...prev.variables[varName],
+                [field]: value,
+            }
+        }
+    }));
+  }
+
+  const fetchAllData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [serverData, commandsData] = await Promise.all([
@@ -119,26 +157,33 @@ export default function CommandsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchAllData();
-  }, []);
+  }, [fetchAllData]);
 
   const openCreateForm = () => {
     setEditingCommand(null);
-    setFormData({ name: '', command: '', description: '', nextCommands: '', os: ''});
+    setFormData({ name: '', command: '', description: '', nextCommands: '', os: 'Linux', variables: {} });
     setIsFormOpen(true);
   };
   
   const openEditForm = (command: SavedCommand) => {
     setEditingCommand(command);
+    const variablesObject: Record<string, Omit<CommandVariable, 'name'>> = {};
+    if (command.variables) {
+        for (const v of command.variables) {
+            variablesObject[v.name] = { title: v.title, description: v.description, hint: v.hint };
+        }
+    }
     setFormData({
         name: command.name,
         command: command.command,
         description: command.description || '',
         nextCommands: (command.nextCommands || []).join(', '),
-        os: command.os || '',
+        os: command.os || 'Linux',
+        variables: variablesObject,
     });
     setIsFormOpen(true);
   };
@@ -156,6 +201,12 @@ export default function CommandsPage() {
             description: formData.description,
             os: formData.os,
             nextCommands: formData.nextCommands.split(',').map(s => s.trim()).filter(Boolean),
+            variables: detectedVariables.map(varName => ({
+                name: varName,
+                title: formData.variables[varName]?.title || varName,
+                description: formData.variables[varName]?.description || '',
+                hint: formData.variables[varName]?.hint || '',
+            }))
         };
         if (editingCommand) {
             await updateSavedCommand(editingCommand.id, commandData);
@@ -189,6 +240,7 @@ export default function CommandsPage() {
   const openRunDialog = (command: SavedCommand) => {
     setCommandToRun(command);
     setSelectedServer('');
+    setRuntimeVariableValues({});
     setIsRunDialogOpen(true);
   }
 
@@ -199,7 +251,7 @@ export default function CommandsPage() {
       }
       setIsRunning(true);
       try {
-        const result = await executeSavedCommand(selectedServer, commandToRun.id);
+        const result = await executeSavedCommand(selectedServer, commandToRun.id, runtimeVariableValues);
         toast({ title: 'Execution Started', description: `Running "${commandToRun.name}" on the selected server. Check server logs for output.`});
         setIsRunDialogOpen(false);
       } catch (e: any) {
@@ -282,55 +334,77 @@ export default function CommandsPage() {
 
     {/* Create/Edit Dialog */}
     <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
             <DialogHeader>
                 <DialogTitle>{editingCommand ? 'Edit' : 'Create'} Command</DialogTitle>
                 <DialogDescription>
                    {editingCommand ? 'Update the details of your saved command.' : 'Save a new command to run on your servers later.'}
                 </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="command-name">Name</Label>
-                    <Input id="command-name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="e.g., 'Restart Web Server'" />
-                </div>
-                 <div className="grid gap-2">
-                    <Label htmlFor="command-script">Command</Label>
-                    <Textarea id="command-script" value={formData.command} onChange={(e) => setFormData({...formData, command: e.target.value})} placeholder="e.g., systemctl restart nginx" className="font-mono" />
-                </div>
-                 <div className="grid gap-2">
-                    <Label htmlFor="command-os">Operating System</Label>
-                    <Select value={formData.os} onValueChange={(value) => setFormData({...formData, os: value})}>
-                        <SelectTrigger id="command-os">
-                            <SelectValue placeholder="Select an OS" />
-                        </SelectTrigger>
-                        <SelectContent>
-                             <SelectItem value="Linux">
-                                <div className="flex items-center gap-2">
-                                    <Monitor className="h-4 w-4" />
-                                    Linux
-                                </div>
-                            </SelectItem>
-                             <SelectItem value="Windows">
-                                 <div className="flex items-center gap-2">
-                                    <Monitor className="h-4 w-4" />
-                                    Windows
-                                </div>
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="command-desc">Description (Optional)</Label>
-                    <Input id="command-desc" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="A short description of what this command does." />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="command-next">Next Commands (Optional)</Label>
-                    <Input id="command-next" value={formData.nextCommands} onChange={(e) => setFormData({...formData, nextCommands: e.target.value})} placeholder="Comma-separated command IDs" />
-                    <p className="text-xs text-muted-foreground">Chain commands by providing the IDs of other saved commands.</p>
-                </div>
-            </div>
-            <DialogFooter>
+            <ScrollArea className="max-h-[70vh]">
+              <div className="grid gap-6 p-4">
+                  <div className="grid gap-2">
+                      <Label htmlFor="command-name">Name</Label>
+                      <Input id="command-name" value={formData.name} onChange={(e) => handleFormDataChange('name', e.target.value)} placeholder="e.g., 'Restart Web Server'" />
+                  </div>
+                  <div className="grid gap-2">
+                      <Label htmlFor="command-script">Command</Label>
+                      <Textarea id="command-script" value={formData.command} onChange={(e) => handleFormDataChange('command', e.target.value)} placeholder="e.g., sudo apt install {{[[appName]]}}" className="font-mono h-32" />
+                       <p className="text-xs text-muted-foreground">Use `{{[[variable]]}}` to define dynamic fields.</p>
+                  </div>
+                  <div className="grid gap-2">
+                      <Label htmlFor="command-os">Operating System</Label>
+                      <Select value={formData.os} onValueChange={(value) => handleFormDataChange('os', value)}>
+                          <SelectTrigger id="command-os">
+                              <SelectValue placeholder="Select an OS" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="Linux"><div className="flex items-center gap-2"><Monitor className="h-4 w-4" /> Linux</div></SelectItem>
+                              <SelectItem value="Windows"><div className="flex items-center gap-2"><Monitor className="h-4 w-4" /> Windows</div></SelectItem>
+                          </SelectContent>
+                      </Select>
+                  </div>
+                  <div className="grid gap-2">
+                      <Label htmlFor="command-desc">Description (Optional)</Label>
+                      <Input id="command-desc" value={formData.description} onChange={(e) => handleFormDataChange('description', e.target.value)} placeholder="A short description of what this command does." />
+                  </div>
+                  <div className="grid gap-2">
+                      <Label htmlFor="command-next">Next Commands (Optional)</Label>
+                      <Input id="command-next" value={formData.nextCommands} onChange={(e) => handleFormDataChange('nextCommands', e.target.value)} placeholder="Comma-separated command IDs" />
+                      <p className="text-xs text-muted-foreground">Chain commands by providing the IDs of other saved commands.</p>
+                  </div>
+                  
+                  {detectedVariables.length > 0 && (
+                      <div className="space-y-4 rounded-lg border p-4">
+                          <h3 className="text-lg font-semibold flex items-center gap-2">
+                              <Variable className="h-5 w-5" />
+                              Command Variables
+                          </h3>
+                          {detectedVariables.map(varName => (
+                              <div key={varName} className="space-y-4 rounded-md border bg-muted/50 p-4">
+                                  <p className="font-mono text-sm font-semibold">{varName}</p>
+                                  <div className="grid md:grid-cols-2 gap-4">
+                                      <div className="grid gap-2">
+                                          <Label htmlFor={`var-title-${varName}`}>Field Title</Label>
+                                          <Input id={`var-title-${varName}`} value={formData.variables[varName]?.title || ''} onChange={e => handleVariableDataChange(varName, 'title', e.target.value)} placeholder="e.g., Application Name"/>
+                                      </div>
+                                       <div className="grid gap-2">
+                                          <Label htmlFor={`var-hint-${varName}`}>Hint (Optional)</Label>
+                                          <Input id={`var-hint-${varName}`} value={formData.variables[varName]?.hint || ''} onChange={e => handleVariableDataChange(varName, 'hint', e.target.value)} placeholder="e.g., my-app"/>
+                                      </div>
+                                  </div>
+                                  <div className="grid gap-2">
+                                      <Label htmlFor={`var-desc-${varName}`}>Description (Optional)</Label>
+                                      <Textarea id={`var-desc-${varName}`} value={formData.variables[varName]?.description || ''} onChange={e => handleVariableDataChange(varName, 'description', e.target.value)} placeholder="Describe what this value is for." rows={2}/>
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  )}
+
+              </div>
+            </ScrollArea>
+            <DialogFooter className="border-t pt-4">
                 <DialogClose asChild><Button type="button" variant="secondary">Cancel</Button></DialogClose>
                 <Button onClick={handleFormSubmit} disabled={isSaving}>
                     {isSaving ? 'Saving...' : 'Save Command'}
@@ -344,10 +418,28 @@ export default function CommandsPage() {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Run Command: {commandToRun?.name}</DialogTitle>
-                <DialogDescription>Select a server to execute this command on.</DialogDescription>
+                <DialogDescription>Select a server and provide values for any variables to execute this command.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="text-sm font-mono bg-muted p-3 rounded-md border">{commandToRun?.command}</div>
+            <div className="grid gap-6 py-4">
+                <div className="text-sm font-mono bg-muted p-3 rounded-md border whitespace-pre-wrap">{commandToRun?.command}</div>
+                
+                {commandToRun?.variables && commandToRun.variables.length > 0 && (
+                    <div className="space-y-4">
+                        {commandToRun.variables.map(variable => (
+                             <div key={variable.name} className="grid gap-2">
+                                <Label htmlFor={`runtime-var-${variable.name}`}>{variable.title}</Label>
+                                {variable.description && <p className="text-xs text-muted-foreground">{variable.description}</p>}
+                                <Input 
+                                    id={`runtime-var-${variable.name}`}
+                                    value={runtimeVariableValues[variable.name] || ''}
+                                    onChange={e => setRuntimeVariableValues(prev => ({...prev, [variable.name]: e.target.value}))}
+                                    placeholder={variable.hint}
+                                />
+                             </div>
+                        ))}
+                    </div>
+                )}
+
                 <div className="grid gap-2">
                     <Label htmlFor="server-select">Server</Label>
                     <Select onValueChange={setSelectedServer} value={selectedServer}>

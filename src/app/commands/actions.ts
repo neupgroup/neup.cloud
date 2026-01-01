@@ -15,12 +15,12 @@ export async function getSavedCommands() {
     return commandsData;
 }
 
-export async function createSavedCommand(data: { name: string, command: string, os: string, description?: string, nextCommands?: string[] }) {
+export async function createSavedCommand(data: { name: string, command: string, os: string, description?: string, nextCommands?: string[], variables?: any[] }) {
     await addDoc(collection(firestore, 'savedCommands'), data);
     revalidatePath('/commands');
 }
 
-export async function updateSavedCommand(id: string, data: { name: string, command: string, os: string, description?: string, nextCommands?: string[] }) {
+export async function updateSavedCommand(id: string, data: { name: string, command: string, os: string, description?: string, nextCommands?: string[], variables?: any[] }) {
     await updateDoc(doc(firestore, 'savedCommands', id), data);
     revalidatePath('/commands');
 }
@@ -97,21 +97,31 @@ export async function executeCommand(serverId: string, command: string) {
     }
 }
 
-export async function executeSavedCommand(serverId: string, savedCommandId: string) {
+export async function executeSavedCommand(serverId: string, savedCommandId: string, variables: Record<string, string> = {}) {
     const savedCommandDoc = await getDoc(doc(firestore, "savedCommands", savedCommandId));
     if (!savedCommandDoc.exists()) {
         throw new Error("Saved command not found.");
     }
     const savedCommand = savedCommandDoc.data();
 
-    const mainResult = await executeSingleCommand(serverId, savedCommand.command);
+    let finalCommand = savedCommand.command;
+    for (const key in variables) {
+        finalCommand = finalCommand.replace(new RegExp(`\\{\\{\\[\\[${key}\\]\\]\\}\\}`, 'g'), variables[key]);
+    }
+    
+    // Check if there are any un-replaced variables left
+    if (/\{\{\[\[.*\]\]\}\}/.test(finalCommand)) {
+        throw new Error("One or more variables were not provided.");
+    }
+
+    const mainResult = await executeSingleCommand(serverId, finalCommand);
 
     if (mainResult.status === 'Success' && savedCommand.nextCommands && savedCommand.nextCommands.length > 0) {
         for (const nextCommandId of savedCommand.nextCommands) {
+            // Note: Chained commands do not currently support dynamic variables from the parent.
             const nextCommandDoc = await getDoc(doc(firestore, "savedCommands", nextCommandId));
             if (nextCommandDoc.exists()) {
                 const nextCommand = nextCommandDoc.data();
-                // We execute the next command but don't need to wait or handle its result in this flow
                 await executeSingleCommand(serverId, nextCommand.command);
             }
         }

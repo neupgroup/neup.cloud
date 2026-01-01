@@ -142,7 +142,7 @@
         },
         "command": {
           "type": "string",
-          "description": "The shell command to be executed."
+          "description": "The shell command to be executed, which can contain variables."
         },
         "os": {
             "type": "string",
@@ -158,6 +158,32 @@
             "type": "string"
           },
           "description": "An array of savedCommand IDs to execute sequentially after this command succeeds."
+        },
+        "variables": {
+            "type": "array",
+            "description": "Dynamic variables to be filled at runtime.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "The name of the variable inside the command string (e.g., 'appName')."
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "The user-friendly label for the input field."
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "An optional description for the variable's purpose."
+                    },
+                    "hint": {
+                        "type": "string",
+                        "description": "An optional placeholder/hint for the input field."
+                    }
+                },
+                "required": ["name", "title"]
+            }
         }
       },
       "required": ["name", "command", "os"]
