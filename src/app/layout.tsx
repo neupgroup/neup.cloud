@@ -47,11 +47,11 @@ function NavLink({ href, children, currentPath, onClick }: { href: string; child
     const isActive = href === '/' ? currentPath === href : currentPath.startsWith(href);
     
     const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-        if (onClick) {
-            onClick();
-        }
         if (currentPath !== href) {
             NProgress.start();
+        }
+        if (onClick) {
+            onClick();
         }
     };
 
@@ -106,7 +106,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
 
             {isServerSelected && (
               <div className="space-y-2">
-                  <div className="px-3 text-xs font-semibold uppercase text-muted-foreground">
+                  <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
                       Server
                   </div>
                   {serverLinks.map(({ href, label, icon: Icon }) => (
@@ -119,7 +119,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
             )}
             
             <div className="space-y-2">
-                  <div className="px-3 text-xs font-semibold uppercase text-muted-foreground">
+                  <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
                       Account
                   </div>
                   {accountLinks.map(({ href, label, icon: Icon }) => (

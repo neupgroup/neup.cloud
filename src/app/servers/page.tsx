@@ -4,6 +4,7 @@
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
+import Cookies from 'universal-cookie';
 
 import {
   Card,
@@ -30,6 +31,12 @@ export default function VpsPage() {
   const [servers, setServers] = useState<Server[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const cookies = new Cookies(null, { path: '/' });
+    setSelectedServerId(cookies.get('selected_server'));
+  }, []);
 
   const fetchServers = async () => {
     setIsLoading(true);
@@ -55,6 +62,10 @@ export default function VpsPage() {
   const handleServerDeleted = (id: string) => {
     setServers(prev => prev.filter(s => s.id !== id));
   };
+  
+  const handleServerSelected = (id: string) => {
+    setSelectedServerId(id);
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -87,7 +98,13 @@ export default function VpsPage() {
             <Card className="text-center p-6 text-destructive">Error loading servers: {error.message}</Card>
         ) : (
             servers.map((server) => (
-                <ServerCard key={server.id} server={server} onServerDeleted={handleServerDeleted} />
+                <ServerCard 
+                    key={server.id} 
+                    server={server} 
+                    onServerDeleted={handleServerDeleted} 
+                    onServerSelected={handleServerSelected}
+                    isSelected={selectedServerId === server.id}
+                />
             ))
         )}
       </div>

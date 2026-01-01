@@ -1,7 +1,7 @@
 
 'use client';
 
-import { MoreHorizontal, Trash2, ServerIcon, User, RefreshCcw, Loader2 } from "lucide-react";
+import { MoreHorizontal, Trash2, ServerIcon, User, RefreshCcw, Loader2, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import NProgress from 'nprogress';
@@ -31,9 +31,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 type ServerCardProps = {
   server: Server;
   onServerDeleted: (id: string) => void;
+  onServerSelected: (id: string) => void;
+  isSelected: boolean;
 };
 
-export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
+export function ServerCard({ server, onServerDeleted, onServerSelected, isSelected }: ServerCardProps) {
   const { toast } = useToast();
   const pathname = usePathname();
   const [usedRam, setUsedRam] = useState<number | null>(null);
@@ -80,6 +82,7 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
         title: "Server Selected",
         description: `You are now managing "${server.name}".`,
       });
+      onServerSelected(server.id);
     } catch (error) {
        console.error("Error selecting server: ", error);
        toast({
@@ -143,14 +146,21 @@ export function ServerCard({ server, onServerDeleted }: ServerCardProps) {
         </div>
       </CardContent>
       <CardFooter>
-        <Button className="w-full" onClick={handleSelect} disabled={isSwitching}>
-            {isSwitching ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-                <RefreshCcw className="mr-2 h-4 w-4" />
-            )}
-            {isSwitching ? 'Switching...' : 'Switch'}
-        </Button>
+        {isSelected ? (
+             <Button className="w-full" disabled variant="secondary">
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Selected
+            </Button>
+        ) : (
+            <Button className="w-full" onClick={handleSelect} disabled={isSwitching}>
+                {isSwitching ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                    <RefreshCcw className="mr-2 h-4 w-4" />
+                )}
+                {isSwitching ? 'Switching...' : 'Switch'}
+            </Button>
+        )}
       </CardFooter>
     </Card>
   );
