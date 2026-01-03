@@ -12,10 +12,11 @@ import { cookies } from 'next/headers';
 const { firestore } = initializeFirebase();
 
 export async function selectServer(serverId: string, serverName: string) {
-    cookies().set('selected_server', serverId);
-    cookies().set('selected_server_name', serverName);
-    revalidatePath('/');
-    return { success: true };
+  const cookieStore = await cookies();
+  cookieStore.set('selected_server', serverId);
+  cookieStore.set('selected_server_name', serverName);
+  revalidatePath('/');
+  return { success: true };
 }
 
 export async function getServers() {
@@ -25,31 +26,31 @@ export async function getServers() {
 }
 
 export async function getServer(id: string) {
-    const serverDoc = await getDoc(doc(firestore, "servers", id));
-    if (!serverDoc.exists()) {
-        return null;
-    }
-    const { privateKey, privateIp, ...serverData } = serverDoc.data();
-    return { id: serverDoc.id, ...serverData };
+  const serverDoc = await getDoc(doc(firestore, "servers", id));
+  if (!serverDoc.exists()) {
+    return null;
+  }
+  const { privateKey, privateIp, ...serverData } = serverDoc.data();
+  return { id: serverDoc.id, ...serverData };
 }
 
 export async function getServerForRunner(id: string) {
-    const serverDoc = await getDoc(doc(firestore, "servers", id));
-    if (!serverDoc.exists()) {
-        return null;
-    }
-    return { id: serverDoc.id, ...serverDoc.data() } as {
-        id: string;
-        name: string;
-        username: string;
-        type: string;
-        provider: string;
-        ram: string;
-        storage: string;
-        publicIp: string;
-        privateIp?: string;
-        privateKey?: string;
-    };
+  const serverDoc = await getDoc(doc(firestore, "servers", id));
+  if (!serverDoc.exists()) {
+    return null;
+  }
+  return { id: serverDoc.id, ...serverDoc.data() } as {
+    id: string;
+    name: string;
+    username: string;
+    type: string;
+    provider: string;
+    ram: string;
+    storage: string;
+    publicIp: string;
+    privateIp?: string;
+    privateKey?: string;
+  };
 }
 
 export async function getRamUsage(serverId: string) {
@@ -67,7 +68,7 @@ export async function getRamUsage(serverId: string) {
     if (result.code !== 0) {
       return { error: result.stderr || 'Failed to get RAM usage.' };
     }
-    
+
     const lines = result.stdout.trim().split('\n');
     const totalRamKb = lines.reduce((sum, line) => {
       const ram = parseInt(line.trim(), 10);
@@ -83,50 +84,50 @@ export async function getRamUsage(serverId: string) {
 }
 
 export async function createServer(serverData: {
-    name: string;
-    username: string;
-    type: string;
-    provider: string;
-    ram: string;
-    storage: string;
-    publicIp: string;
-    privateIp: string;
-    privateKey: string;
+  name: string;
+  username: string;
+  type: string;
+  provider: string;
+  ram: string;
+  storage: string;
+  publicIp: string;
+  privateIp: string;
+  privateKey: string;
 }) {
-    await addDoc(collection(firestore, 'servers'), serverData);
-    revalidatePath('/servers');
+  await addDoc(collection(firestore, 'servers'), serverData);
+  revalidatePath('/servers');
 }
 
 export async function updateServer(id: string, serverData: Partial<{
-    name: string;
-    username: string;
-    type: string;
-    provider: string;
-    ram: string;
-    storage: string;
-    publicIp: string;
-    privateIp: string;
-    privateKey: string;
+  name: string;
+  username: string;
+  type: string;
+  provider: string;
+  ram: string;
+  storage: string;
+  publicIp: string;
+  privateIp: string;
+  privateKey: string;
 }>) {
-    const updateData: { [key: string]: any } = { ...serverData };
+  const updateData: { [key: string]: any } = { ...serverData };
 
-    // Only include private IP and private key if they are not empty strings
-    if (serverData.privateIp === '' || serverData.privateIp === undefined) {
-        delete updateData.privateIp;
-    }
-    if (serverData.privateKey === '' || serverData.privateKey === undefined) {
-        delete updateData.privateKey;
-    }
+  // Only include private IP and private key if they are not empty strings
+  if (serverData.privateIp === '' || serverData.privateIp === undefined) {
+    delete updateData.privateIp;
+  }
+  if (serverData.privateKey === '' || serverData.privateKey === undefined) {
+    delete updateData.privateKey;
+  }
 
-    if (Object.keys(updateData).length > 0) {
-        await updateDoc(doc(firestore, 'servers', id), updateData);
-        revalidatePath(`/servers/${id}`);
-        revalidatePath('/servers');
-    }
+  if (Object.keys(updateData).length > 0) {
+    await updateDoc(doc(firestore, 'servers', id), updateData);
+    revalidatePath(`/servers/${id}`);
+    revalidatePath('/servers');
+  }
 }
 
 
 export async function deleteServer(id: string) {
-    await deleteDoc(doc(firestore, "servers", id));
-    revalidatePath('/servers');
+  await deleteDoc(doc(firestore, "servers", id));
+  revalidatePath('/servers');
 }

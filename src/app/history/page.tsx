@@ -22,15 +22,15 @@ export const metadata: Metadata = {
 
 
 export type ServerLog = {
-    id: string;
-    command: string;
-    output: string;
-    status: 'Success' | 'Error' | 'pending';
-    runAt: string;
+  id: string;
+  command: string;
+  output: string;
+  status: 'Success' | 'Error' | 'pending';
+  runAt: string;
 }
 
 export default async function HistoryPage() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const serverId = cookieStore.get('selected_server')?.value;
   const serverName = cookieStore.get('selected_server_name')?.value;
 
@@ -64,17 +64,17 @@ export default async function HistoryPage() {
           )}
         </div>
       </div>
-      
+
       {!serverId ? (
         <Card className="text-center p-8">
-            <Server className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-medium">No Server Selected</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-                Please go to the servers page and select a server to manage.
-            </p>
-            <Button asChild className="mt-4">
-                <Link href="/servers">Go to Servers</Link>
-            </Button>
+          <Server className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-medium">No Server Selected</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Please go to the servers page and select a server to manage.
+          </p>
+          <Button asChild className="mt-4">
+            <Link href="/servers">Go to Servers</Link>
+          </Button>
         </Card>
       ) : error ? (
         <Card className="p-8 text-center text-destructive">

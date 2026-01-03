@@ -17,8 +17,16 @@ export async function getApplications() {
 export async function createApplication(appData: {
     name: string;
     repo: string;
-    serverId?: string;
+    language: string;
     status: string;
+    applicationLocation: string;
+    commands: {
+        start: string;
+        stop: string;
+        restart: string;
+    };
+    allowNetwork: boolean;
+    allowedPorts: number[];
     url?: string;
 }) {
     await addDoc(collection(firestore, 'applications'), appData);

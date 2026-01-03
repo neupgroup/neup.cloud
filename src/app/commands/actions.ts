@@ -15,12 +15,12 @@ export async function getSavedCommands() {
     return commandsData;
 }
 
-export async function createSavedCommand(data: { name: string, command: string, os: string, description?: string, nextCommands?: string[], variables?: any[] }) {
+export async function createSavedCommand(data: { name: string, command: string, description?: string, nextCommands?: string[], variables?: any[] }) {
     await addDoc(collection(firestore, 'savedCommands'), data);
     revalidatePath('/commands');
 }
 
-export async function updateSavedCommand(id: string, data: { name: string, command: string, os: string, description?: string, nextCommands?: string[], variables?: any[] }) {
+export async function updateSavedCommand(id: string, data: { name: string, command: string, description?: string, nextCommands?: string[], variables?: any[] }) {
     await updateDoc(doc(firestore, 'savedCommands', id), data);
     revalidatePath('/commands');
 }
@@ -30,8 +30,7 @@ export async function deleteSavedCommand(id: string) {
     revalidatePath('/commands');
 }
 
-
-async function executeSingleCommand(serverId: string, command: string): Promise<{ logId: string; status: 'Success' | 'Error'; output: string }> {
+async function executeSingleCommand(serverId: string, command: string, originalCommandTemplate: string): Promise<{ logId: string; status: 'Success' | 'Error'; output: string }> {
     const server = await getServerForRunner(serverId);
     if (!server) {
         throw new Error('Server not found.');
@@ -42,7 +41,7 @@ async function executeSingleCommand(serverId: string, command: string): Promise<
 
     const logRef = await addDoc(collection(firestore, 'serverLogs'), {
         serverId: serverId,
-        command: command,
+        command: originalCommandTemplate, // Log the original template for clarity
         output: 'Executing command...',
         status: 'pending',
         runAt: serverTimestamp(),
@@ -56,7 +55,7 @@ async function executeSingleCommand(serverId: string, command: string): Promise<
             server.publicIp,
             server.username,
             server.privateKey,
-            command,
+            command, // Execute the processed command
             (chunk) => {
                 finalOutput += chunk;
                 updateDoc(logRef, { output: finalOutput });
@@ -69,6 +68,7 @@ async function executeSingleCommand(serverId: string, command: string): Promise<
 
         if (result.code === 0) {
             finalStatus = 'Success';
+            finalOutput = result.stdout;
         } else {
             finalOutput = result.stderr || `Command exited with code ${result.code}`;
         }
@@ -90,7 +90,8 @@ export async function executeCommand(serverId: string, command: string) {
         return { error: "Server not selected" };
     }
     try {
-        const result = await executeSingleCommand(serverId, command);
+        // Here, originalCommandTemplate is the same as command since it's a direct execution
+        const result = await executeSingleCommand(serverId, command, command);
         return { output: result.output, error: result.status === 'Error' ? result.output : undefined };
     } catch (e: any) {
         return { error: e.message };
@@ -103,27 +104,50 @@ export async function executeSavedCommand(serverId: string, savedCommandId: stri
         throw new Error("Saved command not found.");
     }
     const savedCommand = savedCommandDoc.data();
+    const commandTemplate = savedCommand.command;
 
-    let finalCommand = savedCommand.command;
+    const server = await getServerForRunner(serverId);
+    if (!server) {
+        throw new Error("Target server not found.");
+    }
+
+    const os = server.type.toLowerCase(); // 'linux' or 'windows'
+    const osBlockRegex = new RegExp(`<<\\{\\{start\\.${os}\\}\\}\\>>([\\s\\S]*?)<<\\{\\{end\\.${os}\\}\\}\\>>`, 'g');
+    const match = osBlockRegex.exec(commandTemplate);
+
+    if (!match || !match[1]) {
+        throw new Error(`No command block found for OS "${server.type}" in the saved command.`);
+    }
+
+    let processedCommand = match[1].trim();
+
+    // 1. Replace user-provided variables: {{[[variableName]]}}
     for (const key in variables) {
-        finalCommand = finalCommand.replace(new RegExp(`\\{\\{\\[\\[${key}\\]\\]\\}\\}`, 'g'), variables[key]);
+        processedCommand = processedCommand.replace(new RegExp(`\\{\\{\\[\\[${key}\\]\\]\\}\\}`, 'g'), variables[key]);
+    }
+
+    // 2. Replace universal variables: <<{{[universal.variableName]}}>>
+    const universalVars: Record<string, string> = {
+        'universal.serverIp': server.publicIp,
+        'universal.serverName': server.name,
+        'universal.serverUsername': server.username,
+    };
+
+    for (const key in universalVars) {
+        processedCommand = processedCommand.replace(new RegExp(`<<\\{\\{\\[${key}\\]\\}\\}\\}>>`, 'g'), universalVars[key]);
     }
     
     // Check if there are any un-replaced variables left
-    if (/\{\{\[\[.*\]\]\}\}/.test(finalCommand)) {
-        throw new Error("One or more variables were not provided.");
+    if (/\{\{\[\[.*\]\]\}\}/.test(processedCommand) || /<<\{\{\[.*\]\}\}>>/.test(processedCommand)) {
+        throw new Error("One or more variables were not provided or could not be resolved.");
     }
 
-    const mainResult = await executeSingleCommand(serverId, finalCommand);
+    const mainResult = await executeSingleCommand(serverId, processedCommand, commandTemplate);
 
     if (mainResult.status === 'Success' && savedCommand.nextCommands && savedCommand.nextCommands.length > 0) {
         for (const nextCommandId of savedCommand.nextCommands) {
             // Note: Chained commands do not currently support dynamic variables from the parent.
-            const nextCommandDoc = await getDoc(doc(firestore, "savedCommands", nextCommandId));
-            if (nextCommandDoc.exists()) {
-                const nextCommand = nextCommandDoc.data();
-                await executeSingleCommand(serverId, nextCommand.command);
-            }
+            await executeSavedCommand(serverId, nextCommandId, variables);
         }
     }
 

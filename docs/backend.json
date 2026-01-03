@@ -87,6 +87,10 @@
           "type": "string",
           "description": "The Git repository URL of the application."
         },
+        "language": {
+          "type": "string",
+          "description": "The programming language or framework used."
+        },
         "status": {
           "type": "string",
           "description": "The deployment status of the application."
@@ -98,9 +102,43 @@
         "serverId": {
           "type": "string",
           "description": "The ID of the server this application is deployed to."
+        },
+        "applicationLocation": {
+          "type": "string",
+          "description": "The folder/directory where the application is located on the server."
+        },
+        "commands": {
+          "type": "object",
+          "description": "The commands to manage the application.",
+          "properties": {
+            "start": {
+              "type": "string",
+              "description": "The command to start the application."
+            },
+            "stop": {
+              "type": "string",
+              "description": "The command to stop the application."
+            },
+            "restart": {
+              "type": "string",
+              "description": "The command to restart the application."
+            }
+          },
+          "required": ["start"]
+        },
+        "allowNetwork": {
+          "type": "boolean",
+          "description": "Whether the application is allowed network access."
+        },
+        "allowedPorts": {
+          "type": "array",
+          "description": "A list of ports the application is allowed to use.",
+          "items": {
+            "type": "number"
+          }
         }
       },
-      "required": ["name", "repo", "status"]
+      "required": ["name", "repo", "language", "status", "applicationLocation", "commands"]
     },
     "serverLog": {
         "title": "Server Log",
@@ -142,11 +180,7 @@
         },
         "command": {
           "type": "string",
-          "description": "The shell command to be executed, which can contain variables."
-        },
-        "os": {
-            "type": "string",
-            "description": "The operating system this command is for (e.g., 'Linux', 'Windows')."
+          "description": "The shell command to be executed, which can contain variables and OS-specific blocks."
         },
         "description": {
           "type": "string",
@@ -186,7 +220,7 @@
             }
         }
       },
-      "required": ["name", "command", "os"]
+      "required": ["name", "command"]
     }
   },
   "auth": {
