@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
   Globe,
-  Dns,
+  Network,
   Server,
   Trash2,
 } from "lucide-react";
@@ -81,7 +81,7 @@ export default function DomainDetailsLayout({
                         <Globe className="mr-2 h-4 w-4" /> Overview
                     </DomainNavLink>
                     <DomainNavLink href={`/domains/${id}/dns`}>
-                        <Dns className="mr-2 h-4 w-4" /> DNS Records
+                        <Network className="mr-2 h-4 w-4" /> DNS Records
                     </DomainNavLink>
                     <DomainNavLink href={`/domains/${id}/nameservers`}>
                         <Server className="mr-2 h-4 w-4" /> Nameservers
