@@ -239,7 +239,7 @@ export default function CommandsPage() {
     setSelectedServer('');
     setRuntimeVariableValues({});
     setIsRunDialogOpen(true);
-  }
+  };
 
   const handleRunCommand = async () => {
     if (!commandToRun || !selectedServer) {
@@ -287,8 +287,8 @@ export default function CommandsPage() {
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="font-headline text-xl flex items-center gap-2">
-                        <Code className="h-5 w-5 text-muted-foreground" />
-                        {sc.name}
+                      <Code className="h-5 w-5 text-muted-foreground" />
+                      {sc.name}
                     </CardTitle>
                     <CardDescription>{sc.description || 'No description'}</CardDescription>
                   </div>
@@ -326,9 +326,9 @@ export default function CommandsPage() {
               </CardFooter>
             </Card>
           ))}
-           {savedCommands.length === 0 && (
-             <Card className="text-center p-8 text-muted-foreground">You haven't saved any commands yet.</Card>
-            )}
+          {savedCommands.length === 0 && (
+            <Card className="text-center p-8 text-muted-foreground">You haven't saved any commands yet.</Card>
+          )}
         </div>
       )}
 
@@ -351,7 +351,7 @@ export default function CommandsPage() {
               <div className="grid gap-2">
                 <Label htmlFor="command-script">Command</Label>
                 <Textarea id="command-script" value={formData.command} onChange={(e) => handleFormDataChange('command', e.target.value)} placeholder="<<{{start.linux}}>>\nsudo apt install {{[[appName]]}}\n<<{{end.linux}}>>" className="font-mono h-32" />
-                <p className="text-xs text-muted-foreground">Use {`{{[[variable]]}}`} for dynamic fields and `&lt;&lt;{{start/end.os}}&gt;&gt;` for OS-specific blocks.</p>
+                <p className="text-xs text-muted-foreground">Use {`{{[[variable]]}}`} for dynamic fields and {`<<{{start/end.os}}>>`} for OS-specific blocks.</p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="command-desc">Description (Optional)</Label>
@@ -398,7 +398,7 @@ export default function CommandsPage() {
               <Button type="button" variant="secondary">Cancel</Button>
             </DialogClose>
             <Button onClick={handleFormSubmit} disabled={isSaving}>
-              {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : 'Save Command'}
+              {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Command'}
             </Button>
           </DialogFooter>
         </DialogContent>
