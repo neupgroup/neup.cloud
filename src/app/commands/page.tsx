@@ -65,6 +65,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 type Server = {
   id: string;
   name: string;
+  type: string;
 };
 
 type CommandVariable = {
@@ -163,7 +164,7 @@ export default function CommandsPage() {
 
   const openCreateForm = () => {
     setEditingCommand(null);
-    setFormData({ name: '', command: '', description: '', nextCommands: '', variables: {} });
+    setFormData({ name: '', command: '<<{{start.linux}}>>\n\n<<{{end.linux}}>>\n\n<<{{start.windows}}>>\n\n<<{{end.windows}}>>', description: '', nextCommands: '', variables: {} });
     setIsFormOpen(true);
   };
 
@@ -214,7 +215,7 @@ export default function CommandsPage() {
       await fetchAllData();
       setIsFormOpen(false);
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: `Failed to ${editingCommand ? 'update' : 'save'} command.` });
+      toast({ variant: 'destructive', title: 'Error', description: `Failed to ${editingCommand ? 'update' : 'save'} command: ${e.message}` });
     } finally {
       setIsSaving(false);
     }
@@ -255,7 +256,7 @@ export default function CommandsPage() {
     } finally {
       setIsRunning(false);
     }
-  }
+  };
 
   return (
     <div className="grid gap-6">
@@ -325,6 +326,9 @@ export default function CommandsPage() {
               </CardFooter>
             </Card>
           ))}
+           {savedCommands.length === 0 && (
+             <Card className="text-center p-8 text-muted-foreground">You haven't saved any commands yet.</Card>
+            )}
         </div>
       )}
 
@@ -394,7 +398,7 @@ export default function CommandsPage() {
               <Button type="button" variant="secondary">Cancel</Button>
             </DialogClose>
             <Button onClick={handleFormSubmit} disabled={isSaving}>
-              {isSaving ? 'Saving...' : 'Save Command'}
+              {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : 'Save Command'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -438,7 +442,7 @@ export default function CommandsPage() {
                     <SelectItem key={server.id} value={server.id}>
                       <div className="flex items-center gap-2">
                         <Server className="h-4 w-4" />
-                        {server.name}
+                        {server.name} ({server.type})
                       </div>
                     </SelectItem>
                   ))}
@@ -457,3 +461,5 @@ export default function CommandsPage() {
     </div>
   );
 }
+
+    
