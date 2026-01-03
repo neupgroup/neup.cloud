@@ -21,6 +21,7 @@ import {
   Play,
   Monitor,
   Variable,
+  Code,
 } from 'lucide-react';
 import {
   Select,
@@ -79,7 +80,6 @@ type SavedCommand = {
   command: string;
   description?: string;
   nextCommands?: string[];
-  os: 'Linux' | 'Windows';
   variables?: CommandVariable[];
 };
 
@@ -88,7 +88,6 @@ type CommandFormData = {
   command: string;
   description: string;
   nextCommands: string;
-  os: string;
   variables: Record<string, Omit<CommandVariable, 'name'>>;
 };
 
@@ -115,7 +114,6 @@ export default function CommandsPage() {
     command: '',
     description: '',
     nextCommands: '',
-    os: 'Linux',
     variables: {}
   });
 
@@ -165,7 +163,7 @@ export default function CommandsPage() {
 
   const openCreateForm = () => {
     setEditingCommand(null);
-    setFormData({ name: '', command: '', description: '', nextCommands: '', os: 'Linux', variables: {} });
+    setFormData({ name: '', command: '', description: '', nextCommands: '', variables: {} });
     setIsFormOpen(true);
   };
 
@@ -182,15 +180,14 @@ export default function CommandsPage() {
       command: command.command,
       description: command.description || '',
       nextCommands: (command.nextCommands || []).join(', '),
-      os: command.os || 'Linux',
       variables: variablesObject,
     });
     setIsFormOpen(true);
   };
 
   const handleFormSubmit = async () => {
-    if (!formData.name || !formData.command || !formData.os) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Name, command, and OS are required.' });
+    if (!formData.name || !formData.command) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Name and command are required.' });
       return;
     }
     setIsSaving(true);
@@ -199,7 +196,6 @@ export default function CommandsPage() {
         name: formData.name,
         command: formData.command,
         description: formData.description,
-        os: formData.os,
         nextCommands: formData.nextCommands.split(',').map(s => s.trim()).filter(Boolean),
         variables: detectedVariables.map(varName => ({
           name: varName,
@@ -289,8 +285,9 @@ export default function CommandsPage() {
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="font-headline text-xl flex items-center gap-2">{sc.name}
-                      {sc.os && <Badge variant="secondary">{sc.os}</Badge>}
+                    <CardTitle className="font-headline text-xl flex items-center gap-2">
+                        <Code className="h-5 w-5 text-muted-foreground" />
+                        {sc.name}
                     </CardTitle>
                     <CardDescription>{sc.description || 'No description'}</CardDescription>
                   </div>
@@ -349,20 +346,8 @@ export default function CommandsPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="command-script">Command</Label>
-                <Textarea id="command-script" value={formData.command} onChange={(e) => handleFormDataChange('command', e.target.value)} placeholder="e.g., sudo apt install {{[[appName]]}}" className="font-mono h-32" />
-                <p className="text-xs text-muted-foreground">Use {`{{[[variable]]}}`} to define dynamic fields.</p>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="command-os">Operating System</Label>
-                <Select value={formData.os} onValueChange={(value) => handleFormDataChange('os', value)}>
-                  <SelectTrigger id="command-os">
-                    <SelectValue placeholder="Select an OS" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Linux"><div className="flex items-center gap-2"><Monitor className="h-4 w-4" /> Linux</div></SelectItem>
-                    <SelectItem value="Windows"><div className="flex items-center gap-2"><Monitor className="h-4 w-4" /> Windows</div></SelectItem>
-                  </SelectContent>
-                </Select>
+                <Textarea id="command-script" value={formData.command} onChange={(e) => handleFormDataChange('command', e.target.value)} placeholder="<<{{start.linux}}>>\nsudo apt install {{[[appName]]}}\n<<{{end.linux}}>>" className="font-mono h-32" />
+                <p className="text-xs text-muted-foreground">Use {`{{[[variable]]}}`} for dynamic fields and `&lt;&lt;{{start/end.os}}&gt;&gt;` for OS-specific blocks.</p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="command-desc">Description (Optional)</Label>

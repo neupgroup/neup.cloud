@@ -180,11 +180,7 @@
         },
         "command": {
           "type": "string",
-          "description": "The shell command to be executed, which can contain variables."
-        },
-        "os": {
-            "type": "string",
-            "description": "The operating system this command is for (e.g., 'Linux', 'Windows')."
+          "description": "The shell command to be executed, which can contain variables and OS-specific blocks."
         },
         "description": {
           "type": "string",
@@ -224,7 +220,7 @@
             }
         }
       },
-      "required": ["name", "command", "os"]
+      "required": ["name", "command"]
     }
   },
   "auth": {
