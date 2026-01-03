@@ -26,7 +26,10 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
-import { Cpu, Database, Gauge, Server } from "lucide-react";
+import { Cpu, Database, Gauge, Server, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 const cpuData = [
   { time: "10:00", usage: 12 },
@@ -103,8 +106,36 @@ const BandwidthTooltip = ({ active, payload, label }: any) => {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
+
+  const handleDomainSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const domain = formData.get('domain') as string;
+    if (domain) {
+      router.push(`/domains?q=${encodeURIComponent(domain)}`);
+    }
+  }
+
   return (
     <>
+      <Card className="mb-8">
+        <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2">
+                <Search className="h-6 w-6" />
+                Find your new domain
+            </CardTitle>
+            <CardDescription>
+                Enter a domain name to check its availability.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <form onSubmit={handleDomainSearch} className="flex gap-2">
+                <Input name="domain" placeholder="example.com" className="flex-grow" />
+                <Button type="submit">Search</Button>
+            </form>
+        </CardContent>
+      </Card>
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -155,7 +186,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3 mt-8">
         <Card className="xl:col-span-2">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
@@ -243,7 +274,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8">
+      <div className="grid gap-4 md:grid-cols-2 md:gap-8 mt-8">
         <Card>
           <CardHeader>
             <CardTitle>Live CPU Usage</CardTitle>
@@ -292,3 +323,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
