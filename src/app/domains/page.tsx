@@ -113,30 +113,17 @@ export default function DomainsPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-            <CardTitle className="font-headline flex items-center gap-2">
-                <Search className="h-6 w-6" />
-                Domain Search
-            </CardTitle>
-            <CardDescription>
-                Enter a domain name to check its availability across popular TLDs.
-            </CardDescription>
-        </CardHeader>
-        <CardContent>
-            <form onSubmit={onFormSubmit} className="flex gap-2">
-                <Input 
-                    value={domainQuery}
-                    onChange={(e) => setDomainQuery(e.target.value)}
-                    placeholder="your-awesome-idea.com" 
-                    className="flex-grow" 
-                />
-                <Button type="submit" disabled={isSearching}>
-                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
-                </Button>
-            </form>
-        </CardContent>
-      </Card>
+      <div className="flex gap-2">
+          <Input 
+              value={domainQuery}
+              onChange={(e) => setDomainQuery(e.target.value)}
+              placeholder="your-awesome-idea.com" 
+              className="flex-grow" 
+          />
+          <Button type="submit" disabled={isSearching} onClick={() => handleSearch(domainQuery)}>
+              {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Search className="mr-2 h-4 w-4" />Search</>}
+          </Button>
+      </div>
 
       {isSearching && <LoadingSkeleton />}
       
@@ -163,5 +150,3 @@ export default function DomainsPage() {
     </div>
   );
 }
-
-    
