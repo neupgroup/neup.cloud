@@ -26,7 +26,10 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
-import { Cpu, Database, Gauge, Server } from "lucide-react";
+import { Cpu, Database, Gauge, Server, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 const cpuData = [
   { time: "10:00", usage: 12 },
@@ -103,8 +106,33 @@ const BandwidthTooltip = ({ active, payload, label }: any) => {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
+
+  const handleDomainSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const domain = formData.get('domain') as string;
+    if (domain) {
+      router.push(`/domains?q=${encodeURIComponent(domain)}`);
+    }
+  }
+
   return (
-    <>
+    <div className="flex flex-col gap-8">
+      <div className="p-6 rounded-lg border bg-card text-card-foreground shadow-sm">
+        <h2 className="text-xl font-semibold font-headline flex items-center gap-2 mb-2">
+            <Search className="h-6 w-6" />
+            Find your new domain
+        </h2>
+        <p className="text-muted-foreground mb-4">
+            Enter a domain name to check its availability.
+        </p>
+        <form onSubmit={handleDomainSearch} className="flex gap-2">
+            <Input name="domain" placeholder="example.com" className="flex-grow" />
+            <Button type="submit">Search</Button>
+        </form>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -289,6 +317,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </>
+    </div>
   );
 }

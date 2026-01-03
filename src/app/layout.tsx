@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -21,7 +22,8 @@ import {
   History,
   Link2,
   Network,
-  Settings
+  Settings,
+  Globe
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -73,6 +75,7 @@ function NavLink({ href, children, currentPath, onClick }: { href: string; child
 function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { currentPath: string, onLinkClick?: () => void, isServerSelected: boolean }) {
     const navLinks = [
         { href: "/dashboard", label: "Dashboard", icon: Home },
+        { href: "/domains", label: "Domains", icon: Globe },
         { href: "/applications", label: "Applications", icon: AppWindow },
         { href: "/balancers", label: "Balancers", icon: Wind },
         { href: "/recommendations", label: "Recommendations", icon: Lightbulb },
@@ -272,3 +275,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+
+    

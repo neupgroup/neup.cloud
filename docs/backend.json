@@ -221,6 +221,28 @@
         }
       },
       "required": ["name", "command"]
+    },
+    "domain": {
+      "title": "Domain",
+      "description": "Represents a user-owned domain managed by the service.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The full domain name (e.g., 'example.com')."
+        },
+        "status": {
+          "type": "string",
+          "description": "The verification and management status of the domain (e.g., 'pending', 'active', 'error').",
+          "enum": ["pending", "active", "error"]
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the domain was added."
+        }
+      },
+      "required": ["name", "status", "addedAt"]
     }
   },
   "auth": {
@@ -256,6 +278,12 @@
         "$ref": "#/entities/savedCommand"
       },
       "description": "Stores user-defined reusable commands."
+    },
+    "/domains/{domainId}": {
+      "schema": {
+        "$ref": "#/entities/domain"
+      },
+      "description": "Stores user-added domains for management."
     }
   }
 }
