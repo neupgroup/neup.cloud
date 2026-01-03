@@ -461,5 +461,3 @@ export default function CommandsPage() {
     </div>
   );
 }
-
-    
