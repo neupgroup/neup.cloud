@@ -1,6 +1,12 @@
 
 'use server';
 
+import { addDoc, collection, getDocs, serverTimestamp, query, where } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
+import { revalidatePath } from 'next/cache';
+
+const { firestore } = initializeFirebase();
+
 export type DomainStatus = {
     name: string;
     isAvailable: boolean;
@@ -41,4 +47,44 @@ export async function checkDomain(domain: string): Promise<DomainStatus[]> {
     return results;
 }
 
+export type ManagedDomain = {
+    id: string;
+    name: string;
+    status: 'pending' | 'active' | 'error';
+    addedAt: string;
+};
+
+export async function addDomain(domainName: string) {
+    if (!domainName) {
+        throw new Error('Domain name cannot be empty.');
+    }
     
+    // Check if domain already exists
+    const q = query(collection(firestore, 'domains'), where('name', '==', domainName));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        throw new Error(`Domain "${domainName}" has already been added.`);
+    }
+
+    await addDoc(collection(firestore, 'domains'), {
+        name: domainName,
+        status: 'pending',
+        addedAt: serverTimestamp(),
+    });
+
+    revalidatePath('/domains');
+}
+
+export async function getDomains(): Promise<ManagedDomain[]> {
+    const querySnapshot = await getDocs(collection(firestore, "domains"));
+    const domains = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            name: data.name,
+            status: data.status,
+            addedAt: data.addedAt?.toDate().toISOString() || new Date().toISOString(),
+        }
+    }) as ManagedDomain[];
+    return domains;
+}
