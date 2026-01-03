@@ -197,27 +197,34 @@ export default function DomainsPage() {
     fetchManagedDomains();
   }, []);
 
-  useEffect(() => {
-    const initialQuery = searchParams.get('q');
-    if (initialQuery) {
-      handleSearch(initialQuery);
-      // Clear the query from URL after searching to not persist it
-      router.replace('/domains', { scroll: false });
-    }
-  }, []);
-
   const handleSearch = async (query: string) => {
-    if (!query) return;
+    if (!query) {
+        setSearchResults([]);
+        router.push('/domains');
+        return;
+    }
+    router.push(`/domains?q=${encodeURIComponent(query)}`);
     startSearchTransition(async () => {
       const results = await checkDomain(query);
       setSearchResults(results);
     });
   };
   
+  useEffect(() => {
+    const initialQuery = searchParams.get('q');
+    if (initialQuery) {
+        setDomainQuery(initialQuery);
+        handleSearch(initialQuery);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const onSearchFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     handleSearch(domainQuery);
   }
+
+  const showSearchResults = searchParams.get('q') && searchResults.length > 0;
 
   return (
     <div className="grid gap-8">
@@ -232,51 +239,50 @@ export default function DomainsPage() {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
-            <div className="space-y-6">
-                <h2 className="text-2xl font-bold font-headline">My Domains</h2>
-                <ManagedDomainList domains={managedDomains} isLoading={isManagedDomainsLoading} />
-            </div>
-            <div className="space-y-6">
-                <h2 className="text-2xl font-bold font-headline">Add or Find a Domain</h2>
-                <AddDomainForm onDomainAdded={fetchManagedDomains} />
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="font-headline">Find a New Domain</CardTitle>
-                        <CardDescription>Search for and register your new domain name instantly.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                         <form onSubmit={onSearchFormSubmit} className="flex gap-2">
-                            <Input 
-                                value={domainQuery}
-                                onChange={(e) => setDomainQuery(e.target.value)}
-                                placeholder="your-awesome-idea.com" 
-                                className="flex-grow" 
-                            />
-                            <Button type="submit" disabled={isSearching}>
-                                {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Search className="mr-2 h-4 w-4" />Search</>}
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
-            </div>
+            <AddDomainForm onDomainAdded={fetchManagedDomains} />
+            <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline">Find a New Domain</CardTitle>
+                    <CardDescription>Search for and register your new domain name instantly.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <form onSubmit={onSearchFormSubmit} className="flex gap-2">
+                        <Input 
+                            value={domainQuery}
+                            onChange={(e) => setDomainQuery(e.target.value)}
+                            placeholder="your-awesome-idea.com" 
+                            className="flex-grow" 
+                        />
+                        <Button type="submit" disabled={isSearching}>
+                            {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Search className="mr-2 h-4 w-4" />Search</>}
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
         </div>
 
-      {isSearching && <LoadingSkeleton />}
-      
-      {!isSearching && searchResults.length > 0 && (
-         <Card>
-            <CardHeader>
-                <CardTitle>Search Results</CardTitle>
-                <CardDescription>Here are the availability results for "{domainQuery}".</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                {searchResults.map((domain) => (
-                    <DomainResultCard key={domain.name} domain={domain} />
-                ))}
-            </CardContent>
-         </Card>
-      )}
-
+        <div>
+            {isSearching ? (
+                 <LoadingSkeleton />
+            ) : showSearchResults ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Search Results</CardTitle>
+                        <CardDescription>Here are the availability results for "{searchParams.get('q')}".</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {searchResults.map((domain) => (
+                            <DomainResultCard key={domain.name} domain={domain} />
+                        ))}
+                    </CardContent>
+                </Card>
+            ) : (
+                <>
+                    <h2 className="text-2xl font-bold font-headline mb-4">My Domains</h2>
+                    <ManagedDomainList domains={managedDomains} isLoading={isManagedDomainsLoading} />
+                </>
+            )}
+        </div>
     </div>
   );
 }

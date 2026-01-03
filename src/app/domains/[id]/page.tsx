@@ -47,6 +47,13 @@ export default function DomainDetailsLayout({
   const id = params.id as string;
   const domainName = "example.com"; // In a real app, you would fetch this by id
 
+  // This layout structure handles the navigation and the main content area.
+  // The actual page content (overview, dns, nameservers) is passed as `children`.
+  // If the current path is the base path for the domain, we show an overview card.
+  const pathname = usePathname();
+  const isOverviewPage = pathname === `/domains/${id}`;
+
+
   return (
     <div className="grid gap-6">
         <div className="flex items-center gap-4">
@@ -85,18 +92,21 @@ export default function DomainDetailsLayout({
                 </nav>
             </aside>
             <main>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Domain Overview</CardTitle>
-                        <CardDescription>
-                            Current status and configuration for {domainName}.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p>Overview content will go here.</p>
-                        {children}
-                    </CardContent>
-                </Card>
+                {isOverviewPage ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Domain Overview</CardTitle>
+                            <CardDescription>
+                                Current status and configuration for {domainName}.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p>Overview content will go here. You can manage DNS records and nameservers using the sidebar navigation.</p>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    children
+                )}
             </main>
         </div>
     </div>
