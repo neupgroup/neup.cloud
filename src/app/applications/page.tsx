@@ -50,42 +50,42 @@ export default function AppsPage() {
   const handleApplicationDeleted = (id: string) => {
     setApplications(prev => prev.filter(app => app.id !== id));
   };
-  
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold font-headline tracking-tight">Applications</h1>
-            <p className="text-muted-foreground">
-              Deploy and manage your applications.
-            </p>
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold font-headline tracking-tight">Applications</h1>
+          <p className="text-muted-foreground">
+            Deploy and manage your applications.
+          </p>
         </div>
-      
+      </div>
+
       <div className="grid grid-cols-1 gap-6">
-         <Link href="/applications/create">
-            <Card 
-                className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed hover:border-primary hover:bg-muted/50 cursor-pointer transition-colors"
-            >
-                <PlusCircle className="h-10 w-10 text-muted-foreground mb-2"/>
-                <h3 className="text-lg font-semibold">Deploy New Application</h3>
-                <p className="text-muted-foreground text-sm">Deploy a new application from a repository.</p>
-            </Card>
+        <Link href="/applications/deploy">
+          <Card
+            className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed hover:border-primary hover:bg-muted/50 cursor-pointer transition-colors"
+          >
+            <PlusCircle className="h-10 w-10 text-muted-foreground mb-2" />
+            <h3 className="text-lg font-semibold">Deploy New Application</h3>
+            <p className="text-muted-foreground text-sm">Deploy a new application from a repository.</p>
+          </Card>
         </Link>
         {isLoading ? (
-            <>
-                <ApplicationCardSkeleton />
-                <ApplicationCardSkeleton />
-            </>
+          <>
+            <ApplicationCardSkeleton />
+            <ApplicationCardSkeleton />
+          </>
         ) : error ? (
-            <Card className="text-center p-6 text-destructive">Error loading applications: {error.message}</Card>
+          <Card className="text-center p-6 text-destructive">Error loading applications: {error.message}</Card>
         ) : (
-            applications.map((app) => (
-                <ApplicationCard key={app.id} application={app} onApplicationDeleted={handleApplicationDeleted} />
-            ))
+          applications.map((app) => (
+            <ApplicationCard key={app.id} application={app} onApplicationDeleted={handleApplicationDeleted} />
+          ))
         )}
         {!isLoading && !error && applications.length === 0 && (
-             <Card className="text-center p-8 text-muted-foreground">You haven't deployed any applications yet.</Card>
+          <Card className="text-center p-8 text-muted-foreground">You haven't deployed any applications yet.</Card>
         )}
       </div>
     </div>

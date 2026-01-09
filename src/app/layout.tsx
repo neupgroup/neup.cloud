@@ -86,7 +86,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
 
   const accountLinks = [
     { href: "/servers", label: "Servers", icon: Server },
-    { href: "/settings/server", label: "Settings", icon: Settings },
+    { href: "/settings", label: "Settings", icon: Settings },
     { href: "/billing", label: "Billing", icon: CreditCard },
     { href: "/linked-accounts", label: "Linked Accounts", icon: Link2 },
   ]
@@ -101,11 +101,12 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
     { href: "/webservices", label: "Web Services", icon: Globe },
     { href: "/commands", label: "Commands", icon: Terminal },
     { href: "/history", label: "History", icon: History },
-    { href: "/errors", label: "Errors", icon: ShieldAlert },
     { href: "/files", label: "File Manager", icon: FolderKanban },
   ]
+
   const rootLinks = [
     { href: "/root/servers", label: "Manage Servers", icon: Settings },
+    { href: "/errors", label: "Errors", icon: ShieldAlert },
   ]
   return (
     <nav className="flex flex-col gap-4">
@@ -248,8 +249,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="description" content="The future of cloud infrastructure." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>

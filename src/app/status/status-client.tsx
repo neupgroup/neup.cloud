@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { HeartPulse, Server, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { startStatusTracking, stopStatusTracking, getStatus, type StatusData } from './actions';
 import { useToast } from '@/hooks/use-toast';
+import { PageTitleWithComponent } from '@/components/page-header';
 import {
     AreaChart,
     Area,
@@ -145,47 +146,38 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
 
     return (
         <div className="grid gap-6">
-            <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold font-headline tracking-tight flex items-center gap-2">
-                        <HeartPulse className="w-8 h-8" />
-                        Server Status
-                    </h1>
-                    {serverName ? (
-                        <p className="text-muted-foreground">
-                            Showing status for server: <span className="font-semibold text-foreground">{serverName}</span>
-                        </p>
-                    ) : (
-                        <p className="text-muted-foreground">
-                            No server selected. Please select a server to view its status.
-                        </p>
-                    )}
-                </div>
-                {serverId && (
-                    <div className="flex items-center gap-2 bg-card p-1 rounded-md border shadow-sm">
-                        <Button variant="ghost" size="icon" onClick={handlePreviousTime}>
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <div className="px-2 text-sm font-medium min-w-[200px] text-center">
-                            {format(startTime, "MMM d, h:mm a")} - {format(new Date(endTime), "MMM d, h:mm a")}
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={handleNextTime} disabled={isCurrentTime}>
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                        <div className="h-4 w-px bg-border mx-1" />
-                        <Select value={timeFrame} onValueChange={(v: any) => setTimeFrame(v)}>
-                            <SelectTrigger className="w-[140px] border-0 focus:ring-0 shadow-none bg-transparent">
-                                <SelectValue placeholder="Time Frame" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {Object.entries(TIME_FRAMES).map(([key, { label }]) => (
-                                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+            {/* Page Title with Controls */}
+            {/* Page Title */}
+            <PageTitleWithComponent
+                title="Server Status"
+                description={serverName ? `Showing status for server: ${serverName}` : "No server selected. Please select a server to view its status."}
+                actionComponent={undefined}
+            />
+            {/* Date/Time Controls */}
+            {serverId && (
+                <div className="flex items-center gap-2 bg-card p-1 rounded-md border shadow-sm w-fit">
+                    <Button variant="ghost" size="icon" onClick={handlePreviousTime}>
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="px-2 text-sm font-medium min-w-[200px] text-center">
+                        {format(startTime, "MMM d, h:mm a")} - {format(new Date(endTime), "MMM d, h:mm a")}
                     </div>
-                )}
-            </div>
+                    <Button variant="ghost" size="icon" onClick={handleNextTime} disabled={isCurrentTime}>
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <div className="h-4 w-px bg-border mx-1" />
+                    <Select value={timeFrame} onValueChange={(v: any) => setTimeFrame(v)}>
+                        <SelectTrigger className="w-[140px] border-0 focus:ring-0 shadow-none bg-transparent">
+                            <SelectValue placeholder="Time Frame" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {Object.entries(TIME_FRAMES).map(([key, { label }]) => (
+                                <SelectItem key={key} value={key}>{label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
             {!serverId ? (
                 <Card className="text-center p-8">
                     <Server className="mx-auto h-12 w-12 text-muted-foreground" />

@@ -153,7 +153,7 @@ export function HistoryClient({ initialLogs, serverId, serverName }: { initialLo
   );
 
   return (
-    <div className="space-y-6 font-mono">
+    <div className="space-y-6">
       {/* Page Title with Reload Action */}
       <PageTitleWithComponent
         title="Command History"

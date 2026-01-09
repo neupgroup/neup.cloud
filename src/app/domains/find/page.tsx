@@ -7,65 +7,124 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { Search, CheckCircle, XCircle, ShoppingCart, Loader2, ArrowLeft } from 'lucide-react';
+import { Search, CheckCircle, XCircle, ShoppingCart, Loader2, ArrowLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { checkDomain, type DomainStatus } from '../actions';
 import Link from 'next/link';
 import { PageTitleBack } from '@/components/page-header';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
-function DomainResultCard({ domain }: { domain: DomainStatus }) {
+function DomainListResult({ results, isLoading, query }: { results: DomainStatus[], isLoading: boolean, query: string }) {
     const { toast } = useToast();
 
-    const handlePurchase = () => {
+    const handlePurchase = (e: React.MouseEvent, domain: DomainStatus) => {
+        e.stopPropagation();
         toast({
             title: "Feature not available",
             description: `Purchasing for ${domain.name} is not implemented in this demo.`,
         });
     };
 
+    if (isLoading) {
+        return (
+            <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+                {[...Array(5)].map((_, i) => (
+                    <div key={i} className={cn(
+                        "p-4 min-w-0 w-full",
+                        i !== 4 && "border-b border-border"
+                    )}>
+                        <div className="space-y-3">
+                            <Skeleton className="h-6 w-1/3" />
+                            <Skeleton className="h-4 w-1/2" />
+                        </div>
+                    </div>
+                ))}
+            </Card>
+        )
+    }
+
+    if (results.length === 0 && query && !isLoading) {
+        return (
+            <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+                <div className="text-center p-12 text-muted-foreground">
+                    <p>No results found for &quot;{query}&quot;</p>
+                </div>
+            </Card>
+        )
+    }
+
+    if (results.length === 0) return null;
+
     return (
-        <Card className="flex flex-col sm:flex-row justify-between items-center p-4">
-            <div className="flex-1 mb-4 sm:mb-0">
-                <p className="text-lg font-bold font-headline">{domain.name}</p>
-                {domain.isAvailable ? (
-                    <div className="flex items-center gap-2 text-green-600">
-                        <CheckCircle className="h-4 w-4" />
-                        <span className="text-sm font-medium">Available</span>
+        <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+            {results.map((domain, index) => (
+                <div
+                    key={domain.name}
+                    className={cn(
+                        "p-4 min-w-0 w-full transition-colors hover:bg-muted/50 group flex items-start gap-4 cursor-pointer",
+                        index !== results.length - 1 && "border-b border-border"
+                    )}
+                >
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between mb-0">
+                            <div>
+                                <h3 className="font-semibold leading-none tracking-tight truncate pr-4 text-foreground group-hover:underline decoration-muted-foreground/30 underline-offset-4 text-lg">
+                                    {domain.name}
+                                </h3>
+                                <div className="flex items-center gap-3 mt-2">
+                                    {domain.isAvailable ? (
+                                        <>
+                                            <Badge variant="default" className="bg-green-500/10 text-green-700 border-green-200 hover:bg-green-500/20 px-2 py-0.5 text-xs font-medium border shadow-none rounded-md">Available</Badge>
+                                            <span className="text-sm text-foreground font-medium flex items-center">
+                                                ${domain.price.toFixed(2)}
+                                                <span className="text-xs text-muted-foreground ml-1 font-normal">/ year</span>
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <Badge variant="destructive" className="px-2 py-0.5 text-xs font-medium shadow-none rounded-md">Taken</Badge>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {domain.isAvailable ? (
+                                    <Button size="sm" onClick={(e) => handlePurchase(e, domain)} className="ml-2 h-8">
+                                        <ShoppingCart className="mr-2 h-3 w-3" />
+                                        Add to Cart
+                                    </Button>
+                                ) : (
+                                    <Button size="sm" variant="outline" className="ml-2 h-8" asChild>
+                                        <a href={`https://www.whois.com/whois/${domain.name}`} target="_blank" rel="noopener noreferrer">
+                                            WHOIS
+                                            <ExternalLink className="ml-2 h-3 w-3" />
+                                        </a>
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
                     </div>
-                ) : (
-                    <div className="flex items-center gap-2 text-destructive">
-                        <XCircle className="h-4 w-4" />
-                        <span className="text-sm font-medium">Taken</span>
-                    </div>
-                )}
-            </div>
-            <div className="flex items-center gap-4">
-                <p className="text-xl font-semibold">${domain.price.toFixed(2)}<span className="text-sm text-muted-foreground">/yr</span></p>
-                <Button onClick={handlePurchase} disabled={!domain.isAvailable}>
-                    <ShoppingCart className="mr-2 h-4 w-4" />
-                    Purchase
-                </Button>
-            </div>
+                </div>
+            ))}
         </Card>
     );
 }
 
 function LoadingSkeleton() {
     return (
-        <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-                <Card key={i} className="flex flex-col sm:flex-row justify-between items-center p-4">
-                    <div className="flex-1 w-full mb-4 sm:mb-0">
-                        <Skeleton className="h-6 w-40 mb-2" />
-                        <Skeleton className="h-4 w-24" />
+        <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+            {[...Array(5)].map((_, i) => (
+                <div key={i} className={cn(
+                    "p-4 min-w-0 w-full",
+                    i !== 4 && "border-b border-border"
+                )}>
+                    <div className="space-y-3">
+                        <Skeleton className="h-6 w-1/3" />
+                        <Skeleton className="h-4 w-1/2" />
                     </div>
-                    <div className="flex w-full sm:w-auto items-center gap-4">
-                        <Skeleton className="h-8 w-24" />
-                        <Skeleton className="h-10 w-32" />
-                    </div>
-                </Card>
+                </div>
             ))}
-        </div>
-    );
+        </Card>
+    )
 }
 
 function FindDomainContent() {
@@ -106,17 +165,17 @@ function FindDomainContent() {
                 backHref="/domains"
             />
 
-            <div className="max-w-3xl">
+            <div className="max-w-full">
                 <form onSubmit={handleSearch} className="relative flex items-center">
-                    <Search className="absolute left-4 h-5 w-5 text-muted-foreground" />
+                    <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
                     <Input
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="example.com"
-                        className="pl-12 pr-32 h-14 text-lg rounded-full shadow-sm bg-background border-muted"
+                        className="pl-9 pr-24 h-10 w-full"
                     />
-                    <div className="absolute right-2">
-                        <Button type="submit" disabled={isSearching} size="sm" className="rounded-full h-10 px-6">
+                    <div className="absolute right-1">
+                        <Button type="submit" disabled={isSearching} size="sm" className="h-8 px-3">
                             {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
                         </Button>
                     </div>
@@ -124,22 +183,11 @@ function FindDomainContent() {
             </div>
 
             <div className="space-y-4">
-                {isSearching ? (
-                    <LoadingSkeleton />
-                ) : results.length > 0 ? (
-                    results.map((domain) => (
-                        <DomainResultCard key={domain.name} domain={domain} />
-                    ))
-                ) : query && !isSearching ? (
-                    <div className="text-center text-muted-foreground py-8">
-                        No results found for "{query}".
-                    </div>
-                ) : null}
+                <DomainListResult results={results} isLoading={isSearching} query={query} />
+
                 {!query && (
-                    <div className="pt-4">
-                        <p className="text-sm text-muted-foreground">
-                            Already feature a domain? <Link href="/domains/add" className="underline hover:text-primary">Add an existing domain</Link>.
-                        </p>
+                    <div className="text-center text-muted-foreground py-8">
+                        <p>Enter a domain name above to search.</p>
                     </div>
                 )}
             </div>
