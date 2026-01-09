@@ -46,6 +46,19 @@ export default async function HistoryPage() {
     }
   }
 
+  // If we have a server, we render the HistoryClient which now handles the PageTitle
+  // to support the client-side reload button integration.
+  if (serverId && !error) {
+    return (
+      <HistoryClient
+        initialLogs={logs}
+        serverId={serverId}
+        serverName={serverName || 'Unknown Server'}
+      />
+    )
+  }
+
+  // Fallback views (No Server or Error) still use the server-side PageTitle
   return (
     <div className="space-y-6">
       <PageTitle
@@ -64,12 +77,10 @@ export default async function HistoryPage() {
             <Link href="/servers">Go to Servers</Link>
           </Button>
         </Card>
-      ) : error ? (
+      ) : (
         <Card className="p-8 text-center text-destructive">
           <p>Error loading command history: {error}</p>
         </Card>
-      ) : (
-        <HistoryClient initialLogs={logs} serverId={serverId} />
       )}
     </div>
   );

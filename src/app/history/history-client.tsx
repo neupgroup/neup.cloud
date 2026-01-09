@@ -14,11 +14,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RefreshCw, CheckCircle2, XCircle, Clock, ChevronRight } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow, differenceInHours, differenceInDays, getYear, isSameYear } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { getServerLogs } from '../servers/[id]/actions';
 import { getSavedCommands } from '../commands/actions';
 import { SavedCommand } from '../commands/types';
+import { PageTitleWithComponent } from '@/components/page-header';
+import { cn } from '@/lib/utils'; // Included this
 
 import type { ServerLog } from './page';
 
@@ -27,30 +29,30 @@ const LOGS_PER_PAGE = 10;
 const LogStatusBadge = ({ status }: { status: ServerLog['status'] }) => {
   if (status === 'Success') {
     return (
-      <div className="flex items-center gap-1.5 text-green-600 bg-green-500/10 px-2.5 py-1 rounded-full text-xs font-semibold w-fit border border-green-500/20">
-        <CheckCircle2 className="w-3.5 h-3.5" />
-        Completed
+      <div className="flex items-center gap-1.5 text-white bg-green-600 px-2 py-0.5 rounded-full text-[10px] font-semibold w-fit border border-green-700 shadow-sm">
+        <CheckCircle2 className="w-3 h-3" />
+        Success
       </div>
     )
   }
   if (status === 'Error') {
     return (
-      <div className="flex items-center gap-1.5 text-red-600 bg-red-500/10 px-2.5 py-1 rounded-full text-xs font-semibold w-fit border border-red-500/20">
-        <XCircle className="w-3.5 h-3.5" />
+      <div className="flex items-center gap-1.5 text-white bg-red-600 px-2 py-0.5 rounded-full text-[10px] font-semibold w-fit border border-red-700 shadow-sm">
+        <XCircle className="w-3 h-3" />
         Failed
       </div>
     )
   }
   // Pending or Running
   return (
-    <div className="flex items-center gap-1.5 text-blue-600 bg-blue-500/10 px-2.5 py-1 rounded-full text-xs font-semibold w-fit border border-blue-500/20">
-      <Clock className="w-3.5 h-3.5" />
-      Ongoing
+    <div className="flex items-center gap-1.5 text-white bg-blue-600 px-2 py-0.5 rounded-full text-[10px] font-semibold w-fit border border-blue-700 shadow-sm">
+      <Clock className="w-3 h-3" />
+      Running
     </div>
   )
 };
 
-export function HistoryClient({ initialLogs, serverId }: { initialLogs: ServerLog[]; serverId: string }) {
+export function HistoryClient({ initialLogs, serverId, serverName }: { initialLogs: ServerLog[]; serverId: string; serverName?: string }) {
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
@@ -117,6 +119,33 @@ export function HistoryClient({ initialLogs, serverId }: { initialLogs: ServerLo
     return lines[0]; // Short single line, show it.
   }
 
+  const formatLogDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffHours = differenceInHours(now, date);
+    const diffDays = differenceInDays(now, date);
+    const currentYear = new Date().getFullYear();
+
+    // 25 minutes ago by [UserId] upto 1 hours
+    // 3 hours ago by [UserId] upto 24 hours
+    if (diffHours < 24) {
+      return `${formatDistanceToNow(date, { addSuffix: true })} by User`;
+    }
+
+    // 2 days ago by [UserId] upto 7 days
+    if (diffDays < 7) {
+      return `${diffDays} days ago by User`;
+    }
+
+    if (date.getFullYear() === currentYear) {
+      // Same year
+      return `on ${format(date, 'MMMM d')} by User`;
+    } else {
+      // Different year
+      return `on ${format(date, 'yyyy MMMM')} by User`;
+    }
+  }
+
   const totalLogPages = Math.ceil(logs.length / LOGS_PER_PAGE);
   const displayedLogs = logs.slice(
     (currentPage - 1) * LOGS_PER_PAGE,
@@ -124,14 +153,25 @@ export function HistoryClient({ initialLogs, serverId }: { initialLogs: ServerLo
   );
 
   return (
-    <div className="space-y-6">
-      {/* Header Actions */}
-      <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={fetchLogs} disabled={isLoading} className="h-8">
-          <RefreshCw className={`mr-2 h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          {isLoading ? 'Reloading...' : 'Reload Logs'}
-        </Button>
-      </div>
+    <div className="space-y-6 font-mono">
+      {/* Page Title with Reload Action */}
+      <PageTitleWithComponent
+        title="Command History"
+        description={serverName ? `Showing logs for server: ${serverName}` : "Running command history"}
+        actionComponent={
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={fetchLogs}
+            disabled={isLoading}
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
+            title="Reload Logs"
+          >
+            <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+        }
+      />
+
 
       {/* Content */}
       {isLoading && logs.length === 0 ? (
@@ -148,28 +188,29 @@ export function HistoryClient({ initialLogs, serverId }: { initialLogs: ServerLo
         </div>
       ) : displayedLogs.length > 0 ? (
         <div className="grid gap-4">
-          {displayedLogs.map((log) => (
-            <Card key={log.id} className="overflow-hidden bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-200 border-border/50 group">
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value={log.id} className="border-0">
-                  <AccordionTrigger className="px-6 py-5 hover:no-underline w-full [&[data-state=open]>div>div>svg]:rotate-90">
+          <Accordion type="single" collapsible className="w-full space-y-4">
+            {displayedLogs.map((log) => (
+              <AccordionItem key={log.id} value={log.id} className="border-0">
+                <Card
+                  className={cn(
+                    "overflow-hidden bg-card text-card-foreground shadow-sm transition-all duration-200 border border-border group",
+                    log.status === 'Success' && "hover:border-green-500/50 hover:bg-green-50/5 dark:hover:bg-green-950/20",
+                    log.status === 'Error' && "hover:border-red-500/50 hover:bg-red-50/5 dark:hover:bg-red-950/20",
+                    (log.status === 'pending' || log.status === 'running') && "hover:border-blue-500/50 hover:bg-blue-50/5 dark:hover:bg-blue-950/20"
+                  )}
+                >
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline w-full [&[data-state=open]>div>div>svg]:rotate-90">
                     <div className="flex items-start justify-between w-full gap-4">
-                      <div className="flex flex-col items-start gap-3 w-full">
-                        {/* Status Badge */}
-                        <LogStatusBadge status={log.status} />
-
+                      <div className="flex flex-col items-start gap-1 w-full">
                         {/* Command Name */}
-                        <div className="font-semibold text-lg text-foreground tracking-tight">
+                        <div className="font-semibold text-base text-foreground tracking-tight">
                           {getCommandDisplayName(log.command)}
                         </div>
 
-                        {/* Meta */}
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span className="font-medium text-foreground/80">User</span>
-                          <span className="text-muted-foreground/30">•</span>
-                          <span>{format(new Date(log.runAt), 'MMM d, yyyy')}</span>
-                          <span className="text-muted-foreground/30">•</span>
-                          <span>{format(new Date(log.runAt), 'h:mm a')}</span>
+                        {/* Status + Meta Combined */}
+                        <div className="flex items-center gap-2 mt-1">
+                          <LogStatusBadge status={log.status} />
+                          <span className="text-xs text-muted-foreground">{formatLogDate(log.runAt)}</span>
                         </div>
                       </div>
 
@@ -199,10 +240,10 @@ export function HistoryClient({ initialLogs, serverId }: { initialLogs: ServerLo
                       </div>
                     </div>
                   </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </Card>
-          ))}
+                </Card>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       ) : (
         <Card className="p-16 text-center text-muted-foreground flex flex-col items-center justify-center border-dashed border-2 bg-muted/5">
