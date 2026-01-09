@@ -1,7 +1,10 @@
 
 "use client";
 
-import React from "react";
+
+"use client";
+
+import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -26,30 +29,12 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
-import { Cpu, Database, Gauge, Server, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Cpu, Database, Gauge, Server, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-
-const cpuData = [
-  { time: "10:00", usage: 12 },
-  { time: "10:05", usage: 15 },
-  { time: "10:10", usage: 22 },
-  { time: "10:15", usage: 18 },
-  { time: "10:20", usage: 25 },
-  { time: "10:25", usage: 30 },
-  { time: "10:30", usage: 28 },
-];
-
-const ramData = [
-  { time: "10:00", usage: 45 },
-  { time: "10:05", usage: 50 },
-  { time: "10:10", usage: 55 },
-  { time: "10:15-", usage: 52 },
-  { time: "10:20", usage: 60 },
-  { time: "10:25", usage: 58 },
-  { time: "10:30", usage: 62 },
-];
+import { getStatus } from "@/app/status/actions";
+import Cookies from 'universal-cookie';
+import { format } from 'date-fns';
 
 const bandwidthData = [
   { name: "Jan", egress: 200, ingress: 150 },
@@ -60,7 +45,7 @@ const bandwidthData = [
   { name: "Jun", egress: 400, ingress: 300 },
 ];
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label, unit }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg border bg-background p-2 shadow-sm">
@@ -70,7 +55,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
               {payload[0].name}
             </span>
             <span className="font-bold text-muted-foreground">
-              {payload[0].value}%
+              {payload[0].value.toFixed(1)}{unit}
+            </span>
+            <span className="text-[0.65rem] text-muted-foreground mt-1">
+              {label}
             </span>
           </div>
         </div>
@@ -90,13 +78,13 @@ const BandwidthTooltip = ({ active, payload, label }: any) => {
             <span className="text-[0.70rem] uppercase text-muted-foreground">
               Egress
             </span>
-            <span className="font-bold" style={{color: payload[0].fill}}>{payload[0].value} GB</span>
+            <span className="font-bold" style={{ color: payload[0].fill }}>{payload[0].value} GB</span>
           </div>
           <div className="flex flex-col">
             <span className="text-[0.70rem] uppercase text-muted-foreground">
               Ingress
             </span>
-            <span className="font-bold" style={{color: payload[1].fill}}>{payload[1].value} GB</span>
+            <span className="font-bold" style={{ color: payload[1].fill }}>{payload[1].value} GB</span>
           </div>
         </div>
       </div>
@@ -108,30 +96,66 @@ const BandwidthTooltip = ({ active, payload, label }: any) => {
 export default function DashboardPage() {
   const router = useRouter();
 
-  const handleDomainSearch = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const domain = formData.get('domain') as string;
-    if (domain) {
-      router.push(`/domains?q=${encodeURIComponent(domain)}`);
+  const [cpuData, setCpuData] = useState<{ time: string; usage: number }[]>([]);
+  const [ramData, setRamData] = useState<{ time: string; usage: number }[]>([]);
+  const [avgCpu, setAvgCpu] = useState(0);
+  const [avgRam, setAvgRam] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [serverId, setServerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const cookies = new Cookies(null, { path: '/' });
+    const id = cookies.get('selected_server');
+    setServerId(id);
+
+    if (id) {
+      fetchStats(id);
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchStats = async (id: string) => {
+    try {
+      const { data, error } = await getStatus(id);
+      if (data) {
+        // Process CPU Data
+        if (data.cpuHistory.length > 0) {
+          const processedCpu = data.cpuHistory.map(item => ({
+            time: format(new Date(item.timestamp), "HH:mm"),
+            usage: item.usage
+          }));
+          setCpuData(processedCpu);
+
+          // Calculate Average CPU
+          const totalCpu = data.cpuHistory.reduce((acc, curr) => acc + curr.usage, 0);
+          setAvgCpu(totalCpu / data.cpuHistory.length);
+        }
+
+        // Process RAM Data
+        if (data.ramHistory.length > 0) {
+          const processedRam = data.ramHistory.map(item => ({
+            time: format(new Date(item.timestamp), "HH:mm"),
+            usage: (item.used / item.total) * 100
+          }));
+          setRamData(processedRam);
+
+          // Calculate Average RAM
+          const totalRamUsage = processedRam.reduce((acc, curr) => acc + curr.usage, 0);
+          setAvgRam(totalRamUsage / processedRam.length);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch dashboard stats", err);
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="p-6 rounded-lg border bg-card text-card-foreground shadow-sm">
-        <h2 className="text-xl font-semibold font-headline flex items-center gap-2 mb-2">
-            <Search className="h-6 w-6" />
-            Find your new domain
-        </h2>
-        <p className="text-muted-foreground mb-4">
-            Enter a domain name to check its availability.
-        </p>
-        <form onSubmit={handleDomainSearch} className="flex gap-2">
-            <Input name="domain" placeholder="example.com" className="flex-grow" />
-            <Button type="submit">Search</Button>
-        </form>
-      </div>
+
+
 
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
         <Card>
@@ -140,7 +164,7 @@ export default function DashboardPage() {
             <Server className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5 / 5</div>
+            <div className="text-2xl font-bold">1 / 1</div>
             <p className="text-xs text-muted-foreground">
               All systems operational
             </p>
@@ -152,9 +176,11 @@ export default function DashboardPage() {
             <Cpu className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">28%</div>
+            <div className="text-2xl font-bold">
+              {serverId ? `${avgCpu.toFixed(1)}%` : "N/A"}
+            </div>
             <p className="text-xs text-muted-foreground">
-              +2.1% from last hour
+              Last hour average
             </p>
           </CardContent>
         </Card>
@@ -164,9 +190,11 @@ export default function DashboardPage() {
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">62%</div>
+            <div className="text-2xl font-bold">
+              {serverId ? `${avgRam.toFixed(1)}%` : "N/A"}
+            </div>
             <p className="text-xs text-muted-foreground">
-              +5% from last hour
+              Last hour average
             </p>
           </CardContent>
         </Card>
@@ -228,7 +256,7 @@ export default function DashboardPage() {
                 <TableRow>
                   <TableCell>
                     <div className="font-medium">Deployment: api-gateway</div>
-                     <div className="hidden text-sm text-muted-foreground md:inline">
+                    <div className="hidden text-sm text-muted-foreground md:inline">
                       Git push by @john.smith
                     </div>
                   </TableCell>
@@ -252,15 +280,15 @@ export default function DashboardPage() {
                 <AreaChart data={bandwidthData} margin={{ top: 5, right: 20, left: -20, bottom: 0, }}>
                   <defs>
                     <linearGradient id="colorEgress" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                     </linearGradient>
-                     <linearGradient id="colorIngress" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0}/>
+                    <linearGradient id="colorIngress" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <Tooltip content={<BandwidthTooltip />}/>
+                  <Tooltip content={<BandwidthTooltip />} />
                   <Area type="monotone" dataKey="egress" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorEgress)" />
                   <Area type="monotone" dataKey="ingress" stroke="hsl(var(--accent))" fillOpacity={1} fill="url(#colorIngress)" />
                   <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
@@ -278,45 +306,78 @@ export default function DashboardPage() {
             <CardDescription>Real-time CPU utilization across all servers.</CardDescription>
           </CardHeader>
           <CardContent className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={cpuData}>
-                <defs>
-                  <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="usage" name="CPU Usage" strokeWidth={2} stroke="hsl(var(--primary))" fill="url(#colorCpu)" />
-                <XAxis dataKey="time" stroke="#888888" fontSize={12} tickLine={false} axisLine={false}/>
-                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`}/>
-              </AreaChart>
-            </ResponsiveContainer>
+            {loading ? (
+              <div className="flex justify-center items-center h-full">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : serverId ? (
+              cpuData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={cpuData}>
+                    <defs>
+                      <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Tooltip content={<CustomTooltip unit="%" />} />
+                    <Area type="monotone" dataKey="usage" name="CPU Usage" strokeWidth={2} stroke="hsl(var(--primary))" fill="url(#colorCpu)" />
+                    <XAxis dataKey="time" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex justify-center items-center h-full text-muted-foreground">
+                  <p>No Data Available. Start monitoring in Server Status.</p>
+                </div>
+              )
+            ) : (
+              <div className="flex justify-center items-center h-full text-muted-foreground">
+                <p>No Server Selected</p>
+              </div>
+            )}
+
           </CardContent>
         </Card>
-         <Card>
+        <Card>
           <CardHeader>
             <CardTitle>Live RAM Usage</CardTitle>
             <CardDescription>Real-time memory utilization across all servers.</CardDescription>
           </CardHeader>
           <CardContent className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={ramData}>
-                 <defs>
-                  <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="usage" name="RAM Usage" strokeWidth={2} stroke="hsl(var(--accent))" fill="url(#colorRam)" />
-                <XAxis dataKey="time" stroke="#888888" fontSize={12} tickLine={false} axisLine={false}/>
-                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`}/>
-              </AreaChart>
-            </ResponsiveContainer>
+            {loading ? (
+              <div className="flex justify-center items-center h-full">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : serverId ? (
+              ramData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={ramData}>
+                    <defs>
+                      <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Tooltip content={<CustomTooltip unit="%" />} />
+                    <Area type="monotone" dataKey="usage" name="RAM Usage" strokeWidth={2} stroke="hsl(var(--accent))" fill="url(#colorRam)" />
+                    <XAxis dataKey="time" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex justify-center items-center h-full text-muted-foreground">
+                  <p>No Data Available. Start monitoring in Server Status.</p>
+                </div>
+              )
+            ) : (
+              <div className="flex justify-center items-center h-full text-muted-foreground">
+                <p>No Server Selected</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-    </div>
+    </div >
   );
 }

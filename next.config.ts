@@ -32,19 +32,7 @@ const nextConfig: NextConfig = {
   },
   // Exclude server-only packages from webpack bundling
   serverExternalPackages: ['ssh2', 'node-ssh', 'cpu-features'],
-  webpack: (config, { isServer }) => {
-    // For client-side builds, mark these as external
-    if (!isServer) {
-      config.resolve = config.resolve || {};
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        'ssh2': false,
-        'node-ssh': false,
-        'cpu-features': false,
-      };
-    }
-    return config;
-  },
+
 };
 
 export default nextConfig;

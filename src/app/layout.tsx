@@ -23,7 +23,8 @@ import {
   Link2,
   Network,
   Settings,
-  Globe
+  Globe,
+  Plus
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -47,109 +48,127 @@ import NProgress from 'nprogress';
 import Cookies from 'universal-cookie';
 
 function NavLink({ href, children, currentPath, onClick }: { href: string; children: React.ReactNode; currentPath: string, onClick?: () => void }) {
-    const isActive = href === '/' ? currentPath === href : currentPath.startsWith(href);
-    
-    const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-        if (currentPath !== href) {
-            NProgress.start();
-        }
-        if (onClick) {
-            onClick();
-        }
-    };
+  const isActive = href === '/' ? currentPath === href : currentPath.startsWith(href);
 
-    return (
-        <Link
-            href={href}
-            onClick={handleClick}
-            className={cn(
-                'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold hover:bg-muted hover:text-primary',
-                isActive && 'bg-muted text-primary'
-            )}
-        >
-            {children}
-        </Link>
-    );
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (currentPath !== href) {
+      NProgress.start();
+    }
+    if (onClick) {
+      onClick();
+    }
+  };
+
+  return (
+    <Link
+      href={href}
+      onClick={handleClick}
+      className={cn(
+        'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold hover:bg-muted hover:text-primary',
+        isActive && 'bg-muted text-primary'
+      )}
+    >
+      {children}
+    </Link>
+  );
 }
 
 function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { currentPath: string, onLinkClick?: () => void, isServerSelected: boolean }) {
-    const navLinks = [
-        { href: "/dashboard", label: "Dashboard", icon: Home },
-        { href: "/domains", label: "Domains", icon: Globe },
-        { href: "/applications", label: "Applications", icon: AppWindow },
-        { href: "/balancers", label: "Balancers", icon: Wind },
-        { href: "/recommendations", label: "Recommendations", icon: Lightbulb },
-    ];
+  const navLinks = [
+    { href: "/dashboard", label: "Dashboard", icon: Home },
+    { href: "/recommendations", label: "Recommendations", icon: Lightbulb },
+  ];
 
-    const accountLinks = [
-        { href: "/servers", label: "Servers", icon: Server },
-        { href: "/billing", label: "Billing", icon: CreditCard },
-        { href: "/linked-accounts", label: "Linked Accounts", icon: Link2 },
-    ]
+  const domainLinks = [
+    { href: "/domains", label: "Domains", icon: Globe },
+    { href: "/domains/find", label: "Add Domain", icon: Plus },
+  ];
 
-    const serverLinks = [
-        { href: "/status", label: "Status", icon: HeartPulse },
-        { href: "/storage", label: "Storage", icon: HardDrive },
-        { href: "/processes", label: "Processes", icon: FileCode },
-        { href: "/network", label: "Network", icon: Network },
-        { href: "/commands", label: "Commands", icon: Terminal },
-        { href: "/history", label: "History", icon: History },
-        { href: "/logs", label: "Logs", icon: FileText },
-        { href: "/errors", label: "Errors", icon: ShieldAlert },
-        { href: "/files", label: "File Manager", icon: FolderKanban },
-    ]
-    const rootLinks = [
-        { href: "/root/servers", label: "Manage Servers", icon: Settings },
-    ]
-    return (
-        <nav className="flex flex-col gap-4">
-             <div className="space-y-2">
-                {navLinks.map(({ href, label, icon: Icon }) => (
-                  <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
-                    <Icon className="h-4 w-4" />
-                    <span>{label}</span>
-                  </NavLink>
-                ))}
-            </div>
+  const accountLinks = [
+    { href: "/servers", label: "Servers", icon: Server },
+    { href: "/settings/server", label: "Settings", icon: Settings },
+    { href: "/billing", label: "Billing", icon: CreditCard },
+    { href: "/linked-accounts", label: "Linked Accounts", icon: Link2 },
+  ]
 
-            {isServerSelected && (
-              <div className="space-y-2">
-                  <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
-                      Server
-                  </div>
-                  {serverLinks.map(({ href, label, icon: Icon }) => (
-                  <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
-                      <Icon className="h-4 w-4" />
-                      <span>{label}</span>
-                  </NavLink>
-                  ))}
-              </div>
-            )}
-            
-            <div className="space-y-2">
-                  <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
-                      Account
-                  </div>
-                  {accountLinks.map(({ href, label, icon: Icon }) => (
-                  <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
-                      <Icon className="h-4 w-4" />
-                      <span>{label}</span>
-                  </NavLink>
-                  ))}
-              </div>
-             <div className="space-y-2">
-                  <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
-                      Root
-                  </div>
-                  {rootLinks.map(({ href, label, icon: Icon }) => (
-                  <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
-                      <Icon className="h-4 w-4" />
-                      <span>{label}</span>
-                  </NavLink>
-                  ))}
-              </div>
-        </nav>
-    );
+  const serverLinks = [
+    { href: "/status", label: "Status", icon: HeartPulse },
+    { href: "/applications", label: "Applications", icon: AppWindow },
+    { href: "/balancers", label: "Balancers", icon: Wind },
+    { href: "/storage", label: "Storage", icon: HardDrive },
+    { href: "/processes", label: "Processes", icon: FileCode },
+    { href: "/network", label: "Network", icon: Network },
+    { href: "/webservices", label: "Web Services", icon: Globe },
+    { href: "/commands", label: "Commands", icon: Terminal },
+    { href: "/history", label: "History", icon: History },
+    { href: "/logs", label: "Logs", icon: FileText },
+    { href: "/errors", label: "Errors", icon: ShieldAlert },
+    { href: "/files", label: "File Manager", icon: FolderKanban },
+  ]
+  const rootLinks = [
+    { href: "/root/servers", label: "Manage Servers", icon: Settings },
+  ]
+  return (
+    <nav className="flex flex-col gap-4">
+      <div className="space-y-2">
+        {navLinks.map(({ href, label, icon: Icon }) => (
+          <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+            <Icon className="h-4 w-4" />
+            <span>{label}</span>
+          </NavLink>
+        ))}
+      </div>
+
+      <div className="space-y-2">
+        <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
+          Domains
+        </div>
+        {domainLinks.map(({ href, label, icon: Icon }) => (
+          <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+            <Icon className="h-4 w-4" />
+            <span>{label}</span>
+          </NavLink>
+        ))}
+      </div>
+
+      {isServerSelected && (
+        <div className="space-y-2">
+          <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
+            Server
+          </div>
+          {serverLinks.map(({ href, label, icon: Icon }) => (
+            <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
+          Account
+        </div>
+        {accountLinks.map(({ href, label, icon: Icon }) => (
+          <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+            <Icon className="h-4 w-4" />
+            <span>{label}</span>
+          </NavLink>
+        ))}
+      </div>
+      <div className="space-y-2">
+        <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
+          Root
+        </div>
+        {rootLinks.map(({ href, label, icon: Icon }) => (
+          <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+            <Icon className="h-4 w-4" />
+            <span>{label}</span>
+          </NavLink>
+        ))}
+      </div>
+    </nav>
+  );
 }
 
 function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: boolean, toggleMobileMenu: () => void }) {
@@ -157,35 +176,35 @@ function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: bool
     <header className="sticky top-0 z-40 flex h-16 items-center border-b bg-background px-4 shadow-sm sm:px-6 md:px-8">
       <div className="mx-auto flex w-full max-w-[1440px] items-center">
         <div className="flex items-center gap-4 md:hidden">
-            <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
-                {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
+          <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </Button>
         </div>
         <div className="hidden md:flex">
-             <Logo />
+          <Logo />
         </div>
         <div className="flex w-full items-center md:hidden">
-            <div className="mx-auto">
-                <Logo />
-            </div>
+          <div className="mx-auto">
+            <Logo />
+          </div>
         </div>
         <div className="ml-auto">
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="icon" className="rounded-full">
-                    <CircleUser className="h-5 w-5" />
-                    <span className="sr-only">Toggle user menu</span>
-                </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Settings</DropdownMenuItem>
-                <DropdownMenuItem>Support</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Logout</DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" size="icon" className="rounded-full">
+                <CircleUser className="h-5 w-5" />
+                <span className="sr-only">Toggle user menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem>Support</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>Logout</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
@@ -200,11 +219,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     const cookies = new Cookies(null, { path: '/' });
     const checkCookie = () => {
-        const serverCookie = cookies.get('selected_server');
-        setIsServerSelected(!!serverCookie);
+      const serverCookie = cookies.get('selected_server');
+      setIsServerSelected(!!serverCookie);
     };
     checkCookie();
-    
+
     // It's a bit of a hack, but since we can't easily listen to cookie changes
     // across server actions, we'll just poll on navigation changes.
     // A more robust solution might involve a global state management library.
@@ -237,16 +256,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <FirebaseClientProvider>
           <div className="min-h-screen w-full bg-background text-foreground">
             <Header isMobileMenuOpen={isMobileMenuOpen} toggleMobileMenu={toggleMobileMenu} />
-            
+
             {/* Mobile Menu */}
             <div className={cn(
               "fixed top-16 left-0 right-0 bottom-0 z-30 bg-background/95 backdrop-blur-sm transition-all duration-300 ease-in-out md:hidden",
               isMobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"
             )}>
               <ScrollArea className="h-full">
-                  <div className="p-4 sm:p-6">
-                       <MainNavContent currentPath={pathname} onLinkClick={closeMobileMenu} isServerSelected={isServerSelected} />
-                  </div>
+                <div className="p-4 sm:p-6">
+                  <MainNavContent currentPath={pathname} onLinkClick={closeMobileMenu} isServerSelected={isServerSelected} />
+                </div>
               </ScrollArea>
             </div>
 
@@ -269,11 +288,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Toaster />
         </FirebaseClientProvider>
         <Suspense fallback={null}>
-            <ProgressBar />
+          <ProgressBar />
         </Suspense>
       </body>
     </html>
   );
 }
 
-    

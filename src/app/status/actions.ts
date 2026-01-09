@@ -31,7 +31,7 @@ while true; do
     ram_info=$(free -m | grep Mem | awk '{print $2, $3, $4}')
     echo "$(date +%s) $ram_info" >> ~/${RAM_LOG}
     
-    sleep 120
+    sleep 60
 done
 `;
 
@@ -45,7 +45,7 @@ export async function startStatusTracking(serverId: string) {
     }
 
     const command = `nohup bash -c '${SCRIPT_CONTENT.replace(/'/g, "'\\''")}' > /dev/null 2>&1 &`;
-    
+
     try {
         await runCommandOnServer(server.publicIp, server.username, server.privateKey, command);
         revalidatePath('/status');
@@ -88,24 +88,77 @@ export type StatusData = {
     ramHistory: { timestamp: number; used: number; total: number }[];
 };
 
-export async function getStatus(serverId: string): Promise<{ data?: StatusData; error?: string }> {
+export async function getStatus(
+    serverId: string,
+    endTime?: number,
+    durationMinutes: number = 60
+): Promise<{ data?: StatusData; error?: string }> {
     const server = await getServerForRunner(serverId);
     if (!server) return { error: 'Server not found.' };
     if (!server.username || !server.privateKey) return { error: 'Server SSH configuration is missing.' };
 
+    const endTs = endTime || Date.now();
+    const startTs = endTs - (durationMinutes * 60 * 1000);
+
+    // Convert to seconds for comparison with log timestamps
+    const startSec = Math.floor(startTs / 1000);
+    const endSec = Math.floor(endTs / 1000);
+
     const checkPidCmd = `if [ -f ~/${PID_FILE} ]; then cat ~/${PID_FILE}; else echo "not_found"; fi`;
-    const readCpuCmd = `tail -n 30 ~/${CPU_LOG} 2>/dev/null`; // Get last 30 entries (1 hour)
-    const readRamCmd = `tail -n 30 ~/${RAM_LOG} 2>/dev/null`;
+
+
+    let intervalSec = 0;
+    if (durationMinutes <= 60) {
+        intervalSec = 0;
+    } else if (durationMinutes <= 360) { // 6h -> 15m
+        intervalSec = 15 * 60;
+    } else if (durationMinutes <= 720) { // 12h -> 30m
+        intervalSec = 30 * 60;
+    } else if (durationMinutes <= 1440) { // 24h -> 30m (approx 48 points)
+        intervalSec = 30 * 60;
+    } else if (durationMinutes <= 10080) { // 7d -> 4h (42 points)
+        intervalSec = 240 * 60;
+    } else { // 30d -> 12h (60 points)
+        intervalSec = 720 * 60;
+    }
+
+    // Use awk to filter and aggregate by timestamp range
+    const readCpuCmd = intervalSec === 0
+        ? `awk -v start=${startSec} -v end=${endSec} '$1 >= start && $1 <= end' ~/${CPU_LOG} 2>/dev/null`
+        : `awk -v start=${startSec} -v end=${endSec} -v interval=${intervalSec} '
+            $1 >= start && $1 <= end {
+                bin = int($1 / interval) * interval;
+                sum[bin] += $2;
+                count[bin]++;
+            }
+            END {
+                for (b in sum) print b, sum[b]/count[b]
+            }
+           ' ~/${CPU_LOG} 2>/dev/null | sort -n`;
+
+    const readRamCmd = intervalSec === 0
+        ? `awk -v start=${startSec} -v end=${endSec} '$1 >= start && $1 <= end' ~/${RAM_LOG} 2>/dev/null`
+        : `awk -v start=${startSec} -v end=${endSec} -v interval=${intervalSec} '
+            $1 >= start && $1 <= end {
+                bin = int($1 / interval) * interval;
+                sumTotal[bin] += $2;
+                sumUsed[bin] += $3;
+                count[bin]++;
+            }
+            END {
+                for (b in sumUsed) print b, int(sumTotal[b]/count[b]), int(sumUsed[b]/count[b])
+            }
+           ' ~/${RAM_LOG} 2>/dev/null | sort -n`;
 
     try {
         const [pidResult, cpuResult, ramResult] = await Promise.all([
-             runCommandOnServer(server.publicIp, server.username, server.privateKey, checkPidCmd),
-             runCommandOnServer(server.publicIp, server.username, server.privateKey, readCpuCmd),
-             runCommandOnServer(server.publicIp, server.username, server.privateKey, readRamCmd),
+            runCommandOnServer(server.publicIp, server.username, server.privateKey, checkPidCmd),
+            runCommandOnServer(server.publicIp, server.username, server.privateKey, readCpuCmd),
+            runCommandOnServer(server.publicIp, server.username, server.privateKey, readRamCmd),
         ]);
-        
+
         const isTracking = pidResult.stdout.trim() !== 'not_found';
-        
+
         const cpuHistory = cpuResult.stdout.trim().split('\n').filter(Boolean).map(line => {
             const [timestamp, usage] = line.split(' ');
             return { timestamp: parseInt(timestamp) * 1000, usage: parseFloat(usage) };

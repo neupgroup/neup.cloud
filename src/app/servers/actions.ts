@@ -31,7 +31,13 @@ export async function getServer(id: string) {
     return null;
   }
   const { privateKey, privateIp, ...serverData } = serverDoc.data();
-  return { id: serverDoc.id, ...serverData };
+  return { id: serverDoc.id, ...serverData } as {
+    id: string;
+    name: string;
+    proxyHandler?: string;
+    loadBalancer?: string;
+    [key: string]: any;
+  };
 }
 
 export async function getServerForRunner(id: string) {
@@ -50,6 +56,8 @@ export async function getServerForRunner(id: string) {
     publicIp: string;
     privateIp?: string;
     privateKey?: string;
+    proxyHandler?: string;
+    loadBalancer?: string;
   };
 }
 
@@ -108,6 +116,8 @@ export async function updateServer(id: string, serverData: Partial<{
   publicIp: string;
   privateIp: string;
   privateKey: string;
+  proxyHandler: string;
+  loadBalancer: string;
 }>) {
   const updateData: { [key: string]: any } = { ...serverData };
 
