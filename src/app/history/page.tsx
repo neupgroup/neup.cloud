@@ -11,10 +11,11 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { History, Server } from 'lucide-react';
+import { Server } from 'lucide-react';
 import { getServerLogs } from '../servers/[id]/actions';
 import { HistoryClient } from './history-client';
 import type { Metadata } from 'next';
+import { PageTitle } from '@/components/page-header';
 
 export const metadata: Metadata = {
   title: 'History, Neup.Cloud',
@@ -46,24 +47,11 @@ export default async function HistoryPage() {
   }
 
   return (
-    <div className="grid gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold font-headline tracking-tight flex items-center gap-2">
-            <History className="w-8 h-8" />
-            Command History
-          </h1>
-          {serverName ? (
-            <p className="text-muted-foreground">
-              Showing logs for server: <span className="font-semibold text-foreground">{serverName}</span>
-            </p>
-          ) : (
-            <p className="text-muted-foreground">
-              No server selected. Please select a server to view its history.
-            </p>
-          )}
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageTitle
+        title="Command History"
+        description={serverName ? `Showing logs for server: ${serverName}` : "Please select a server to view history"}
+      />
 
       {!serverId ? (
         <Card className="text-center p-8">

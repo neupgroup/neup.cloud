@@ -6,6 +6,10 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardContent,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -17,6 +21,7 @@ import {
   Code,
   Terminal,
   Search,
+  ChevronRight,
 } from 'lucide-react';
 import {
   Select,
@@ -51,7 +56,8 @@ type ServerType = {
   type: string;
 };
 
-const COMMANDS_PER_PAGE = 50;
+const COMMANDS_PER_PAGE_FIRST = 8;
+const COMMANDS_PER_PAGE_SUBSEQUENT = 10;
 
 function LoadingSkeleton() {
   return (
@@ -189,11 +195,26 @@ function CommandsContent() {
     cmd.command.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalPages = Math.ceil(filteredCommands.length / COMMANDS_PER_PAGE);
-  const paginatedCommands = filteredCommands.slice(
-    (currentPage - 1) * COMMANDS_PER_PAGE,
-    currentPage * COMMANDS_PER_PAGE
-  );
+  // Pagination Logic
+  // Page 1: 8 dynamic items + 2 static items = 10 items total
+  // Page 2+: 10 dynamic items
+  const totalItems = filteredCommands.length;
+  // If we have more than 8 items, subsequent pages have 10 each.
+  // Total pages = 1 + ceil((total - 8) / 10)
+  const totalPages = totalItems <= COMMANDS_PER_PAGE_FIRST
+    ? 1
+    : 1 + Math.ceil((totalItems - COMMANDS_PER_PAGE_FIRST) / COMMANDS_PER_PAGE_SUBSEQUENT);
+
+  const getPaginatedCommands = () => {
+    if (currentPage === 1) {
+      return filteredCommands.slice(0, COMMANDS_PER_PAGE_FIRST);
+    }
+    const start = COMMANDS_PER_PAGE_FIRST + (currentPage - 2) * COMMANDS_PER_PAGE_SUBSEQUENT;
+    const end = start + COMMANDS_PER_PAGE_SUBSEQUENT;
+    return filteredCommands.slice(start, end);
+  };
+
+  const paginatedCommands = getPaginatedCommands();
 
   return (
     <div className="grid gap-6">
@@ -203,20 +224,6 @@ function CommandsContent() {
           <p className="text-muted-foreground">
             Create, manage, and run your reusable server commands.
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/commands/custom">
-              <Terminal className="mr-2 h-4 w-4" />
-              Run Custom Command
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href="/commands/create">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create Command
-            </Link>
-          </Button>
         </div>
       </div>
 
@@ -235,89 +242,142 @@ function CommandsContent() {
         <LoadingSkeleton />
       ) : (
         <>
-          {savedCommands.length === 0 ? (
-            <Card className="text-center p-8">
-              <Code className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Commands Yet</h3>
-              <p className="text-muted-foreground mb-4">
-                You haven't saved any commands yet. Create your first command to get started.
-              </p>
-              <Button asChild>
-                <Link href="/commands/create">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Create Your First Command
-                </Link>
-              </Button>
-            </Card>
-          ) : filteredCommands.length === 0 ? (
-            <div className="text-center p-12 border rounded-lg border-dashed text-muted-foreground">
-              <p>No commands found matching &quot;{searchQuery}&quot;</p>
-            </div>
-          ) : (
+          {/* Static Actions: Only on Page 1 and no search query */}
+          {currentPage === 1 && !searchQuery && (
             <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
-              {paginatedCommands.map((sc, index) => (
-                <div
-                  key={sc.id}
-                  className={cn(
-                    "p-4 min-w-0 w-full transition-colors hover:bg-muted/50 group flex items-start gap-4 cursor-pointer",
-                    index !== paginatedCommands.length - 1 && "border-b border-border"
-                  )}
-                  onClick={() => router.push(`/commands/${sc.id}`)}
-                >
-                  {/* Content */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold leading-none tracking-tight truncate pr-4 text-foreground group-hover:underline decoration-muted-foreground/30 underline-offset-4">
-                        {sc.name}
-                      </h3>
+              {/* Create New Command */}
+              <div
+                className={cn(
+                  "p-4 min-w-0 w-full transition-colors hover:bg-muted/50 group flex items-start gap-4 cursor-pointer border-b border-border",
+                )}
+                onClick={() => router.push('/commands/create')}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between mb-0 h-8">
+                    <h3 className="font-semibold leading-none tracking-tight truncate pr-4 text-foreground group-hover:underline decoration-muted-foreground/30 underline-offset-4">
+                      Create New Command
+                    </h3>
 
-                      {/* Quick Action: Run */}
-                      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/80"
-                          onClick={(e) => openRunDialog(e, sc)}
-                          disabled={isRunning}
-                          title="Run Command"
-                        >
-                          {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                        </Button>
+                    {/* Arrow Icon */}
+                    <div className="flex items-center gap-1">
+                      <div className="h-8 w-8 flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors">
+                        <ChevronRight className="h-4 w-4" />
                       </div>
                     </div>
-
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {sc.description || <span className="italic">No description provided</span>}
-                    </p>
                   </div>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Build a reusable command for your servers
+                  </p>
                 </div>
-              ))}
+              </div>
+
+              {/* Run Custom Command */}
+              <div
+                className={cn(
+                  "p-4 min-w-0 w-full transition-colors hover:bg-muted/50 group flex items-start gap-4 cursor-pointer",
+                )}
+                onClick={() => router.push('/commands/custom')}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between mb-0 h-8">
+                    <h3 className="font-semibold leading-none tracking-tight truncate pr-4 text-foreground group-hover:underline decoration-muted-foreground/30 underline-offset-4">
+                      Run Custom Command
+                    </h3>
+
+                    {/* Arrow Icon */}
+                    <div className="flex items-center gap-1">
+                      <div className="h-8 w-8 flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors">
+                        <ChevronRight className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Execute a one-off command without saving
+                  </p>
+                </div>
+              </div>
             </Card>
           )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-2 mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </Button>
-              <div className="flex items-center px-4">
-                Page {currentPage} of {totalPages}
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </Button>
-            </div>
+          {/* Dynamic Commands List */}
+          {savedCommands.length > 0 && (
+            <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+              {filteredCommands.length === 0 && searchQuery ? (
+                <div className="text-center p-12 text-muted-foreground">
+                  <p>No commands found matching &quot;{searchQuery}&quot;</p>
+                </div>
+              ) : (
+                paginatedCommands.map((sc, index) => (
+                  <div
+                    key={sc.id}
+                    className={cn(
+                      "p-4 min-w-0 w-full transition-colors hover:bg-muted/50 group flex items-start gap-4 cursor-pointer",
+                      // Add border bottom unless it's the very last item of the list
+                      index !== paginatedCommands.length - 1 && "border-b border-border"
+                    )}
+                    onClick={() => router.push(`/commands/${sc.id}`)}
+                  >
+                    {/* Content */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between mb-0">
+                        <h3 className="font-semibold leading-none tracking-tight truncate pr-4 text-foreground group-hover:underline decoration-muted-foreground/30 underline-offset-4">
+                          {sc.name}
+                        </h3>
+
+                        {/* Quick Action: Run - Always Visible */}
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/80"
+                            onClick={(e) => openRunDialog(e, sc)}
+                            disabled={isRunning}
+                            title="Run Command"
+                          >
+                            {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {sc.description || <span className="italic">No description provided</span>}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </Card>
+          )}
+
+          {/* Empty state when no saved commands and we are on page 1 (since static actions are separate) */}
+          {savedCommands.length === 0 && !searchQuery && (
+            // No saved commands, just show nothing extra (or maybe a hint, but the static cards are there)
+            null
           )}
         </>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-2 mt-4">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <div className="flex items-center px-4">
+            Page {currentPage} of {totalPages}
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
+        </div>
       )}
 
       {/* Run Command Dialog */}

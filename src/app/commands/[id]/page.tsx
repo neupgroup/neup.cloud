@@ -6,11 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
     Card,
-    CardHeader,
-    CardTitle,
-    CardDescription,
     CardContent,
-    CardFooter
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -18,7 +14,6 @@ import {
     Loader2,
     Trash2,
     Play,
-    ArrowLeft,
 } from 'lucide-react';
 import {
     Dialog,
@@ -43,7 +38,7 @@ import { getServers } from '../../servers/actions';
 import { getSavedCommands, deleteSavedCommand, executeSavedCommand } from '../actions';
 import { SavedCommand } from '../types';
 import { useToast } from '@/hooks/use-toast';
-import { PageTitle } from '@/components/page-header';
+import { PageTitleBack } from '@/components/page-header';
 
 export default function CommandDetailPage({ params }: { params: { id: string } }) {
     const { id } = params;
@@ -67,9 +62,6 @@ export default function CommandDetailPage({ params }: { params: { id: string } }
         async function fetchData() {
             setIsLoading(true);
             try {
-                // Since we don't have getSavedCommand(id) yet, and getSavedCommands returns all,
-                // we'll filter it here. In a real app with many commands, we should add a specific fetch action.
-                // Assuming small dataset for now.
                 const [allCommandsData, serversData] = await Promise.all([
                     getSavedCommands(),
                     getServers()
@@ -81,7 +73,6 @@ export default function CommandDetailPage({ params }: { params: { id: string } }
                 }
                 setServers(serversData as { id: string, name: string, type: string }[]);
 
-                // Pre-select server if in cookie
                 const getCookie = (name: string) => {
                     const value = `; ${document.cookie}`;
                     const parts = value.split(`; ${name}=`);
@@ -163,15 +154,7 @@ export default function CommandDetailPage({ params }: { params: { id: string } }
         return (
             <div className="space-y-6">
                 <Skeleton className="h-10 w-1/3" />
-                <Card>
-                    <CardHeader>
-                        <Skeleton className="h-6 w-1/4" />
-                        <Skeleton className="h-4 w-1/2" />
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <Skeleton className="h-40 w-full" />
-                    </CardContent>
-                </Card>
+                <Skeleton className="h-40 w-full" />
             </div>
         );
     }
@@ -190,77 +173,46 @@ export default function CommandDetailPage({ params }: { params: { id: string } }
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <Button variant="ghost" className="pl-0 hover:bg-transparent text-muted-foreground hover:text-foreground mb-2" asChild>
-                        <Link href="/commands">
-                            <ArrowLeft className="mr-2 h-4 w-4" /> Go back
-                        </Link>
-                    </Button>
-                    <h1 className="text-3xl font-bold font-headline tracking-tight">{command.name}</h1>
-                    <p className="text-muted-foreground mt-1">
-                        {command.description || 'No description provided.'}
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20" onClick={handleDelete} disabled={isDeleting}>
-                        {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                        Delete Command
-                    </Button>
-                    <Button onClick={openRunDialog} disabled={isRunning}>
-                        {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                        Run Command
-                    </Button>
-                </div>
-            </div>
+            {/* 1. Page Title with Back Button */}
+            <PageTitleBack
+                title={command.name}
+                description={command.description || 'No description provided.'}
+                backHref="/commands"
+            />
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Command Script</CardTitle>
-                    <CardDescription>The actual shell script that will be executed.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="font-mono text-sm bg-muted p-4 rounded-md border whitespace-pre-wrap overflow-x-auto">
+            {/* 2. Command Block (Card) */}
+            <Card className="min-w-0 w-full overflow-hidden bg-card/60">
+                <CardContent className="p-0">
+                    <div className="font-mono text-sm p-4 whitespace-pre-wrap overflow-x-auto bg-muted/30">
                         {command.command}
                     </div>
                 </CardContent>
             </Card>
 
+            {/* Variables (Hidden unless needed, but kept for logic if we decide to show) */}
             {command.variables && command.variables.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Variables</CardTitle>
-                        <CardDescription>Dynamic variables used in this command.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {command.variables.map((v, i) => (
-                                <div key={i} className="p-4 border rounded-lg">
-                                    <div className="font-medium">{v.title}</div>
-                                    <div className="text-sm text-muted-foreground font-mono mt-1">{v.name}</div>
-                                    {v.description && <div className="text-sm text-muted-foreground mt-2">{v.description}</div>}
-                                </div>
-                            ))}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {command.variables.map((v, i) => (
+                        <div key={i} className="text-sm">
+                            <span className="font-mono bg-muted/50 px-1.5 py-0.5 rounded text-foreground font-medium">{v.name}</span>
+                            <span className="text-muted-foreground ml-2">- {v.title}</span>
                         </div>
-                    </CardContent>
-                </Card>
+                    ))}
+                </div>
             )}
 
-            {command.nextCommands && command.nextCommands.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Chained Commands</CardTitle>
-                        <CardDescription>Commands that run automatically after this one.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ul className="list-disc pl-5 space-y-1 text-sm">
-                            {command.nextCommands.map((ncId, i) => (
-                                <li key={i} className="text-muted-foreground">ID: {ncId}</li>
-                            ))}
-                        </ul>
-                    </CardContent>
-                </Card>
-            )}
+
+            {/* 3. Run and Delete Buttons */}
+            <div className="flex justify-start gap-4 pt-2">
+                <Button onClick={openRunDialog} disabled={isRunning} className="min-w-[140px]">
+                    {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                    Run Command
+                </Button>
+                <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={handleDelete} disabled={isDeleting}>
+                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                    Delete
+                </Button>
+            </div>
 
             {/* Run Dialog */}
             <Dialog open={isRunDialogOpen} onOpenChange={setIsRunDialogOpen}>
