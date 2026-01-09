@@ -101,7 +101,6 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
     { href: "/webservices", label: "Web Services", icon: Globe },
     { href: "/commands", label: "Commands", icon: Terminal },
     { href: "/history", label: "History", icon: History },
-    { href: "/logs", label: "Logs", icon: FileText },
     { href: "/errors", label: "Errors", icon: ShieldAlert },
     { href: "/files", label: "File Manager", icon: FolderKanban },
   ]

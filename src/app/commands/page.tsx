@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import {
   Server,
@@ -21,6 +22,7 @@ import {
   Edit,
   Play,
   Code,
+  Terminal,
 } from 'lucide-react';
 import {
   Select,
@@ -65,6 +67,8 @@ type ServerType = {
   type: string;
 };
 
+const COMMANDS_PER_PAGE = 10;
+
 export default function CommandsPage() {
   const [servers, setServers] = useState<ServerType[]>([]);
   const [savedCommands, setSavedCommands] = useState<SavedCommand[]>([]);
@@ -80,6 +84,7 @@ export default function CommandsPage() {
   const [selectedServer, setSelectedServer] = useState<string>('');
   const [commandToRun, setCommandToRun] = useState<SavedCommand | null>(null);
   const [editingCommand, setEditingCommand] = useState<SavedCommand | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [formData, setFormData] = useState<CommandFormData>({
     name: '',
@@ -90,6 +95,19 @@ export default function CommandsPage() {
   });
 
   const [runtimeVariableValues, setRuntimeVariableValues] = useState<Record<string, string>>({});
+
+  // Load selected server from cookies
+  useEffect(() => {
+    const getCookie = (name: string) => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()?.split(';').shift();
+    };
+    const serverIdCookie = getCookie('selected_server');
+    if (serverIdCookie) {
+      setSelectedServer(serverIdCookie);
+    }
+  }, []);
 
   const handleFormDataChange = (field: keyof Omit<CommandFormData, 'variables'>, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -197,9 +215,30 @@ export default function CommandsPage() {
 
   const openRunDialog = (command: SavedCommand) => {
     setCommandToRun(command);
-    setSelectedServer('');
     setRuntimeVariableValues({});
-    setIsRunDialogOpen(true);
+
+    // If command has variables or no server selected, show dialog
+    // Otherwise, run directly
+    if (command.variables && command.variables.length > 0) {
+      setIsRunDialogOpen(true);
+    } else if (!selectedServer) {
+      setIsRunDialogOpen(true);
+    } else {
+      // Run directly
+      handleRunCommandDirect(command, selectedServer, {});
+    }
+  };
+
+  const handleRunCommandDirect = async (command: SavedCommand, serverId: string, variables: Record<string, string>) => {
+    setIsRunning(true);
+    try {
+      await executeSavedCommand(serverId, command.id, variables);
+      toast({ title: 'Execution Started', description: `Running "${command.name}" on the selected server. Check history for output.` });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Execution Failed', description: e.message });
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   const handleRunCommand = async () => {
@@ -209,8 +248,8 @@ export default function CommandsPage() {
     }
     setIsRunning(true);
     try {
-      const result = await executeSavedCommand(selectedServer, commandToRun.id, runtimeVariableValues);
-      toast({ title: 'Execution Started', description: `Running "${commandToRun.name}" on the selected server. Check server logs for output.` });
+      await executeSavedCommand(selectedServer, commandToRun.id, runtimeVariableValues);
+      toast({ title: 'Execution Started', description: `Running "${commandToRun.name}" on the selected server. Check history for output.` });
       setIsRunDialogOpen(false);
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Execution Failed', description: e.message });
@@ -218,6 +257,13 @@ export default function CommandsPage() {
       setIsRunning(false);
     }
   };
+
+  // Pagination
+  const totalPages = Math.ceil(savedCommands.length / COMMANDS_PER_PAGE);
+  const paginatedCommands = savedCommands.slice(
+    (currentPage - 1) * COMMANDS_PER_PAGE,
+    currentPage * COMMANDS_PER_PAGE
+  );
 
   return (
     <div className="grid gap-6">
@@ -228,16 +274,33 @@ export default function CommandsPage() {
             Create, manage, and run your reusable server commands.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/commands/create">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create Command
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/commands/custom">
+              <Terminal className="mr-2 h-4 w-4" />
+              Run Custom Command
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/commands/create">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Command
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
-        <p className="text-center">Loading commands...</p>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex flex-col space-y-3 border rounded-lg p-6">
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-[250px]" />
+                <Skeleton className="h-4 w-[200px]" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {savedCommands.length === 0 ? (
@@ -255,54 +318,71 @@ export default function CommandsPage() {
               </Button>
             </Card>
           ) : (
-            savedCommands.map(sc => (
-              <Card key={sc.id} className="flex flex-col">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="font-headline text-xl flex items-center gap-2">
-                        <Code className="h-5 w-5 text-muted-foreground" />
-                        {sc.name}
-                      </CardTitle>
-                      <CardDescription>{sc.description || 'No description'}</CardDescription>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
+            <>
+              {paginatedCommands.map(sc => (
+                <Card key={sc.id} className="flex flex-col">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <CardTitle className="font-headline text-xl flex items-center gap-2">
+                          <Code className="h-5 w-5 text-muted-foreground" />
+                          {sc.name}
+                        </CardTitle>
+                        <CardDescription>{sc.description || 'No description'}</CardDescription>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="icon" variant="default" onClick={() => openRunDialog(sc)} disabled={isRunning}>
+                          {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => openRunDialog(sc)}>
-                          <Play className="mr-2 h-4 w-4" /> Run
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openEditForm(sc)}>
-                          <Edit className="mr-2 h-4 w-4" /> Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteCommand(sc.id)} disabled={isDeleting}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <div className="bg-muted p-3 rounded-md font-mono text-xs border whitespace-pre-wrap overflow-x-auto">
-                    {sc.command}
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button variant="outline" className="w-full" onClick={() => openRunDialog(sc)}>
-                    <Play className="mr-2 h-4 w-4" />
-                    Run Command
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="icon" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => openEditForm(sc)}>
+                              <Edit className="mr-2 h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteCommand(sc.id)} disabled={isDeleting}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
                   </Button>
-                </CardFooter>
-              </Card>
-            ))
+                  <div className="flex items-center px-4">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
-      )}
+      )
+      }
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -387,6 +467,6 @@ export default function CommandsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }

@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft, Code } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { createSavedCommand } from '../actions';
 import { CommandForm } from '../command-form';
 import { CommandFormData, VARIABLE_REGEX } from '../types';
 import Link from 'next/link';
+import { PageTitleBack } from '@/components/page-header';
 
 export default function CreateCommandPage() {
     const router = useRouter();
@@ -87,22 +88,11 @@ export default function CreateCommandPage() {
 
     return (
         <div className="grid gap-6">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" asChild>
-                    <Link href="/commands">
-                        <ArrowLeft className="h-5 w-5" />
-                    </Link>
-                </Button>
-                <div>
-                    <h1 className="text-3xl font-bold font-headline tracking-tight flex items-center gap-2">
-                        <Code className="w-8 h-8" />
-                        Create New Command
-                    </h1>
-                    <p className="text-muted-foreground">
-                        Save a new reusable command to run on your servers.
-                    </p>
-                </div>
-            </div>
+            <PageTitleBack
+                title="Create New Command"
+                description="Save a new reusable command to run on your servers."
+                backHref="/commands"
+            />
 
             <CommandForm
                 formData={formData}
