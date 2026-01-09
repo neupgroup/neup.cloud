@@ -24,7 +24,8 @@ import {
   Network,
   Settings,
   Globe,
-  Plus
+  Plus,
+  Layers
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -86,6 +87,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
 
   const accountLinks = [
     { href: "/servers", label: "Servers", icon: Server },
+    { href: "/environments", label: "Environments", icon: Layers },
     { href: "/settings", label: "Settings", icon: Settings },
     { href: "/billing", label: "Billing", icon: CreditCard },
     { href: "/linked-accounts", label: "Linked Accounts", icon: Link2 },
