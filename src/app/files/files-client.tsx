@@ -12,9 +12,29 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Loader2 } from 'lucide-react';
-import { browseDirectory, uploadFile, type FileOrFolder } from '../servers/[id]/actions';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Loader2, Copy, Trash, Move, Edit, Info, ClipboardPaste, X, FolderPlus, FilePlus, LayoutGrid, List } from 'lucide-react';
+import { browseDirectory, uploadFile, renameFile, deleteFiles, moveFiles, copyFiles, createDirectory, createEmptyFile, type FileOrFolder } from '../servers/[id]/actions';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
 import Link from 'next/link';
 import {
   Breadcrumb,
@@ -23,6 +43,8 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function formatBytes(bytes: number, decimals = 2) {
   if (bytes === 0) return '0 Bytes';
@@ -38,12 +60,35 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  
+
+  // State
   const [files, setFiles] = useState<FileOrFolder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadType, setUploadType] = useState<'file' | 'folder' | null>(null);
+
+  const [uploadQueue, setUploadQueue] = useState<{ name: string, size: number, progress: number }[]>([]);
+  const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
+  const [newItemState, setNewItemState] = useState<{ type: 'file' | 'folder', isCreating: boolean } | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Selection & Clipboard
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [clipboard, setClipboard] = useState<{ op: 'copy' | 'move', files: string[], sourcePath: string } | null>(null);
+
+  // Context Menu
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, type: 'item' | 'bg' } | null>(null);
+
+  // Dialog States
+  const [renameState, setRenameState] = useState<{ isOpen: boolean, oldName: string, newName: string } | null>(null);
+  const [deleteState, setDeleteState] = useState<{ isOpen: boolean, files: string[] } | null>(null);
+  const [detailsState, setDetailsState] = useState<FileOrFolder | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const currentPath = searchParams.get('path') || '/';
 
@@ -51,7 +96,6 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     (name: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString())
       params.set(name, value)
- 
       return params.toString()
     },
     [searchParams]
@@ -66,188 +110,803 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
         setFiles([]);
       } else {
         const sortedFiles = fetchedFiles.sort((a, b) => {
-            if (a.type === 'directory' && b.type !== 'directory') return -1;
-            if (a.type !== 'directory' && b.type === 'directory') return 1;
-            return a.name.localeCompare(b.name);
+          if (a.type === 'directory' && b.type !== 'directory') return -1;
+          if (a.type !== 'directory' && b.type === 'directory') return 1;
+          return a.name.localeCompare(b.name);
         });
         setFiles(sortedFiles);
       }
     } catch (e: any) {
-       toast({ variant: "destructive", title: "An unexpected error occurred", description: e.message });
+      toast({ variant: "destructive", title: "Error", description: e.message });
     } finally {
       setIsLoading(false);
+      setSelectedFiles(new Set()); // Clear selection on navigate
     }
   }, [serverId, toast]);
 
   useEffect(() => {
     fetchFiles(currentPath);
   }, [currentPath, fetchFiles]);
-  
+
+  // Close context menu on click
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
+
+  // Close context menu on scroll
+  useEffect(() => {
+    const handleScroll = () => setContextMenu(null);
+    window.addEventListener('scroll', handleScroll, true); // Use capture phase to catch all scroll events
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, []);
+
+  // Load view mode preference from localStorage
+  useEffect(() => {
+    const savedViewMode = localStorage.getItem('fileViewMode');
+    if (savedViewMode === 'list' || savedViewMode === 'grid') {
+      setViewMode(savedViewMode);
+    }
+  }, []);
+
+  // Reset upload type when dialog closes
+  useEffect(() => {
+    if (!uploadDialogOpen) {
+      const t = setTimeout(() => setUploadType(null), 300);
+      return () => clearTimeout(t);
+    }
+  }, [uploadDialogOpen]);
+
+  // -- Actions --
+
+  const handleCreateSelection = (item: FileOrFolder, multi: boolean) => {
+    const newSet = new Set(multi ? selectedFiles : []);
+    if (newSet.has(item.name)) {
+      if (multi) newSet.delete(item.name);
+    } else {
+      newSet.add(item.name);
+    }
+    setSelectedFiles(newSet);
+  };
+
+  const onContextMenu = (e: React.MouseEvent, item?: FileOrFolder) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (item) {
+      if (!selectedFiles.has(item.name)) {
+        setSelectedFiles(new Set([item.name]));
+      }
+      setContextMenu({ x: e.clientX, y: e.clientY, type: 'item' });
+    } else {
+      // Background click
+      setContextMenu({ x: e.clientX, y: e.clientY, type: 'bg' });
+    }
+  };
+
+  const handleItemClick = (e: React.MouseEvent, item: FileOrFolder) => {
+    e.stopPropagation();
+    if (e.metaKey || e.ctrlKey) {
+      handleCreateSelection(item, true);
+      return;
+    }
+
+    // Normal navigation
+    const fullPath = `${currentPath.endsWith('/') ? currentPath : currentPath + '/'}${item.name}`;
+
+    if (item.type === 'directory') {
+      router.push(pathname + '?' + createQueryString('path', fullPath));
+    } else {
+      const ext = item.name.split('.').pop()?.toLowerCase() || '';
+      let type = 'text';
+
+      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
+      const videoExts = ['mp4', 'webm', 'mov'];
+      const codeExts = ['js', 'ts', 'tsx', 'jsx', 'css', 'html', 'json', 'py', 'java', 'c', 'cpp', 'h', 'go', 'rs', 'sh', 'yaml', 'yml', 'toml', 'xml', 'md', 'env', 'gitignore', 'conf', 'ini'];
+
+      if (imageExts.includes(ext)) type = 'image';
+      else if (videoExts.includes(ext)) type = 'video';
+      else if (codeExts.includes(ext)) type = 'code';
+
+      router.push(`/viewer?path=${encodeURIComponent(fullPath)}&type=${type}`);
+    }
+  };
+
+  // Clipboard Operations
+  const handleCopy = () => {
+    if (selectedFiles.size === 0) return;
+    const filesToCopy = Array.from(selectedFiles).map(name =>
+      currentPath.endsWith('/') ? currentPath + name : currentPath + '/' + name
+    );
+    setClipboard({ op: 'copy', files: filesToCopy, sourcePath: currentPath });
+    toast({ title: 'Copied', description: `${selectedFiles.size} items to clipboard.` });
+    setContextMenu(null);
+  };
+
+  const handleCut = () => {
+    if (selectedFiles.size === 0) return;
+    const filesToMove = Array.from(selectedFiles).map(name =>
+      currentPath.endsWith('/') ? currentPath + name : currentPath + '/' + name
+    );
+    setClipboard({ op: 'move', files: filesToMove, sourcePath: currentPath });
+    toast({ title: 'Cut', description: `${selectedFiles.size} items to clipboard.` });
+    setContextMenu(null);
+  };
+
+  const handlePaste = async () => {
+    if (!clipboard) return;
+    setIsProcessing(true);
+
+    const { op, files: sourcePaths } = clipboard;
+    const destPath = currentPath;
+
+    let result;
+    if (op === 'copy') {
+      result = await copyFiles(serverId, sourcePaths, destPath);
+    } else {
+      result = await moveFiles(serverId, sourcePaths, destPath);
+    }
+
+    if (result.error) {
+      toast({ variant: 'destructive', title: 'Action Failed', description: result.error });
+    } else {
+      toast({ title: 'Success', description: `Items ${op === 'copy' ? 'copied' : 'moved'} successfully.` });
+      if (op === 'move') setClipboard(null); // Clear clipboard after move
+      fetchFiles(currentPath);
+    }
+    setIsProcessing(false);
+    setContextMenu(null);
+  };
+
+  const handleRename = () => {
+    if (selectedFiles.size !== 1) return;
+    const name = Array.from(selectedFiles)[0];
+    setRenameState({ isOpen: true, oldName: name, newName: name });
+    setContextMenu(null);
+  };
+
+  const confirmRename = async () => {
+    if (!renameState) return;
+    setIsProcessing(true);
+    const currentFilePath = currentPath.endsWith('/') ? currentPath + renameState.oldName : currentPath + '/' + renameState.oldName;
+
+    const result = await renameFile(serverId, currentFilePath, renameState.newName);
+
+    if (result.error) {
+      toast({ variant: 'destructive', title: 'Rename Failed', description: result.error });
+    } else {
+      toast({ title: 'Renamed', description: `Successfully renamed to ${renameState.newName}` });
+      fetchFiles(currentPath);
+      setRenameState(null);
+    }
+    setIsProcessing(false);
+  };
+
+  const handleDelete = () => {
+    if (selectedFiles.size === 0) return;
+    setDeleteState({ isOpen: true, files: Array.from(selectedFiles) });
+    setContextMenu(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteState) return;
+
+    // Set deleting state for specific files
+    const deleteSet = new Set(deleteState.files);
+    setDeletingFiles(deleteSet);
+    setDeleteState(null); // Close dialog immediately to show card state
+
+    const pathsToDelete = deleteState.files.map(name =>
+      currentPath.endsWith('/') ? currentPath + name : currentPath + '/' + name
+    );
+
+    const result = await deleteFiles(serverId, pathsToDelete);
+
+    if (result.error) {
+      toast({ variant: 'destructive', title: 'Delete Failed', description: result.error });
+      setDeletingFiles(new Set());
+    } else {
+      // Play sound
+      try {
+        const audio = new Audio('/sounds/recycle.mp3');
+        audio.play().catch(e => console.error("Audio play failed", e));
+      } catch (e) {
+        console.error("Audio init failed", e);
+      }
+
+      toast({ title: 'Deleted', description: `Successfully deleted ${deleteState.files.length} items.` });
+      await fetchFiles(currentPath);
+      setDeletingFiles(new Set());
+      setSelectedFiles(new Set());
+    }
+  }
+
+  const handleDetails = () => {
+    if (selectedFiles.size !== 1) return;
+    const uniqueName = Array.from(selectedFiles)[0];
+    const item = files.find(f => f.name === uniqueName);
+    if (item) setDetailsState(item);
+    setContextMenu(null);
+  };
+
+  // Upload handlers (keep existing)
+  // Upload handlers
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (!selectedFile) return;
-    setIsUploading(true);
+
+    const queueItem = { name: selectedFile.name, size: selectedFile.size, progress: 0 };
+    setUploadQueue(prev => [...prev, queueItem]);
+    setUploadDialogOpen(false);
+
+    // Simulate progress
+    const interval = setInterval(() => {
+      setUploadQueue(prev => prev.map(item =>
+        item.name === selectedFile.name ? { ...item, progress: Math.min(item.progress + 10, 90) } : item
+      ));
+    }, 300);
+
     const formData = new FormData();
     formData.append('file', selectedFile);
+
     try {
-        const result = await uploadFile(serverId, currentPath, formData);
-        if (result.error) {
-            toast({ variant: 'destructive', title: 'Upload Failed', description: result.error });
-        } else {
-            toast({ title: 'Upload Successful', description: `File "${selectedFile.name}" has been uploaded.` });
-            await fetchFiles(currentPath);
-        }
-    } catch(e: any) {
-        toast({ variant: 'destructive', title: 'Upload Error', description: e.message });
-    } finally {
-        setIsUploading(false);
-        if(fileInputRef.current) fileInputRef.current.value = '';
-    }
-  }
-  
-  const handleFolderUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const selectedFiles = event.target.files;
-      if (!selectedFiles || selectedFiles.length === 0) return;
-      setIsUploading(true);
-      toast({ title: 'Folder Upload Started', description: `Starting to upload ${selectedFiles.length} files.` });
-      let successCount = 0;
-      let errorCount = 0;
-      for (const file of Array.from(selectedFiles)) {
-          const formData = new FormData();
-          const remoteFilePath = file.webkitRelativePath ? currentPath + '/' + file.webkitRelativePath.substring(0, file.webkitRelativePath.lastIndexOf('/')) : currentPath;
-          formData.append('file', file);
-          try {
-            const result = await uploadFile(serverId, remoteFilePath, formData);
-            if (result.error) {
-              errorCount++;
-              console.error(`Failed to upload ${file.name}: ${result.error}`);
-            } else {
-              successCount++;
-            }
-          } catch(e) {
-              errorCount++;
-               console.error(`Failed to upload ${file.name}: ${e}`);
-          }
+      const result = await uploadFile(serverId, currentPath, formData);
+      clearInterval(interval);
+
+      if (result.error) {
+        toast({ variant: 'destructive', title: 'Upload Failed', description: result.error });
+        setUploadQueue(prev => prev.filter(item => item.name !== selectedFile.name));
+      } else {
+        setUploadQueue(prev => prev.map(item => item.name === selectedFile.name ? { ...item, progress: 100 } : item));
+        toast({ title: 'Upload Successful', description: `File "${selectedFile.name}" has been uploaded.` });
+        await fetchFiles(currentPath);
+        // Remove from queue after delay
+        setTimeout(() => {
+          setUploadQueue(prev => prev.filter(item => item.name !== selectedFile.name));
+        }, 1000);
       }
-      toast({ 
-        title: 'Folder Upload Complete', 
-        description: `${successCount} files uploaded successfully. ${errorCount} files failed.` 
-      });
-      await fetchFiles(currentPath);
-      setIsUploading(false);
-      if(folderInputRef.current) folderInputRef.current.value = '';
+    } catch (e: any) {
+      clearInterval(interval);
+      setUploadQueue(prev => prev.filter(item => item.name !== selectedFile.name));
+      toast({ variant: 'destructive', title: 'Upload Error', description: e.message });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   }
 
-  const handleItemClick = (item: FileOrFolder) => {
-    if (item.type === 'directory') {
-      const newPath = `${currentPath.endsWith('/') ? currentPath : currentPath + '/'}${item.name}`;
-      router.push(pathname + '?' + createQueryString('path', newPath));
+  const handleFolderUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    setUploadDialogOpen(false);
+
+    // Add all to queue
+    const newQueueItems = Array.from(selectedFiles).map(f => ({ name: f.name, size: f.size, progress: 0 }));
+    setUploadQueue(prev => [...prev, ...newQueueItems]);
+
+    toast({ title: 'Folder Upload Started', description: `Starting to upload ${selectedFiles.length} files.` });
+
+    let successCount = 0;
+
+    for (const file of Array.from(selectedFiles)) {
+      // Start "simulated" progress for this file
+      const interval = setInterval(() => {
+        setUploadQueue(prev => prev.map(item =>
+          item.name === file.name ? { ...item, progress: Math.min(item.progress + 10, 90) } : item
+        ));
+      }, 200);
+
+      const formData = new FormData();
+      const remoteFilePath = file.webkitRelativePath ? currentPath + '/' + file.webkitRelativePath.substring(0, file.webkitRelativePath.lastIndexOf('/')) : currentPath;
+      formData.append('file', file);
+
+      try {
+        const result = await uploadFile(serverId, remoteFilePath, formData);
+        clearInterval(interval);
+        if (result.error) {
+          // Remove failed
+          setUploadQueue(prev => prev.filter(item => item.name !== file.name));
+        } else {
+          successCount++;
+          setUploadQueue(prev => prev.map(item => item.name === file.name ? { ...item, progress: 100 } : item));
+          // Remove success after delay
+          setTimeout(() => {
+            setUploadQueue(prev => prev.filter(item => item.name !== file.name));
+          }, 1000);
+        }
+      } catch (e) {
+        clearInterval(interval);
+        setUploadQueue(prev => prev.filter(item => item.name !== file.name));
+      }
     }
-  };
+
+    toast({ title: 'Folder Upload Complete', description: `${successCount} files uploaded successfully.` });
+    await fetchFiles(currentPath);
+    if (folderInputRef.current) folderInputRef.current.value = '';
+  }
+
+  const handleCreateNew = (type: 'file' | 'folder') => {
+    setNewItemState({ type, isCreating: false });
+  }
+
+  const handleCreateSubmit = async (e: React.FocusEvent<HTMLInputElement> | React.KeyboardEvent<HTMLInputElement>) => {
+    if ('key' in e && e.key !== 'Enter') return; // Only process on Enter key or Blur (if we want blur to save)
+    // Actually, let's treat Blur as Cancel if empty, Save if not? Or just Cancel.
+    // Prompt: "if the user does not passes in the file or folder name... does not gets executed"
+    // I'll make Blur cancel if empty. If has text, I'll auto-save? Or purely Enter?
+    // Safest UX: Enter to save. Blur cancels.
+
+    if (e.type === 'blur') {
+      // If we want blur to cancel:
+      setNewItemState(null);
+      return;
+    }
+
+    // Only Enter key reaches here
+    const val = e.currentTarget.value.trim();
+    if (!val) {
+      setNewItemState(null);
+      return;
+    }
+
+    if (newItemState?.isCreating) return;
+
+    setNewItemState(prev => prev ? { ...prev, isCreating: true } : null);
+
+    const newPath = currentPath.endsWith('/') ? currentPath + val : currentPath + '/' + val;
+
+    let res;
+    if (newItemState?.type === 'folder') {
+      res = await createDirectory(serverId, newPath);
+    } else {
+      res = await createEmptyFile(serverId, newPath);
+    }
+
+    if (res.error) {
+      toast({ variant: 'destructive', title: 'Action Failed', description: res.error });
+      setNewItemState(null);
+    } else {
+      toast({ title: 'Success', description: `${newItemState?.type === 'folder' ? 'Folder' : 'File'} created.` });
+      await fetchFiles(currentPath);
+      setNewItemState(null);
+    }
+  }
+
+  const handleViewModeChange = () => {
+    const newMode = viewMode === 'grid' ? 'list' : 'grid';
+    setViewMode(newMode);
+    localStorage.setItem('fileViewMode', newMode);
+    setContextMenu(null);
+  }
 
   const handleBreadcrumbClick = (index: number) => {
     const pathSegments = currentPath.split('/').filter(Boolean);
     const newPath = '/' + pathSegments.slice(0, index + 1).join('/');
     router.push(pathname + '?' + createQueryString('path', newPath));
   }
-  
   const breadcrumbSegments = currentPath.split('/').filter(Boolean);
 
+
+  // Render
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-            <div>
-                <CardTitle className="font-headline flex items-center gap-2">
-                    <FolderIcon className="h-6 w-6" />
-                    File Browser
-                </CardTitle>
-                <CardDescription>
-                Browse and manage files on your server.
-                </CardDescription>
-            </div>
-            <div className="flex gap-2">
-                <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-                <input type="file" ref={folderInputRef} onChange={handleFolderUpload} className="hidden" multiple webkitdirectory="" />
-                <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} variant="outline">
-                    <UploadCloud className="mr-2 h-4 w-4" />
-                    {isUploading ? 'Uploading...' : 'Upload File'}
-                </Button>
-                 <Button onClick={() => folderInputRef.current?.click()} disabled={isUploading} variant="outline">
-                    <FolderUp className="mr-2 h-4 w-4" />
-                    {isUploading ? 'Uploading...' : 'Upload Folder'}
-                </Button>
-            </div>
+    <div className="min-h-[600px] flex flex-col relative" onContextMenu={(e) => onContextMenu(e)} ref={containerRef}>
+      {isProcessing && <div className="absolute inset-0 bg-background/50 z-50 flex items-center justify-center"><Loader2 className="animate-spin" /></div>}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 w-56 rounded-md border bg-popover p-1 text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex flex-col text-sm">
+            {contextMenu.type === 'item' ? (
+              <>
+                <button onClick={handleCopy} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground">
+                  <Copy className="mr-2 h-4 w-4" /> Copy
+                </button>
+                <button onClick={handleCut} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground">
+                  <Move className="mr-2 h-4 w-4" /> Move (Cut)
+                </button>
+                {selectedFiles.size === 1 && (
+                  <button onClick={handleRename} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground">
+                    <Edit className="mr-2 h-4 w-4" /> Rename
+                  </button>
+                )}
+                <button onClick={handleDelete} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground text-red-600">
+                  <Trash className="mr-2 h-4 w-4" /> Delete
+                </button>
+                {selectedFiles.size === 1 && (
+                  <>
+                    <div className="h-px bg-border my-1" />
+                    <button onClick={handleDetails} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground">
+                      <Info className="mr-2 h-4 w-4" /> Details
+                    </button>
+                  </>
+                )}
+              </>
+            ) : null}
+
+            {/* Paste (if clipboard has content) */}
+            {clipboard && (
+              <>
+                {contextMenu.type === 'item' && <div className="h-px bg-border my-1" />}
+                <button onClick={handlePaste} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground">
+                  <ClipboardPaste className="mr-2 h-4 w-4" /> Paste ({clipboard.op})
+                </button>
+                <button onClick={() => { setClipboard(null); setContextMenu(null); }} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground text-xs text-muted-foreground">
+                  <X className="mr-2 h-3 w-3" /> Clear Clipboard
+                </button>
+              </>
+            )}
+
+            {/* Separator before creation options */}
+            {(contextMenu.type === 'item' || clipboard) && <div className="h-px bg-border my-1" />}
+
+            {/* Upload, New Folder, New File - Always shown */}
+            <button onClick={() => { setUploadDialogOpen(true); setContextMenu(null); }} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground">
+              <UploadCloud className="mr-2 h-4 w-4" /> Upload
+            </button>
+            <button onClick={() => { handleCreateNew('folder'); setContextMenu(null); }} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground">
+              <FolderPlus className="mr-2 h-4 w-4" /> New Folder
+            </button>
+            <button onClick={() => { handleCreateNew('file'); setContextMenu(null); }} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground">
+              <FilePlus className="mr-2 h-4 w-4" /> New File
+            </button>
+
+            {/* Separator before view mode */}
+            <div className="h-px bg-border my-1" />
+
+            {/* View Mode Toggle - Always shown */}
+            <button onClick={handleViewModeChange} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground">
+              {viewMode === 'grid' ? (
+                <><List className="mr-2 h-4 w-4" /> View as List</>
+              ) : (
+                <><LayoutGrid className="mr-2 h-4 w-4" /> View as Grid</>
+              )}
+            </button>
+          </div>
         </div>
-        <Breadcrumb className="pt-4">
-            <BreadcrumbList>
-                <BreadcrumbItem>
-                    <BreadcrumbLink asChild>
-                        <button onClick={() => router.push(pathname + '?' + createQueryString('path', '/'))} className="flex items-center gap-1">
-                            <Home className="h-4 w-4" /> Root
-                        </button>
-                    </BreadcrumbLink>
-                </BreadcrumbItem>
-                {breadcrumbSegments.map((segment, index) => (
-                    <React.Fragment key={index}>
-                        <BreadcrumbSeparator />
-                        <BreadcrumbItem>
-                            <BreadcrumbLink asChild>
-                                <button onClick={() => handleBreadcrumbClick(index)}>{segment}</button>
-                            </BreadcrumbLink>
-                        </BreadcrumbItem>
-                    </React.Fragment>
-                ))}
-            </BreadcrumbList>
-        </Breadcrumb>
-      </CardHeader>
-      <CardContent>
-        {isLoading || isUploading ? (
-            <div className="flex justify-center items-center h-48">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                 <span className="ml-2">{isUploading ? "Uploading files..." : "Loading..."}</span>
+      )}
+
+      {/* Dialogs */}
+      <Dialog open={!!renameState} onOpenChange={(o) => !o && setRenameState(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Rename Item</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">Name</Label>
+              <Input id="name" value={renameState?.newName || ''} onChange={(e) => setRenameState(prev => prev ? ({ ...prev, newName: e.target.value }) : null)} className="col-span-3" />
             </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={confirmRename}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteState} onOpenChange={(o) => !o && setDeleteState(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {deleteState?.files.length} items. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={!!detailsState} onOpenChange={(o) => !o && setDetailsState(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Item Details</DialogTitle></DialogHeader>
+          {detailsState && (
+            <div className="grid gap-2 text-sm">
+              <div className="grid grid-cols-3"><span className="font-semibold">Name:</span> <span className="col-span-2">{detailsState.name}</span></div>
+              <div className="grid grid-cols-3"><span className="font-semibold">Type:</span> <span className="col-span-2">{detailsState.type}</span></div>
+              <div className="grid grid-cols-3"><span className="font-semibold">Size:</span> <span className="col-span-2">{formatBytes(detailsState.size)}</span></div>
+              <div className="grid grid-cols-3"><span className="font-semibold">Permissions:</span> <span className="col-span-2 font-mono">{detailsState.permissions}</span></div>
+              <div className="grid grid-cols-3"><span className="font-semibold">Modified:</span> <span className="col-span-2">{detailsState.lastModified}</span></div>
+              {detailsState.linkTarget && <div className="grid grid-cols-3"><span className="font-semibold">Symlink Target:</span> <span className="col-span-2">{detailsState.linkTarget}</span></div>}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+
+      <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground p-1">
+        <span className="font-semibold text-foreground">Path:</span>
+        <button
+          onClick={() => router.push(pathname + '?' + createQueryString('path', '/'))}
+          className="hover:underline hover:text-primary transition-colors"
+        >
+          root
+        </button>
+        {breadcrumbSegments.map((segment, index) => (
+          <React.Fragment key={index}>
+            <span className="text-muted-foreground/40">&gt;</span>
+            <button
+              onClick={() => handleBreadcrumbClick(index)}
+              className="hover:underline hover:text-primary transition-colors"
+            >
+              {segment}
+            </button>
+          </React.Fragment>
+        ))}
+      </div>
+
+      <div className="flex-1" onClick={() => setSelectedFiles(new Set())}>
+        {isLoading ? (
+          <div className={viewMode === 'grid' ? 'grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-20' : 'grid grid-cols-1 gap-4 pb-20'}>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <Card key={i} className={viewMode === 'grid' ? 'min-h-[120px]' : ''}>
+                <CardContent className={viewMode === 'grid' ? 'p-4 flex flex-col items-start gap-3' : 'p-3 flex flex-row items-center gap-3'}>
+                  {viewMode === 'grid' ? (
+                    <>
+                      <Skeleton className="h-10 w-10 rounded-md" />
+                      <div className="w-full space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Skeleton className="h-5 w-5 rounded-md flex-shrink-0" />
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         ) : (
-             <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Size</TableHead>
-                    <TableHead>Last Modified</TableHead>
-                    <TableHead>Permissions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {files.map((item, index) => (
-                    <TableRow key={index} onClick={() => handleItemClick(item)} className={item.type === 'directory' ? 'cursor-pointer' : ''}>
-                        <TableCell className="font-medium">
-                            <div className="flex items-center gap-2">
-                                {item.type === 'directory' && <FolderIcon className="h-4 w-4 text-primary" />}
-                                {item.type === 'file' && <FileIcon className="h-4 w-4 text-muted-foreground" />}
-                                {item.type === 'symlink' && <FileSymlink className="h-4 w-4 text-accent" />}
-                                <span>{item.name}</span>
-                                {item.linkTarget && <span className="text-muted-foreground text-xs"> -&gt; {item.linkTarget}</span>}
+          <div className={viewMode === 'grid' ? 'grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-20' : 'grid grid-cols-1 gap-4 pb-20'}>
+            {/* Pending Creation Card */}
+            {newItemState && (
+              <Card className="cursor-pointer transition-all hover:border-primary group relative border-primary/20 bg-accent/20">
+                <CardContent className={viewMode === 'grid' ? 'p-4 flex flex-col items-start gap-3' : 'p-3 flex flex-row items-center gap-3'}>
+                  {viewMode === 'grid' ? (
+                    <>
+                      <div className="p-2 bg-background rounded-md border shadow-sm">
+                        {newItemState.type === 'folder' ? (
+                          <FolderIcon className="h-6 w-6 text-primary" />
+                        ) : (
+                          <FileIcon className="h-6 w-6 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="w-full space-y-1">
+                        {newItemState.isCreating ? (
+                          <>
+                            <p className="font-medium text-sm truncate w-full">New {newItemState.type}</p>
+                            <div className="flex justify-between items-center text-xs text-muted-foreground">
+                              <span className="text-primary flex items-center gap-1.5 font-medium animate-pulse">
+                                <Loader2 className="h-3 w-3 animate-spin" /> Creating...
+                              </span>
                             </div>
-                        </TableCell>
-                        <TableCell>{item.type === 'file' ? formatBytes(item.size) : '-'}</TableCell>
-                        <TableCell>{item.lastModified}</TableCell>
-                        <TableCell className="font-mono text-xs">{item.permissions}</TableCell>
-                    </TableRow>
-                    ))}
-                    {files.length === 0 && (
-                        <TableRow>
-                            <TableCell colSpan={4} className="text-center h-24">This directory is empty.</TableCell>
-                        </TableRow>
+                          </>
+                        ) : (
+                          <>
+                            <Input
+                              autoFocus
+                              placeholder=""
+                              onKeyDown={handleCreateSubmit}
+                              onBlur={handleCreateSubmit}
+                              className="font-medium text-sm h-auto p-0 border-0 shadow-none focus-visible:ring-0 bg-transparent"
+                            />
+                            <div className="flex justify-between items-center text-xs text-muted-foreground">
+                              <span>{newItemState.type === 'folder' ? 'Folder' : 'File'}</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex-shrink-0">
+                        {newItemState.type === 'folder' ? (
+                          <FolderIcon className="h-5 w-5 text-primary" />
+                        ) : (
+                          <FileIcon className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {newItemState.isCreating ? (
+                          <>
+                            <p className="font-medium text-sm truncate">New {newItemState.type}</p>
+                            <div className="text-xs text-muted-foreground">
+                              <span className="text-primary flex items-center gap-1.5 font-medium animate-pulse">
+                                <Loader2 className="h-3 w-3 animate-spin" /> Creating...
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <Input
+                              autoFocus
+                              placeholder=""
+                              onKeyDown={handleCreateSubmit}
+                              onBlur={handleCreateSubmit}
+                              className="font-medium text-sm h-auto p-0 border-0 shadow-none focus-visible:ring-0 bg-transparent mb-1"
+                            />
+                            <div className="text-xs text-muted-foreground">
+                              <span>{newItemState.type === 'folder' ? 'Folder' : 'File'}</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Upload Queue Items */}
+            {uploadQueue.map((item, index) => (
+              <Card key={`upload-${index}`} className="relative overflow-hidden border-primary/20 bg-accent/20">
+                <CardContent className="p-4 flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-background rounded-md border shadow-sm">
+                      <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate" title={item.name}>{item.name}</p>
+                      <p className="text-xs text-muted-foreground">Uploading...</p>
+                    </div>
+                  </div>
+                  <Progress value={item.progress} className="h-2" />
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* File Items */}
+            {files.map((item, index) => {
+              const isSelected = selectedFiles.has(item.name);
+              const isDeleting = deletingFiles.has(item.name);
+
+              return (
+                <Card
+                  key={index}
+                  onClick={(e) => !isDeleting && handleItemClick(e, item)}
+                  onContextMenu={(e) => !isDeleting && onContextMenu(e, item)}
+                  className={`cursor-pointer transition-all hover:border-primary group relative
+                            ${item.type === 'directory' ? 'border-primary/20' : ''}
+                            ${isSelected ? 'ring-2 ring-primary border-transparent' : ''}
+                            ${isDeleting ? 'opacity-60 bg-muted/20' : ''}
+                        `}
+                >
+                  <CardContent className={viewMode === 'grid' ? 'p-4 flex flex-col items-start gap-3' : 'p-3 flex flex-row items-center gap-3'}>
+                    {viewMode === 'grid' ? (
+                      <>
+                        <div className="p-2 bg-background rounded-md border shadow-sm">
+                          {item.type === 'directory' && <FolderIcon className="h-6 w-6 text-primary" />}
+                          {item.type === 'file' && <FileIcon className="h-6 w-6 text-muted-foreground" />}
+                          {item.type === 'symlink' && <FileSymlink className="h-6 w-6 text-accent" />}
+                        </div>
+                        <div className="w-full space-y-1">
+                          <p className="font-medium text-sm truncate w-full" title={item.name}>
+                            {item.name}
+                          </p>
+                          <div className="flex justify-between items-center text-xs text-muted-foreground">
+                            {isDeleting ? (
+                              <span className="text-destructive flex items-center gap-1.5 font-medium animate-pulse">
+                                <Loader2 className="h-3 w-3 animate-spin" /> Deleting...
+                              </span>
+                            ) : (
+                              <span>{item.type === 'file' ? formatBytes(item.size) : 'Folder'}</span>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-shrink-0">
+                          {item.type === 'directory' && <FolderIcon className="h-5 w-5 text-primary" />}
+                          {item.type === 'file' && <FileIcon className="h-5 w-5 text-muted-foreground" />}
+                          {item.type === 'symlink' && <FileSymlink className="h-5 w-5 text-accent" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate" title={item.name}>
+                            {item.name}
+                          </p>
+                          <div className="text-xs text-muted-foreground">
+                            {isDeleting ? (
+                              <span className="text-destructive flex items-center gap-1.5 font-medium animate-pulse">
+                                <Loader2 className="h-3 w-3 animate-spin" /> Deleting...
+                              </span>
+                            ) : (
+                              <span>{item.type === 'file' ? formatBytes(item.size) : 'Folder'}</span>
+                            )}
+                          </div>
+                        </div>
+                      </>
                     )}
-                </TableBody>
-            </Table>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Upload Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent className="sm:max-w-4xl h-[60vh] flex flex-col gap-0 p-0 overflow-hidden">
+          <div className="px-6 py-4 border-b">
+            <DialogTitle>
+              {uploadType ? `Upload ${uploadType === 'file' ? 'Files' : 'Folder'}` : `Upload to ${currentPath === '/' ? 'Root' : currentPath}`}
+            </DialogTitle>
+            <DialogDescription>
+              {uploadType ? "Drag and drop or click to select." : "Choose upload type."}
+            </DialogDescription>
+          </div>
+
+          <div className="flex-1 flex flex-col items-center justify-center p-8 bg-muted/5">
+            {!uploadType ? (
+              <div className="flex flex-col sm:flex-row gap-6 w-full max-w-2xl justify-center items-center h-full">
+                <Button
+                  variant="outline"
+                  className="h-40 w-40 flex flex-col gap-4 border-2 hover:border-primary/50 hover:bg-accent transition-all rounded-xl"
+                  onClick={() => setUploadType('file')}
+                >
+                  <FileIcon className="h-10 w-10 text-muted-foreground" />
+                  <span className="text-lg font-medium">Upload Files</span>
+                </Button>
+                <div className="text-muted-foreground font-medium">- OR -</div>
+                <Button
+                  variant="outline"
+                  className="h-40 w-40 flex flex-col gap-4 border-2 hover:border-primary/50 hover:bg-accent transition-all rounded-xl"
+                  onClick={() => setUploadType('folder')}
+                >
+                  <FolderUp className="h-10 w-10 text-muted-foreground" />
+                  <span className="text-lg font-medium">Upload Folder</span>
+                </Button>
+              </div>
+            ) : (
+              <div
+                className="w-full h-full border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-6 p-8 transition-all hover:bg-muted/10 cursor-pointer animate-in fade-in-50 zoom-in-95"
+                onClick={() => {
+                  if (uploadType === 'file') fileInputRef.current?.click();
+                  else folderInputRef.current?.click();
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    const fileIO = { target: { files: e.dataTransfer.files } } as any;
+                    if (uploadType === 'file') handleFileUpload(fileIO);
+                    else handleFolderUpload(fileIO);
+                  }
+                }}
+              >
+                <div className="bg-primary/10 p-6 rounded-full shadow-sm animate-bounce">
+                  <UploadCloud className="h-12 w-12 text-primary" />
+                </div>
+                <div className="text-center space-y-2">
+                  <h3 className="text-2xl font-semibold">Drop {uploadType === 'file' ? 'files' : 'folder'} here</h3>
+                  <p className="text-muted-foreground text-base">or click to open explorer</p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setUploadType(null); }}>Back to selection</Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <input type="file" ref={fileInputRef} onChange={(e) => { handleFileUpload(e); setUploadDialogOpen(false); }} className="hidden" />
+      {/* @ts-ignore */}
+      <input type="file" ref={folderInputRef} onChange={(e) => { handleFolderUpload(e); setUploadDialogOpen(false); }} className="hidden" multiple webkitdirectory="" />
+    </div>
   );
 }
 
 export default function ServerFilesPageContent({ serverId }: { serverId: string }) {
-    if (!serverId) return null;
-    return <ServerFilesBrowser serverId={serverId} />;
+  if (!serverId) return null;
+  return <ServerFilesBrowser serverId={serverId} />;
 }

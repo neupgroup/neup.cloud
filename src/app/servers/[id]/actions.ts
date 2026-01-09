@@ -197,3 +197,103 @@ export async function uploadFile(serverId: string, remotePath: string, formData:
     await fs.unlink(tempFilePath).catch(console.error);
   }
 }
+
+export async function renameFile(serverId: string, currentPath: string, newName: string) {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) return { error: 'Server configuration missing.' };
+
+    try {
+        const directory = currentPath.substring(0, currentPath.lastIndexOf('/'));
+        const newPath = directory ? `${directory}/${newName}` : newName;
+        const cmd = `mv "${currentPath}" "${newPath}"`;
+        const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+
+        if (result.code !== 0) return { error: result.stderr || 'Rename failed.' };
+
+        revalidatePath(`/files`);
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
+
+export async function deleteFiles(serverId: string, paths: string[]) {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) return { error: 'Server configuration missing.' };
+
+    try {
+        const pathArgs = paths.map(p => `"${p}"`).join(' ');
+        const cmd = `rm -rf ${pathArgs}`;
+        const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+
+        if (result.code !== 0) return { error: result.stderr || 'Delete failed.' };
+        revalidatePath(`/files`);
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
+
+export async function moveFiles(serverId: string, sourcePaths: string[], destPath: string) {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) return { error: 'Server configuration missing.' };
+
+    try {
+        const pathArgs = sourcePaths.map(p => `"${p}"`).join(' ');
+        const cmd = `mv ${pathArgs} "${destPath}"`;
+        const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+
+        if (result.code !== 0) return { error: result.stderr || 'Move failed.' };
+        revalidatePath(`/files`);
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
+
+export async function copyFiles(serverId: string, sourcePaths: string[], destPath: string) {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) return { error: 'Server configuration missing.' };
+
+    try {
+        const pathArgs = sourcePaths.map(p => `"${p}"`).join(' ');
+        const cmd = `cp -r ${pathArgs} "${destPath}"`;
+        const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+
+        if (result.code !== 0) return { error: result.stderr || 'Copy failed.' };
+        revalidatePath(`/files`);
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
+
+export async function createDirectory(serverId: string, path: string) {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) return { error: 'Server configuration missing.' };
+
+    try {
+        const cmd = `mkdir -p "${path}"`;
+        const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+        if (result.code !== 0) return { error: result.stderr || 'Directory creation failed.' };
+        revalidatePath(`/files`);
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
+
+export async function createEmptyFile(serverId: string, path: string) {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) return { error: 'Server configuration missing.' };
+
+    try {
+        const cmd = `touch "${path}"`;
+        const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+        if (result.code !== 0) return { error: result.stderr || 'File creation failed.' };
+        revalidatePath(`/files`);
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}

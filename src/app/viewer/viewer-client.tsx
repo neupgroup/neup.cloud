@@ -1,0 +1,179 @@
+'use client';
+
+import React, { useEffect, useState, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Loader2, Save, Download, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { getFileContent, saveFileContent } from './actions';
+import { useToast } from '@/hooks/use-toast';
+import { PageTitleBack } from '@/components/page-header';
+
+export default function ViewerClient({ serverId }: { serverId: string }) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const path = searchParams.get('path');
+    const type = searchParams.get('type'); // 'image', 'video', 'text', 'code'
+    // const app = searchParams.get('app'); // Unused for now, but part of spec
+
+    const { toast } = useToast();
+    const [content, setContent] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isBinary, setIsBinary] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Auto-resize textarea
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+        }
+    }, [content]);
+
+    // Determines if we should treat it as binary based on type or extension
+    useEffect(() => {
+        if (!path) return;
+
+        const checkBinary = () => {
+            if (type === 'image' || type === 'video') return true;
+            // Fallback extension check
+            const ext = path.split('.').pop()?.toLowerCase();
+            const binaryExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'mp4', 'webm', 'pdf', 'zip', 'tar', 'gz'];
+            return binaryExts.includes(ext || '');
+        };
+        setIsBinary(checkBinary());
+    }, [path, type]);
+
+    useEffect(() => {
+        if (!serverId || !path) return;
+
+        const fetchData = async () => {
+            setLoading(true);
+            setError(null);
+
+            let binary = false;
+            if (type === 'image' || type === 'video') binary = true;
+            else {
+                const ext = path.split('.').pop()?.toLowerCase();
+                if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'mp4', 'webm'].includes(ext || '')) binary = true;
+            }
+
+            const result = await getFileContent(serverId, path, binary);
+            if (result.error) {
+                setError(result.error);
+            } else {
+                setContent(result.content || '');
+            }
+            setLoading(false);
+        };
+
+        fetchData();
+    }, [serverId, path, type]);
+
+    const handleSave = async () => {
+        if (!path || content === null) return;
+        setSaving(true);
+        const result = await saveFileContent(serverId, path, content);
+        if (result.error) {
+            toast({ variant: 'destructive', title: 'Error saving file', description: result.error });
+        } else {
+            toast({ title: 'Success', description: 'File saved successfully.' });
+        }
+        setSaving(false);
+    };
+
+    if (!path) return <div className="p-8 text-center">No file path specified.</div>;
+
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-muted-foreground">Loading content...</span>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="p-8 flex flex-col items-center justify-center text-destructive">
+                <AlertTriangle className="h-12 w-12 mb-4" />
+                <h2 className="text-xl font-bold">Error Loading File</h2>
+                <p>{error}</p>
+            </div>
+        );
+    }
+
+    // Render logic based on type
+    const renderContent = () => {
+        if (type === 'image') {
+            const ext = path.split('.').pop()?.toLowerCase();
+            let mime = 'image/jpeg';
+            if (ext === 'png') mime = 'image/png';
+            if (ext === 'gif') mime = 'image/gif';
+            if (ext === 'webp') mime = 'image/webp';
+            if (ext === 'svg') mime = 'image/svg+xml';
+
+            return (
+                <div className="flex justify-center p-8 bg-muted/10 min-h-[60vh] items-center rounded-lg border shadow-sm">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`data:${mime};base64,${content}`} alt={path} className="max-w-full h-auto shadow-sm rounded bg-checkerboard" />
+                </div>
+            );
+        }
+
+        if (type === 'video') {
+            const ext = path.split('.').pop()?.toLowerCase();
+            let mime = 'video/mp4';
+            if (ext === 'webm') mime = 'video/webm';
+
+            return (
+                <div className="flex justify-center p-8 bg-black min-h-[60vh] items-center rounded-lg border shadow-sm">
+                    <video controls className="max-w-full h-auto rounded shadow-sm">
+                        <source src={`data:${mime};base64,${content}`} type={mime} />
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            )
+        }
+
+        // Text or Code
+        return (
+            <div className="relative rounded-lg border shadow-sm bg-background">
+                <textarea
+                    ref={textareaRef}
+                    className="w-full p-6 font-mono text-sm bg-transparent border-none focus:ring-0 focus:outline-none resize-none overflow-hidden min-h-[60vh]"
+                    value={content || ''}
+                    onChange={(e) => setContent(e.target.value)}
+                    spellCheck={false}
+                />
+            </div>
+        );
+    };
+
+    const parentPath = path.substring(0, path.lastIndexOf('/')) || '/';
+    const backHref = `/servers/${serverId}/files?path=${encodeURIComponent(parentPath)}`;
+
+    return (
+        <div className="container mx-auto p-4 py-6 max-w-6xl min-h-screen flex flex-col gap-6">
+            <PageTitleBack
+                title={path.split('/').pop() || 'Unknown File'}
+                description={path}
+                backHref={backHref}
+            />
+
+            <div className="flex-1 flex flex-col gap-4">
+                {renderContent()}
+
+                {!isBinary && (
+                    <div className="flex justify-end pb-8">
+                        <Button onClick={handleSave} disabled={saving} size="lg">
+                            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            Save Changes
+                        </Button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

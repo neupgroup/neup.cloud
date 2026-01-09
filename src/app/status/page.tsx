@@ -39,14 +39,16 @@ const CustomTooltip = ({ active, payload, label, unit }: any) => {
             <div className="rounded-lg border bg-background p-2 shadow-sm">
                 <div className="grid grid-cols-1 gap-2">
                     <p className="text-sm text-muted-foreground">{format(new Date(label), "MMM d, h:mm a")}</p>
-                    <div className="flex flex-col">
-                        <span className="text-[0.70rem] uppercase text-muted-foreground">
-                            {payload[0].name}
-                        </span>
-                        <span className="font-bold text-foreground">
-                            {payload[0].value}{unit}
-                        </span>
-                    </div>
+                    {payload.map((entry: any, index: number) => (
+                        <div key={index} className="flex flex-col">
+                            <span className="text-[0.70rem] uppercase text-muted-foreground">
+                                {entry.name}
+                            </span>
+                            <span className="font-bold text-foreground">
+                                {entry.value}{unit}
+                            </span>
+                        </div>
+                    ))}
                 </div>
             </div>
         );
@@ -289,16 +291,21 @@ export default function StatusPage() {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={statusData.ramHistory} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
                                         <defs>
-                                            <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
+                                            <linearGradient id="colorRamUsed" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.8} />
                                                 <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
+                                            </linearGradient>
+                                            <linearGradient id="colorRamTotal" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.2} />
+                                                <stop offset="95%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.05} />
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                                         <Tooltip content={<CustomTooltip unit="MB" />} />
-                                        <Area type="monotone" dataKey="used" name="RAM" strokeWidth={2} stroke="hsl(var(--accent))" fill="url(#colorRam)" />
+                                        <Area type="monotone" dataKey="total" name="Total RAM" strokeWidth={1} stroke="hsl(var(--muted-foreground))" fill="url(#colorRamTotal)" fillOpacity={0.3} />
+                                        <Area type="monotone" dataKey="used" name="Used RAM" strokeWidth={2} stroke="hsl(var(--accent))" fill="url(#colorRamUsed)" />
                                         <XAxis dataKey="timestamp" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => format(new Date(value), timeFrame === '1h' ? "h:mm a" : "MMM d")} interval="preserveStartEnd" minTickGap={30} />
-                                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}MB`} />
+                                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}MB`} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.1)]} />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             ) : (
