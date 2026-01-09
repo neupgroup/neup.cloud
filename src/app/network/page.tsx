@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -40,7 +40,9 @@ export default async function NetworkPage() {
           </Button>
         </Card>
       ) : (
-        <NetworkClient serverId={serverId} />
+        <Suspense fallback={<div>Loading network stats...</div>}>
+          <NetworkClient serverId={serverId} />
+        </Suspense>
       )}
     </div>
   );

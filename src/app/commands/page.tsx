@@ -1,15 +1,11 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -17,12 +13,10 @@ import {
   Server,
   Loader2,
   PlusCircle,
-  MoreHorizontal,
-  Trash2,
-  Edit,
   Play,
   Code,
   Terminal,
+  Search,
 } from 'lucide-react';
 import {
   Select,
@@ -35,8 +29,6 @@ import { getServers } from '../servers/actions';
 import {
   getSavedCommands,
   executeSavedCommand,
-  updateSavedCommand,
-  deleteSavedCommand,
 } from './actions';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -50,16 +42,8 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { CommandForm } from './command-form';
-import { SavedCommand, CommandFormData, VARIABLE_REGEX } from './types';
+import { SavedCommand } from './types';
+import { cn } from '@/lib/utils';
 
 type ServerType = {
   id: string;
@@ -67,33 +51,41 @@ type ServerType = {
   type: string;
 };
 
-const COMMANDS_PER_PAGE = 10;
+const COMMANDS_PER_PAGE = 50;
 
-export default function CommandsPage() {
+function LoadingSkeleton() {
+  return (
+    <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+      {[...Array(9)].map((_, i) => (
+        <div key={i} className={cn(
+          "p-4 min-w-0 w-full",
+          i !== 8 && "border-b border-border"
+        )}>
+          <div className="space-y-3">
+            <Skeleton className="h-6 w-1/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+function CommandsContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [servers, setServers] = useState<ServerType[]>([]);
   const [savedCommands, setSavedCommands] = useState<SavedCommand[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isRunDialogOpen, setIsRunDialogOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
 
   const [selectedServer, setSelectedServer] = useState<string>('');
   const [commandToRun, setCommandToRun] = useState<SavedCommand | null>(null);
-  const [editingCommand, setEditingCommand] = useState<SavedCommand | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-
-  const [formData, setFormData] = useState<CommandFormData>({
-    name: '',
-    command: '',
-    description: '',
-    nextCommands: '',
-    variables: {}
-  });
-
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('query') || '');
   const [runtimeVariableValues, setRuntimeVariableValues] = useState<Record<string, string>>({});
 
   // Load selected server from cookies
@@ -109,21 +101,23 @@ export default function CommandsPage() {
     }
   }, []);
 
-  const handleFormDataChange = (field: keyof Omit<CommandFormData, 'variables'>, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  // Sync state with URL params if they change externally
+  useEffect(() => {
+    const query = searchParams.get('query');
+    if (query !== null && query !== searchQuery) {
+      setSearchQuery(query);
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleVariableDataChange = (varName: string, field: 'title' | 'description' | 'hint', value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      variables: {
-        ...prev.variables,
-        [varName]: {
-          ...prev.variables[varName],
-          [field]: value,
-        }
-      }
-    }));
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    const params = new URLSearchParams(searchParams.toString());
+    if (val) {
+      params.set('query', val);
+    } else {
+      params.delete('query');
+    }
+    router.replace(`?${params.toString()}`, { scroll: false });
   };
 
   const fetchAllData = useCallback(async () => {
@@ -146,85 +140,16 @@ export default function CommandsPage() {
     fetchAllData();
   }, [fetchAllData]);
 
-  const openEditForm = (command: SavedCommand) => {
-    setEditingCommand(command);
-    const variablesObject: Record<string, Omit<{ name: string; title: string; description?: string; hint?: string }, 'name'>> = {};
-    if (command.variables) {
-      for (const v of command.variables) {
-        variablesObject[v.name] = { title: v.title, description: v.description, hint: v.hint };
-      }
-    }
-    setFormData({
-      name: command.name,
-      command: command.command,
-      description: command.description || '',
-      nextCommands: (command.nextCommands || []).join(', '),
-      variables: variablesObject,
-    });
-    setIsEditDialogOpen(true);
-  };
-
-  const handleFormSubmit = async () => {
-    if (!formData.name || !formData.command) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Name and command are required.' });
-      return;
-    }
-    if (!editingCommand) return;
-
-    setIsSaving(true);
-    try {
-      const matches = formData.command.matchAll(VARIABLE_REGEX);
-      const detectedVariables = Array.from(matches, m => m[1]);
-
-      const commandData = {
-        name: formData.name,
-        command: formData.command,
-        description: formData.description,
-        nextCommands: formData.nextCommands.split(',').map(s => s.trim()).filter(Boolean),
-        variables: detectedVariables.map(varName => ({
-          name: varName,
-          title: formData.variables[varName]?.title || varName,
-          description: formData.variables[varName]?.description || '',
-          hint: formData.variables[varName]?.hint || '',
-        }))
-      };
-
-      await updateSavedCommand(editingCommand.id, commandData);
-      toast({ title: 'Command Updated', description: `The command "${formData.name}" has been updated.` });
-      await fetchAllData();
-      setIsEditDialogOpen(false);
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: `Failed to update command: ${e.message}` });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDeleteCommand = async (commandId: string) => {
-    setIsDeleting(true);
-    try {
-      await deleteSavedCommand(commandId);
-      toast({ title: 'Command Deleted' });
-      await fetchAllData();
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete command.' });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const openRunDialog = (command: SavedCommand) => {
+  const openRunDialog = (e: React.MouseEvent, command: SavedCommand) => {
+    e.stopPropagation(); // Prevent navigation to detail page
     setCommandToRun(command);
     setRuntimeVariableValues({});
 
-    // If command has variables or no server selected, show dialog
-    // Otherwise, run directly
     if (command.variables && command.variables.length > 0) {
       setIsRunDialogOpen(true);
     } else if (!selectedServer) {
       setIsRunDialogOpen(true);
     } else {
-      // Run directly
       handleRunCommandDirect(command, selectedServer, {});
     }
   };
@@ -258,9 +183,14 @@ export default function CommandsPage() {
     }
   };
 
-  // Pagination
-  const totalPages = Math.ceil(savedCommands.length / COMMANDS_PER_PAGE);
-  const paginatedCommands = savedCommands.slice(
+  const filteredCommands = savedCommands.filter(cmd =>
+    cmd.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (cmd.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    cmd.command.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredCommands.length / COMMANDS_PER_PAGE);
+  const paginatedCommands = filteredCommands.slice(
     (currentPage - 1) * COMMANDS_PER_PAGE,
     currentPage * COMMANDS_PER_PAGE
   );
@@ -290,19 +220,21 @@ export default function CommandsPage() {
         </div>
       </div>
 
+      <div className="relative">
+        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search commands..."
+          value={searchQuery}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="pl-9"
+          autoFocus={!!searchQuery}
+        />
+      </div>
+
       {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex flex-col space-y-3 border rounded-lg p-6">
-              <div className="space-y-2">
-                <Skeleton className="h-6 w-[250px]" />
-                <Skeleton className="h-4 w-[200px]" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <LoadingSkeleton />
       ) : (
-        <div className="grid grid-cols-1 gap-6">
+        <>
           {savedCommands.length === 0 ? (
             <Card className="text-center p-8">
               <Code className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -317,101 +249,76 @@ export default function CommandsPage() {
                 </Link>
               </Button>
             </Card>
+          ) : filteredCommands.length === 0 ? (
+            <div className="text-center p-12 border rounded-lg border-dashed text-muted-foreground">
+              <p>No commands found matching &quot;{searchQuery}&quot;</p>
+            </div>
           ) : (
-            <>
-              {paginatedCommands.map(sc => (
-                <Card key={sc.id} className="flex flex-col">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <CardTitle className="font-headline text-xl flex items-center gap-2">
-                          <Code className="h-5 w-5 text-muted-foreground" />
-                          {sc.name}
-                        </CardTitle>
-                        <CardDescription>{sc.description || 'No description'}</CardDescription>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button size="icon" variant="default" onClick={() => openRunDialog(sc)} disabled={isRunning}>
+            <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+              {paginatedCommands.map((sc, index) => (
+                <div
+                  key={sc.id}
+                  className={cn(
+                    "p-4 min-w-0 w-full transition-colors hover:bg-muted/50 group flex items-start gap-4 cursor-pointer",
+                    index !== paginatedCommands.length - 1 && "border-b border-border"
+                  )}
+                  onClick={() => router.push(`/commands/${sc.id}`)}
+                >
+                  {/* Content */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold leading-none tracking-tight truncate pr-4 text-foreground group-hover:underline decoration-muted-foreground/30 underline-offset-4">
+                        {sc.name}
+                      </h3>
+
+                      {/* Quick Action: Run */}
+                      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/80"
+                          onClick={(e) => openRunDialog(e, sc)}
+                          disabled={isRunning}
+                          title="Run Command"
+                        >
                           {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                         </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="icon" variant="ghost">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => openEditForm(sc)}>
-                              <Edit className="mr-2 h-4 w-4" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteCommand(sc.id)} disabled={isDeleting}>
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </div>
                     </div>
-                  </CardHeader>
-                </Card>
-              ))}
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex justify-center gap-2 mt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <div className="flex items-center px-4">
-                    Page {currentPage} of {totalPages}
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {sc.description || <span className="italic">No description provided</span>}
+                    </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
                 </div>
-              )}
-            </>
+              ))}
+            </Card>
           )}
-        </div>
-      )
-      }
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Command</DialogTitle>
-            <DialogDescription>
-              Update the details of your saved command.
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="max-h-[70vh]">
-            <div className="p-4">
-              <CommandForm
-                formData={formData}
-                onFormDataChange={handleFormDataChange}
-                onVariableDataChange={handleVariableDataChange}
-              />
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center px-4">
+                Page {currentPage} of {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
             </div>
-          </ScrollArea>
-          <DialogFooter className="border-t pt-4">
-            <DialogClose asChild>
-              <Button type="button" variant="secondary">Cancel</Button>
-            </DialogClose>
-            <Button onClick={handleFormSubmit} disabled={isSaving}>
-              {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Changes'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          )}
+        </>
+      )}
 
       {/* Run Command Dialog */}
       <Dialog open={isRunDialogOpen} onOpenChange={setIsRunDialogOpen}>
@@ -469,4 +376,12 @@ export default function CommandsPage() {
       </Dialog>
     </div >
   );
+}
+
+export default function CommandsPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <CommandsContent />
+    </Suspense>
+  )
 }
