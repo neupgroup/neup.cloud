@@ -9,7 +9,8 @@ export async function runCommandOnServer(
     privateKey: string,
     command: string,
     onStdout?: (chunk: Buffer | string) => void,
-    onStderr?: (chunk: Buffer | string) => void
+    onStderr?: (chunk: Buffer | string) => void,
+    skipSwap: boolean = false
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
     const ssh = new NodeSSH();
 
@@ -20,18 +21,21 @@ export async function runCommandOnServer(
             privateKey: privateKey,
         });
 
-        // Wrapper script to manage swap file
-        const swapCommand = `
-            fallocate -l 4G /tmp/swapfile;
-            chmod 600 /tmp/swapfile;
-            mkswap /tmp/swapfile;
-            swapon /tmp/swapfile;
-            trap "swapoff /tmp/swapfile; rm -f /tmp/swapfile" EXIT;
-            ${command}
-        `;
+        let finalCommand = command;
+        if (!skipSwap) {
+            // Wrapper script to manage swap file
+            finalCommand = `
+                fallocate -l 4G /tmp/swapfile;
+                chmod 600 /tmp/swapfile;
+                mkswap /tmp/swapfile;
+                swapon /tmp/swapfile;
+                trap "swapoff /tmp/swapfile; rm -f /tmp/swapfile" EXIT;
+                ${command}
+            `;
+        }
 
-        const result = await ssh.execCommand(swapCommand, { onStdout, onStderr });
-        
+        const result = await ssh.execCommand(finalCommand, { onStdout, onStderr });
+
         return {
             stdout: result.stdout,
             stderr: result.stderr,
