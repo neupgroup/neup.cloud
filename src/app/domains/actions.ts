@@ -1,7 +1,7 @@
 
 'use server';
 
-import { addDoc, collection, getDocs, serverTimestamp, query, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, serverTimestamp, query, where, doc, getDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { revalidatePath } from 'next/cache';
 
@@ -58,7 +58,7 @@ export async function addDomain(domainName: string) {
     if (!domainName) {
         throw new Error('Domain name cannot be empty.');
     }
-    
+
     // Check if domain already exists
     const q = query(collection(firestore, 'domains'), where('name', '==', domainName));
     const querySnapshot = await getDocs(q);
@@ -87,4 +87,32 @@ export async function getDomains(): Promise<ManagedDomain[]> {
         }
     }) as ManagedDomain[];
     return domains;
+}
+
+export async function getDomain(id: string): Promise<ManagedDomain | null> {
+    if (!id) return null;
+
+    // Check if it's a mock ID (optional, if you have mixed real/mock data, but let's assume real for now based on request)
+    // Actually, looking at getDomains, it fetches from firestore.
+
+    try {
+        const docRef = doc(firestore, "domains", id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            return {
+                id: docSnap.id,
+                name: data.name,
+                status: data.status,
+                addedAt: data.addedAt?.toDate().toISOString() || new Date().toISOString(),
+            } as ManagedDomain;
+        } else {
+            console.log("No such document!");
+            return null;
+        }
+    } catch (error) {
+        console.error("Error getting domain:", error);
+        return null;
+    }
 }
