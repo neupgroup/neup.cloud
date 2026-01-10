@@ -55,18 +55,7 @@ export function CommandForm({ formData, onFormDataChange, onVariableDataChange }
                 />
             </div>
 
-            <div className="grid gap-2">
-                <Label htmlFor="command-next">Next Commands (Optional)</Label>
-                <Input
-                    id="command-next"
-                    value={formData.nextCommands}
-                    onChange={(e) => onFormDataChange('nextCommands', e.target.value)}
-                    placeholder="Comma-separated command IDs"
-                />
-                <p className="text-xs text-muted-foreground">
-                    Chain commands by providing the IDs of other saved commands.
-                </p>
-            </div>
+
 
             {detectedVariables.length > 0 && (
                 <div className="space-y-4 rounded-lg border p-4">
