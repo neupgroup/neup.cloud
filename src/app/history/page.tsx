@@ -25,6 +25,7 @@ export const metadata: Metadata = {
 export type ServerLog = {
   id: string;
   command: string;
+  commandName?: string; // Display name for the command (e.g., "MyApp Start Command")
   output: string;
   status: 'Success' | 'Error' | 'pending';
   runAt: string;

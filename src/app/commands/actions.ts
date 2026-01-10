@@ -30,7 +30,12 @@ export async function deleteSavedCommand(id: string) {
     revalidatePath('/commands');
 }
 
-async function executeSingleCommand(serverId: string, command: string, originalCommandTemplate: string): Promise<{ logId: string; status: 'Success' | 'Error'; output: string }> {
+async function executeSingleCommand(
+    serverId: string,
+    command: string,
+    originalCommandTemplate: string,
+    commandName?: string
+): Promise<{ logId: string; status: 'Success' | 'Error'; output: string }> {
     const server = await getServerForRunner(serverId);
     if (!server) {
         throw new Error('Server not found.');
@@ -41,7 +46,8 @@ async function executeSingleCommand(serverId: string, command: string, originalC
 
     const logRef = await addDoc(collection(firestore, 'serverLogs'), {
         serverId: serverId,
-        command: originalCommandTemplate, // Log the original template for clarity
+        command: originalCommandTemplate, // Log the actual command
+        commandName: commandName, // Optional display name
         output: 'Executing command...',
         status: 'pending',
         runAt: serverTimestamp(),
@@ -72,7 +78,7 @@ async function executeSingleCommand(serverId: string, command: string, originalC
         } else {
             finalOutput = result.stderr || `Command exited with code ${result.code}`;
         }
-        
+
         await updateDoc(logRef, { status: finalStatus, output: finalOutput });
         revalidatePath(`/servers/${serverId}`);
 
@@ -85,18 +91,19 @@ async function executeSingleCommand(serverId: string, command: string, originalC
     }
 }
 
-export async function executeCommand(serverId: string, command: string) {
+export async function executeCommand(serverId: string, command: string, commandName?: string) {
     if (!serverId) {
         return { error: "Server not selected" };
     }
     try {
-        // Here, originalCommandTemplate is the same as command since it's a direct execution
-        const result = await executeSingleCommand(serverId, command, command);
+        // Pass both the command and the optional commandName
+        const result = await executeSingleCommand(serverId, command, command, commandName);
         return { output: result.output, error: result.status === 'Error' ? result.output : undefined };
     } catch (e: any) {
         return { error: e.message };
     }
 }
+
 
 export async function executeSavedCommand(serverId: string, savedCommandId: string, variables: Record<string, string> = {}) {
     const savedCommandDoc = await getDoc(doc(firestore, "savedCommands", savedCommandId));
@@ -136,7 +143,7 @@ export async function executeSavedCommand(serverId: string, savedCommandId: stri
     for (const key in universalVars) {
         processedCommand = processedCommand.replace(new RegExp(`<<\\{\\{\\[${key}\\]\\}\\}\\}>>`, 'g'), universalVars[key]);
     }
-    
+
     // Check if there are any un-replaced variables left
     if (/\{\{\[\[.*\]\]\}\}/.test(processedCommand) || /<<\{\{\[.*\]\}\}>>/.test(processedCommand)) {
         throw new Error("One or more variables were not provided or could not be resolved.");

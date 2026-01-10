@@ -196,7 +196,7 @@ export function HistoryClient({ initialLogs, serverId, serverName }: { initialLo
                     "overflow-hidden bg-card text-card-foreground shadow-sm transition-all duration-200 border border-border group",
                     log.status === 'Success' && "hover:border-green-500/50 hover:bg-green-50/5 dark:hover:bg-green-950/20",
                     log.status === 'Error' && "hover:border-red-500/50 hover:bg-red-50/5 dark:hover:bg-red-950/20",
-                    (log.status === 'pending' || log.status === 'running') && "hover:border-blue-500/50 hover:bg-blue-50/5 dark:hover:bg-blue-950/20"
+                    log.status === 'pending' && "hover:border-blue-500/50 hover:bg-blue-50/5 dark:hover:bg-blue-950/20"
                   )}
                 >
                   <AccordionTrigger className="px-4 py-3 hover:no-underline w-full [&[data-state=open]>div>div>svg]:rotate-90">
@@ -204,7 +204,7 @@ export function HistoryClient({ initialLogs, serverId, serverName }: { initialLo
                       <div className="flex flex-col items-start gap-1 w-full">
                         {/* Command Name */}
                         <div className="font-semibold text-base text-foreground tracking-tight">
-                          {getCommandDisplayName(log.command)}
+                          {log.commandName || getCommandDisplayName(log.command)}
                         </div>
 
                         {/* Status + Meta Combined */}
@@ -234,7 +234,7 @@ export function HistoryClient({ initialLogs, serverId, serverName }: { initialLo
                           <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Output</h4>
                         </div>
                         {/* Modified: Removed max-h and overflow-y-auto to allow full expansion based on content */}
-                        <div className="bg-zinc-950 text-zinc-50 p-4 rounded-lg font-mono text-sm border border-zinc-800/50 whitespace-pre-wrap break-words shadow-inner">
+                        <div className="bg-zinc-950 text-zinc-50 p-4 rounded-lg font-mono text-sm border border-zinc-800/50 whitespace-pre-wrap break-all overflow-wrap-anywhere shadow-inner">
                           {log.output || <span className="text-zinc-500 italic">No output recorded.</span>}
                         </div>
                       </div>

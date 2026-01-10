@@ -78,15 +78,39 @@ export default function DomainDetailsPage() {
         loadAll();
     }, [id]);
 
+    const handleRefresh = async () => {
+        setLoading(true);
+        try {
+            const [domainData, dnsData, nsData] = await Promise.all([
+                getDomain(id),
+                getDomainDNSRecords(id),
+                getDomainNameservers(id)
+            ]);
+            setDomain(domainData);
+            setDnsRecords(dnsData);
+            setNameservers(nsData);
+            toast({ title: "Refreshed", description: "Domain data has been refreshed" });
+        } catch (e) {
+            console.error(e);
+            toast({ variant: "destructive", title: "Error", description: "Failed to refresh domain data" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleVerify = async () => {
         setVerifying(true);
         try {
             const result = await verifyDomain(id);
             if (result.success) {
                 toast({ title: "Success", description: result.message });
-                // Reload domain data
-                const domainData = await getDomain(id);
+                // Reload all domain data including DNS records
+                const [domainData, dnsData] = await Promise.all([
+                    getDomain(id),
+                    getDomainDNSRecords(id)
+                ]);
                 setDomain(domainData);
+                setDnsRecords(dnsData);
             } else {
                 toast({ variant: "destructive", title: "Verification Failed", description: result.message });
             }
@@ -233,11 +257,21 @@ export default function DomainDetailsPage() {
 
             {/* DNS Records */}
             <div className="space-y-4">
-                <div>
-                    <h2 className="text-lg font-semibold">DNS Records</h2>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Current DNS configuration for {domainName}
-                    </p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-lg font-semibold">DNS Records</h2>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Current DNS configuration for {domainName}
+                        </p>
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRefresh}
+                        disabled={loading}
+                    >
+                        {loading ? "Refreshing..." : "Refresh"}
+                    </Button>
                 </div>
                 {loading ? (
                     <Card>

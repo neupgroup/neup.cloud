@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { PageTitleBack } from '@/components/page-header';
 import { getApplication, updateApplication, executeApplicationCommand } from '@/app/applications/actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -14,8 +14,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 
 
-export default function ApplicationDetailsPage({ params }: { params: { id: string } }) {
+export default function ApplicationDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { toast } = useToast();
+    const unwrappedParams = use(params);
     const [application, setApplication] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -35,7 +36,7 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
     useEffect(() => {
         async function loadApp() {
             try {
-                const app = await getApplication(params.id);
+                const app = await getApplication(unwrappedParams.id);
                 if (app) {
                     setApplication(app);
                     syncState(app);
@@ -49,7 +50,7 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
             }
         }
         loadApp();
-    }, [params.id]);
+    }, [unwrappedParams.id]);
 
     const syncState = (app: any) => {
         setCommands({
@@ -64,7 +65,7 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
         if (!command) return;
         setExecutingCmd(name);
         try {
-            const result = await executeApplicationCommand(application.id, command);
+            const result = await executeApplicationCommand(application.id, command, name);
             if (result.error) {
                 toast({
                     title: `Execution Failed: ${name}`,
@@ -87,6 +88,7 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
             setExecutingCmd(null);
         }
     };
+
 
     const handleSave = async () => {
         try {
