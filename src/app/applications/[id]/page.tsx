@@ -9,10 +9,10 @@ import { GitBranch, AppWindow, Terminal, Play, Plus, Trash2, Save, Pencil, X, Lo
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Textarea, AutoResizeTextarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+
 
 export default function ApplicationDetailsPage({ params }: { params: { id: string } }) {
     const { toast } = useToast();
@@ -134,7 +134,6 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
                     <div className="space-y-1">
                         <div className="flex items-center gap-3">
                             <AppWindow className="h-6 w-6 text-muted-foreground" />
-                            <h2 className="text-2xl font-semibold tracking-tight">{application.name}</h2>
                             <Badge
                                 variant={application.status === 'Running' ? 'default' : 'secondary'}
                                 className={application.status === 'Running' ? 'bg-green-500/20 text-green-700' : ''}
@@ -147,15 +146,11 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
                             <Link href={application.repo} target="_blank" className="hover:underline truncate max-w-md block">{application.repo}</Link>
                         </div>
                     </div>
-                    {!isEditing && (
-                        <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="gap-2">
-                            <Pencil className="h-4 w-4" /> Edit Config
-                        </Button>
-                    )}
+
                 </div>
 
                 {/* Core Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 gap-6">
                     <div className="grid gap-2">
                         <Label className="text-muted-foreground">Language / Framework</Label>
                         <div className="font-medium p-2 bg-muted/30 rounded border">{application.language || 'N/A'}</div>
@@ -179,7 +174,7 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
                     </div>
                 </div>
 
-                <Separator className="my-6" />
+
 
                 {/* Lifecycle Commands */}
                 <div className="space-y-4">
@@ -190,7 +185,7 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
                             <Label className="text-xs font-semibold uppercase">Start Command</Label>
                             <div className="flex gap-2 items-start">
                                 {isEditing ? (
-                                    <Textarea
+                                    <AutoResizeTextarea
                                         value={commands.start}
                                         onChange={(e) => setCommands({ ...commands, start: e.target.value })}
                                         className="font-mono text-sm min-h-[50px]"
@@ -211,7 +206,7 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
                             <Label className="text-xs font-semibold uppercase">Stop Command</Label>
                             <div className="flex gap-2 items-start">
                                 {isEditing ? (
-                                    <Textarea
+                                    <AutoResizeTextarea
                                         value={commands.stop}
                                         onChange={(e) => setCommands({ ...commands, stop: e.target.value })}
                                         className="font-mono text-sm min-h-[50px]"
@@ -232,7 +227,7 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
                             <Label className="text-xs font-semibold uppercase">Restart Command</Label>
                             <div className="flex gap-2 items-start">
                                 {isEditing ? (
-                                    <Textarea
+                                    <AutoResizeTextarea
                                         value={commands.restart}
                                         onChange={(e) => setCommands({ ...commands, restart: e.target.value })}
                                         className="font-mono text-sm min-h-[50px]"
@@ -251,7 +246,7 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
                     </div>
                 </div>
 
-                <Separator className="my-6" />
+
 
                 {/* Custom Commands */}
                 <div className="space-y-4">
@@ -261,10 +256,10 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
                         <div className="text-sm text-muted-foreground italic">No custom commands defined.</div>
                     )}
 
-                    <div className="grid gap-3">
+                    <div className="grid gap-4">
                         {customCommands.map((cmd, idx) => (
-                            <div key={idx} className="flex flex-col sm:flex-row gap-2 items-start p-3 border rounded-md bg-muted/10 relative">
-                                <div className="flex-1 w-full sm:w-auto grid gap-1">
+                            <div key={idx} className="grid gap-2">
+                                <div className="flex items-center justify-between">
                                     {isEditing ? (
                                         <Input
                                             value={cmd.name}
@@ -273,36 +268,38 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
                                                 newCmds[idx].name = e.target.value;
                                                 setCustomCommands(newCmds);
                                             }}
-                                            className="font-semibold h-8 text-sm max-w-xs"
-                                            placeholder="Command Name"
+                                            className="h-8 text-xs font-semibold uppercase w-auto max-w-[200px]"
+                                            placeholder="COMMAND NAME"
                                         />
                                     ) : (
-                                        <span className="font-medium text-sm">{cmd.name}</span>
+                                        <Label className="text-xs font-semibold uppercase">{cmd.name}</Label>
                                     )}
-
+                                </div>
+                                <div className="flex gap-2 items-start">
                                     {isEditing ? (
-                                        <Textarea
+                                        <AutoResizeTextarea
                                             value={cmd.command}
                                             onChange={(e) => {
                                                 const newCmds = [...customCommands];
                                                 newCmds[idx].command = e.target.value;
                                                 setCustomCommands(newCmds);
                                             }}
-                                            className="font-mono text-xs min-h-[60px]"
-                                            placeholder="Command"
+                                            className="font-mono text-sm min-h-[50px]"
+                                            placeholder="Command script..."
                                         />
                                     ) : (
-                                        <code className="text-xs font-mono bg-muted/50 px-3 py-2 rounded text-muted-foreground overflow-auto whitespace-pre-wrap block">{cmd.command}</code>
+                                        <code className="flex-1 text-sm font-mono border p-3 rounded bg-muted/30 block text-muted-foreground overflow-auto whitespace-pre-wrap min-h-[3rem] items-center flex">
+                                            {cmd.command}
+                                        </code>
                                     )}
-                                </div>
-                                <div className="absolute top-3 right-3 flex gap-2">
-                                    {!isEditing ? (
-                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleRunCommand(cmd.name, cmd.command)} disabled={executingCmd !== null} title="Run Command">
-                                            {executingCmd === cmd.name ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 text-green-600" />}
+
+                                    {isEditing ? (
+                                        <Button size="icon" variant="outline" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => removeCustomCommand(idx)} title="Remove Command">
+                                            <Trash2 className="h-4 w-4" />
                                         </Button>
                                     ) : (
-                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => removeCustomCommand(idx)} title="Remove Command">
-                                            <Trash2 className="h-4 w-4" />
+                                        <Button size="icon" variant="outline" onClick={() => handleRunCommand(cmd.name, cmd.command)} disabled={executingCmd !== null} title="Run Command">
+                                            {executingCmd === cmd.name ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 text-green-600" />}
                                         </Button>
                                     )}
                                 </div>
@@ -319,7 +316,7 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="customCmd" className="text-xs font-normal">Script / Executable</Label>
-                                <Textarea id="customCmd" placeholder="Command content..." value={newCmdContent} onChange={e => setNewCmdContent(e.target.value)} className="font-mono text-xs min-h-[80px] bg-background" />
+                                <AutoResizeTextarea id="customCmd" placeholder="Command content..." value={newCmdContent} onChange={e => setNewCmdContent(e.target.value)} className="font-mono text-xs min-h-[80px] bg-background" />
                             </div>
                             <Button onClick={addCustomCommand} variant="secondary" size="sm" className="w-auto self-start">
                                 <Plus className="h-4 w-4 mr-1" /> Add Command
@@ -328,13 +325,19 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
                     )}
                 </div>
 
-                {isEditing && (
-                    <div className="flex justify-start gap-4 pt-6 border-t mt-8">
+                {isEditing ? (
+                    <div className="flex justify-start gap-4 mt-8">
                         <Button onClick={handleSave} className="min-w-[150px]">
                             <Save className="mr-2 h-4 w-4" /> Save Configuration
                         </Button>
                         <Button variant="ghost" onClick={handleCancel}>
                             Cancel
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="flex justify-start mt-8">
+                        <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="gap-2">
+                            <Pencil className="h-4 w-4" /> Edit Config
                         </Button>
                     </div>
                 )}
