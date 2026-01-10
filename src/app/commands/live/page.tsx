@@ -14,8 +14,13 @@ export default async function LiveConsolePage() {
         }
     }
 
-    // Generate a random Session ID for this visit
-    const sessionId = Math.random().toString(36).substring(2, 10);
+    // Try to get existing session from cookie
+    let sessionId = cookieStore.get('live_session_id')?.value;
+
+    // If no active session cookie, generate a new one
+    if (!sessionId) {
+        sessionId = Math.random().toString(36).substring(2, 10);
+    }
 
     return (
         <div className="h-[calc(100vh-4rem)] flex flex-col bg-zinc-950 text-green-500 font-mono text-sm p-4 rounded-lg border border-zinc-800 shadow-2xl overflow-hidden">

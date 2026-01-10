@@ -1,33 +1,60 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { getServerForRunner } from '@/app/servers/actions';
 import { initializeFirebase } from '@/firebase';
 import { runCommandOnServer } from '@/services/ssh';
-import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 const { firestore } = initializeFirebase();
 
 /**
- * Ensures a live session document exists.
- * If not, creates one with default state.
+ * Ensures a live session document exists and initializes a server log for it.
+ * Also refreshes the session cookie.
  */
-export async function initLiveSession(sessionId: string) {
+export async function initLiveSession(sessionId: string, serverId: string | undefined) {
+    // 1. Refresh/Set Cookie immediately
+    const cookieStore = await cookies();
+    cookieStore.set('live_session_id', sessionId, {
+        maxAge: 15 * 60, // 15 minutes
+        path: '/',
+        // httpOnly: true, // Optional depending on if client needs to read it, keeping it simple/secure by default
+    });
+
     const sessionRef = doc(firestore, 'liveSessions', sessionId);
     const sessionDoc = await getDoc(sessionRef);
 
     if (!sessionDoc.exists()) {
+        let serverLogId = null;
+
+        // If a server is connected, create a log entry immediately
+        if (serverId) {
+            const logRef = await addDoc(collection(firestore, 'serverLogs'), {
+                serverId: serverId,
+                command: `Live Session ${sessionId}`,
+                commandName: 'Live Session (Active)',
+                output: '', // Will be appended to incrementally
+                status: 'Running', // Indicates active session
+                runAt: serverTimestamp(),
+            });
+            serverLogId = logRef.id;
+            revalidatePath(`/servers/${serverId}`);
+        }
+
         await setDoc(sessionRef, {
             createdAt: serverTimestamp(),
             cwd: '~', // Default home directory
             status: 'active',
-            history: [], // [{ time, type, content }]
+            history: [], // Keep for client state if needed
+            serverLogId: serverLogId,
+            serverId: serverId // Store logic association
         });
     }
 }
 
 /**
- * Ends a live session and logs it as a single entry in serverLogs.
+ * Marks the live session as 'Discontinued' in the server logs.
  */
 export async function endLiveSession(sessionId: string, serverId: string | undefined) {
     const sessionRef = doc(firestore, 'liveSessions', sessionId);
@@ -36,61 +63,53 @@ export async function endLiveSession(sessionId: string, serverId: string | undef
     if (!sessionDoc.exists()) return;
 
     const data = sessionDoc.data();
-    const history = data?.history || [];
+    const serverLogId = data.serverLogId;
 
-    // Format the transcript
-    const transcript = history.map((entry: any) => {
-        return `${entry.time} [${entry.type.toUpperCase()}]: ${entry.content}`;
-    }).join('\n');
-
-    // Save to serverLogs
-    if (serverId) {
-        await addDoc(collection(firestore, 'serverLogs'), {
-            serverId: serverId,
-            command: `Live Session ${sessionId}`,
-            commandName: 'Live Session',
-            output: transcript,
-            status: 'Success',
-            runAt: serverTimestamp(),
+    if (serverLogId) {
+        await updateDoc(doc(firestore, 'serverLogs', serverLogId), {
+            status: 'Discontinued', // Defined final status
+            commandName: 'Live Session (Ended)'
         });
-
-        revalidatePath(`/servers/${serverId}`);
+        if (serverId) {
+            revalidatePath(`/servers/${serverId}`);
+        }
     }
 
-    // Mark session ended
+    // Mark session ended locally
     await updateDoc(sessionRef, { status: 'ended' });
 }
 
 /**
  * Executes a command in the context of the live session.
+ * Appends output to the Server Log immediately.
  */
 export async function executeLiveCommand(sessionId: string, serverId: string | undefined, command: string) {
     // 1. Get Session State
     const sessionRef = doc(firestore, 'liveSessions', sessionId);
     let sessionDoc = await getDoc(sessionRef);
 
-    // If missing (shouldn't happen if init called, but for safety)
+    // If missing, initialize
     if (!sessionDoc.exists()) {
-        await initLiveSession(sessionId);
+        await initLiveSession(sessionId, serverId);
         sessionDoc = await getDoc(sessionRef);
     }
 
     const sessionData = sessionDoc.data();
     let currentCwd = sessionData?.cwd || '~';
-    const history = sessionData?.history || [];
+    const serverLogId = sessionData?.serverLogId;
 
-    const timestamp = new Date().toISOString();
-
-    // 2. Add Command to History (Optimistic or Real? We do it here)
-    const newHistory = [...history, { time: timestamp, type: 'command', content: command }];
-    await updateDoc(sessionRef, { history: newHistory });
+    // Fallback if log ID missing but should exist (rare edge case recovery)
+    if (!serverLogId && serverId) {
+        // Just proceed without logging or lazy create? 
+        // For now, assume initialized correctly.
+    }
 
     let output = '';
     let newCwd = currentCwd;
+    const timestamp = new Date().toISOString();
 
     if (!serverId) {
         // === MOCK MODE ===
-        // Simple basic commands simulation
         const parts = command.trim().split(' ');
         const cmd = parts[0];
         const args = parts.slice(1);
@@ -102,13 +121,12 @@ export async function executeLiveCommand(sessionId: string, serverId: string | u
                 pathParts.pop();
                 newCwd = '/' + pathParts.join('/');
                 if (newCwd === '//') newCwd = '/';
-                if (newCwd === '') newCwd = '/'; // slightly buggy mock but ok
+                if (newCwd === '') newCwd = '/';
             } else if (target === '~') {
                 newCwd = '~';
             } else if (target.startsWith('/')) {
                 newCwd = target;
             } else {
-                // relative
                 newCwd = (currentCwd === '~' ? '/home/user' : currentCwd) + '/' + target;
             }
             output = '';
@@ -129,39 +147,34 @@ export async function executeLiveCommand(sessionId: string, serverId: string | u
             if (!server || !server.username || !server.privateKey) {
                 output = 'Error: Server not configured correctly for SSH.';
             } else {
-                // Construct the wrapper command
-                // Note: 'cd ~' might not work in sh if strictly quoted, but usually ok.
-                // Better: use direct paths. If cwd is '~', usually we don't cd.
                 let connectionCmd = '';
                 if (currentCwd !== '~') {
                     connectionCmd = `cd "${currentCwd}" && `;
                 }
 
                 const pwdMarker = '___PWD_MARKER___';
-                const fullCommand = `${connectionCmd}${command}; echo "${pwdMarker}"; pwd`;
+                const fullCommand = `export TERM=xterm-256color; ${connectionCmd}${command}; echo "${pwdMarker}"; pwd`;
 
                 const result = await runCommandOnServer(
                     server.publicIp,
                     server.username,
                     server.privateKey,
-                    fullCommand
+                    fullCommand,
+                    undefined,
+                    undefined,
+                    true // skipSwap
                 );
 
                 const fullOutput = result.stdout + (result.stderr ? '\n' + result.stderr : '');
 
-                // Parse Output
-                // Expected format: <command_output> \n ___PWD_MARKER___ \n <new_cwd>
                 const parts = fullOutput.split(pwdMarker);
                 if (parts.length >= 2) {
                     output = parts[0].trim();
                     newCwd = parts[1].trim();
                 } else {
-                    // Something went wrong (maybe command failed catastrophically or didn't echo)
-                    // Fallback: keep old cwd
                     output = fullOutput;
                 }
 
-                // If exit code non-zero, maybe show it?
                 if (result.code !== 0) {
                     output += `\n(Exit code: ${result.code})`;
                 }
@@ -171,15 +184,38 @@ export async function executeLiveCommand(sessionId: string, serverId: string | u
         }
     }
 
-    // 3. Update Session with Output and New CWD
-    const outputTimestamp = new Date().toISOString();
-    // Determine if history is "grouped" logic? User said: "time: command \n time: output \n ... we show in this way but as a single command [in history log]".
-    // Here we just store individual entries.
-    const finalHistory = [...newHistory, { time: outputTimestamp, type: 'output', content: output }];
+    // 2. Append to Server Log (if exists)
+    if (serverLogId) {
+        // We append the new interaction to the existing output block
+        // We need to read the current output to append? Or can we just use arrayUnion if it was an array? 
+        // The implementation uses a string for 'output'. We have to read-modify-write or use a transform if firestore supported string append (it doesn't naturally).
+        // However, for efficiency in a "live" system, usually we might store lines in a subcollection.
+        // But the requirement is "shown as a single command".
+        // We will read the doc and update it. Note: this has race conditions if typing extremely fast, but for a single user terminal it is acceptable.
 
+        try {
+            const logRef = doc(firestore, 'serverLogs', serverLogId);
+            const logSnap = await getDoc(logRef);
+            if (logSnap.exists()) {
+                const currentOutput = logSnap.data().output || '';
+                const newEntry = `\n${timestamp} [COMMAND]: ${command}\n${timestamp} [OUTPUT]: ${output}`;
+                await updateDoc(logRef, {
+                    output: currentOutput + newEntry
+                });
+            }
+        } catch (err) {
+            console.error("Failed to append to log:", err);
+        }
+    }
+
+    // 3. Update Session State (CWD)
     await updateDoc(sessionRef, {
         cwd: newCwd,
-        history: finalHistory
+        // We don't necessarily need to store heavy history in the session doc anymore if it's in logs, 
+        // but we keep it for client-side hydration if they reload and we want to recover (optional, but user said "if i reload... start a new command").
+        // User said: "if i reload the page, i will see a new command (instance)".
+        // So we don't need to persist history for reload.
+        // But we might want it for the current session view if we used Firestore subscription, but we use local React state for view.
     });
 
     return { output, cwd: newCwd };

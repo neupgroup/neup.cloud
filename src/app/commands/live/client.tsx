@@ -32,10 +32,10 @@ export default function ClientTerminal({
 
     // Initialize Session
     useEffect(() => {
-        initLiveSession(sessionId);
+        initLiveSession(sessionId, serverId);
         // Focus input on load
         inputRef.current?.focus();
-    }, [sessionId]);
+    }, [sessionId, serverId]);
 
     // Timer
     useEffect(() => {
@@ -69,6 +69,13 @@ export default function ClientTerminal({
             const command = input;
             setInput('');
             setIsProcessing(true);
+
+            if (command.trim().toLowerCase() === 'clear') {
+                setHistory([]);
+                setIsProcessing(false);
+                setTimeout(() => inputRef.current?.focus(), 10);
+                return;
+            }
 
             const timestamp = new Date().toLocaleTimeString();
 
