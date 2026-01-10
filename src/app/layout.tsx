@@ -48,8 +48,39 @@ import { ProgressBar } from '@/components/progress-bar';
 import NProgress from 'nprogress';
 import Cookies from 'universal-cookie';
 
-function NavLink({ href, children, currentPath, onClick }: { href: string; children: React.ReactNode; currentPath: string, onClick?: () => void }) {
-  const isActive = href === '/' ? currentPath === href : currentPath.startsWith(href);
+// Helper function to find the longest matching path
+function findLongestMatch(currentPath: string, allPaths: string[]): string | null {
+  // Filter paths that the current path starts with
+  const matchingPaths = allPaths.filter(path => {
+    if (path === '/') {
+      return currentPath === '/';
+    }
+    return currentPath === path || currentPath.startsWith(path + '/');
+  });
+
+  if (matchingPaths.length === 0) return null;
+
+  // Sort by length (longest first) and return the longest match
+  matchingPaths.sort((a, b) => b.length - a.length);
+  return matchingPaths[0];
+}
+
+function NavLink({
+  href,
+  children,
+  currentPath,
+  allPaths,
+  onClick
+}: {
+  href: string;
+  children: React.ReactNode;
+  currentPath: string;
+  allPaths: string[];
+  onClick?: () => void;
+}) {
+  // Find the longest matching path from all available paths
+  const longestMatch = findLongestMatch(currentPath, allPaths);
+  const isActive = longestMatch === href;
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (currentPath !== href) {
@@ -73,6 +104,7 @@ function NavLink({ href, children, currentPath, onClick }: { href: string; child
     </Link>
   );
 }
+
 
 function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { currentPath: string, onLinkClick?: () => void, isServerSelected: boolean }) {
   const navLinks = [
@@ -110,11 +142,21 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
     { href: "/root/servers", label: "Manage Servers", icon: Settings },
     { href: "/errors", label: "Errors", icon: ShieldAlert },
   ]
+
+  // Collect all paths for longest match calculation
+  const allPaths = [
+    ...navLinks.map(l => l.href),
+    ...domainLinks.map(l => l.href),
+    ...accountLinks.map(l => l.href),
+    ...(isServerSelected ? serverLinks.map(l => l.href) : []),
+    ...rootLinks.map(l => l.href),
+  ];
+
   return (
     <nav className="flex flex-col gap-4">
       <div className="space-y-2">
         {navLinks.map(({ href, label, icon: Icon }) => (
-          <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+          <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
             <Icon className="h-4 w-4" />
             <span>{label}</span>
           </NavLink>
@@ -126,7 +168,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
           Domains
         </div>
         {domainLinks.map(({ href, label, icon: Icon }) => (
-          <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+          <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
             <Icon className="h-4 w-4" />
             <span>{label}</span>
           </NavLink>
@@ -139,7 +181,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
             Server
           </div>
           {serverLinks.map(({ href, label, icon: Icon }) => (
-            <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+            <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
               <Icon className="h-4 w-4" />
               <span>{label}</span>
             </NavLink>
@@ -152,7 +194,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
           Account
         </div>
         {accountLinks.map(({ href, label, icon: Icon }) => (
-          <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+          <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
             <Icon className="h-4 w-4" />
             <span>{label}</span>
           </NavLink>
@@ -163,7 +205,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
           Root
         </div>
         {rootLinks.map(({ href, label, icon: Icon }) => (
-          <NavLink key={label} href={href} currentPath={currentPath} onClick={onLinkClick}>
+          <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
             <Icon className="h-4 w-4" />
             <span>{label}</span>
           </NavLink>
