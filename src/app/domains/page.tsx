@@ -159,7 +159,7 @@ export default function DomainsPage() {
                         className={cn(
                             "p-4 min-w-0 w-full transition-colors hover:bg-muted/50 group flex items-start gap-4 cursor-pointer border-b border-border",
                         )}
-                        onClick={() => router.push('/domains/find')}
+                        onClick={() => router.push('/domains/add')}
                     >
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between mb-0 h-8">

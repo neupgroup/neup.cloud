@@ -82,7 +82,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
 
   const domainLinks = [
     { href: "/domains", label: "Domains", icon: Globe },
-    { href: "/domains/find", label: "Add Domain", icon: Plus },
+    { href: "/domains/add", label: "Add Domain", icon: Plus },
   ];
 
   const accountLinks = [
