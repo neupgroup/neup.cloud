@@ -91,13 +91,15 @@ async function executeSingleCommand(
     }
 }
 
-export async function executeCommand(serverId: string, command: string, commandName?: string) {
+export async function executeCommand(serverId: string, command: string, commandName?: string, displayCommand?: string) {
     if (!serverId) {
         return { error: "Server not selected" };
     }
     try {
-        // Pass both the command and the optional commandName
-        const result = await executeSingleCommand(serverId, command, command, commandName);
+        // executeSingleCommand(serverId, actualCommand, logCommand, commandName)
+        // If displayCommand is provided, use it for logging (originalCommandTemplate). 
+        // Otherwise use the actual command.
+        const result = await executeSingleCommand(serverId, command, displayCommand || command, commandName);
         return { output: result.output, error: result.status === 'Error' ? result.output : undefined };
     } catch (e: any) {
         return { error: e.message };

@@ -112,16 +112,16 @@ NEW_ENTRY="{\\"stage_name\\":\\"$STAGE_NAME\\",\\"status\\":\\"ongoing\\",\\"sta
 # Use jq to update or append the status (if jq is available)
 if command -v jq &> /dev/null; then
     # Check if stage exists and update it, otherwise append
-    echo "$EXISTING_STATUS" | jq \\
-        --arg stage "$STAGE_NAME" \\
-        --arg status "ongoing" \\
-        --arg time "$TIMESTAMP" \\
+    echo "$EXISTING_STATUS" | jq \\\\
+        --arg stage "$STAGE_NAME" \\\\
+        --arg status "ongoing" \\\\
+        --arg time "$TIMESTAMP" \\\\
         'map(if .stage_name == $stage then .status = $status | .started_on = $time else . end) | 
-         if any(.stage_name == $stage) then . else . + [{"stage_name": $stage, "status": $status, "started_on": $time}] end' \\
+         if any(.stage_name == $stage) then . else . + [{"stage_name": $stage, "status": $status, "started_on": $time}] end' \\\\
         > "$STATUS_FILE"
 else
     # Fallback: simple append (not ideal but works)
-    echo "$EXISTING_STATUS" | sed 's/]$//' | sed 's/^\\[//' > /tmp/status_temp
+    echo "$EXISTING_STATUS" | sed 's/]$//' | sed 's/^\\\\[//' > /tmp/status_temp
     if [ -s /tmp/status_temp ]; then
         echo "[$NEW_ENTRY," >> "$STATUS_FILE.new"
         cat /tmp/status_temp >> "$STATUS_FILE.new"
@@ -132,6 +132,102 @@ else
     mv "$STATUS_FILE.new" "$STATUS_FILE"
     rm -f /tmp/status_temp
 fi
+
+# ==========================================
+# SWAP CREATION LOGIC
+# ==========================================
+echo "-->>-->>swap_space_create.starts<<--<<--"
+
+SWAP_FILE="/swapfile_$(date +%s)_$RANDOM"
+CREATED_SWAP_FILE=""
+
+create_swap() {
+    local size_gb=$1
+    local size_mb=$2
+    
+    echo "Attempting to create swap space: $size_gb..."
+    
+    # Try fallocate first
+    if fallocate -l "$size_gb" "$SWAP_FILE" 2>/dev/null; then
+        echo "Allocated $size_gb using fallocate."
+    else
+        echo "fallocate failed, trying dd..."
+        # Calculate blocks for dd (MB)
+        if ! dd if=/dev/zero of="$SWAP_FILE" bs=1M count=$size_mb 2>/dev/null; then
+             echo "dd failed."
+             rm -f "$SWAP_FILE"
+             return 1
+        fi
+    fi
+
+    chmod 600 "$SWAP_FILE"
+    if ! mkswap "$SWAP_FILE" >/dev/null 2>&1; then
+        echo "mkswap failed."
+        rm -f "$SWAP_FILE"
+        return 1
+    fi
+
+    if ! swapon "$SWAP_FILE" >/dev/null 2>&1; then
+        echo "swapon failed."
+        rm -f "$SWAP_FILE"
+        return 1
+    fi
+
+    echo "Successfully enabled $size_gb swap space."
+    CREATED_SWAP_FILE="$SWAP_FILE"
+    return 0
+}
+
+# Get Total RAM in MB
+TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+TOTAL_RAM_MB=$((TOTAL_RAM_KB / 1024))
+TARGET_SWAP_MB=$((TOTAL_RAM_MB * 2))
+
+# Convert to GB (roughly) for display text, maintain precise MB for dd
+TARGET_SWAP_GB_INT=$((TARGET_SWAP_MB / 1024))
+TARGET_SWAP_STR="\${TARGET_SWAP_GB_INT}G"
+
+# If calculated target is < 1G (e.g. 512MB RAM -> 1GB swap), format properly
+if [ $TARGET_SWAP_MB -lt 1024 ]; then
+     TARGET_SWAP_STR="\${TARGET_SWAP_MB}M"
+fi
+
+# Attempt sequence
+SWAP_CREATED="false"
+
+# 1. Try 2x RAM
+if create_swap "$TARGET_SWAP_STR" "$TARGET_SWAP_MB"; then
+    SWAP_CREATED="true"
+else
+    # 2. Try 4GB
+    if create_swap "4G" "4096"; then
+        SWAP_CREATED="true"
+    else
+        # 3. Try 2GB
+        if create_swap "2G" "2048"; then
+            SWAP_CREATED="true"
+        else
+            # 4. Try 1GB
+            if create_swap "1G" "1024"; then
+                SWAP_CREATED="true"
+            else
+                # 5. Try 500MB
+                if create_swap "500M" "500"; then
+                    SWAP_CREATED="true"
+                else
+                    echo "Failed to create any swap space. Proceeding without swap."
+                fi
+            fi
+        fi
+    fi
+fi
+
+echo "-->>-->>swap_space_create.ends<<--<<--"
+
+
+# ==========================================
+# MAIN COMMAND EXECUTION
+# ==========================================
 
 # Print command start marker
 echo "-->>-->>${stageName}.starts<<--<<--"
@@ -145,13 +241,35 @@ COMMAND_EXIT_CODE=$?
 # Print command end marker
 echo "-->>-->>${stageName}.ends<<--<<--"
 
+
+# ==========================================
+# SWAP DELETION LOGIC
+# ==========================================
+echo "-->>-->>swap_space_delete.starts<<--<<--"
+
+if [ -n "$CREATED_SWAP_FILE" ]; then
+    echo "removing swap space: $CREATED_SWAP_FILE"
+    swapoff "$CREATED_SWAP_FILE" 2>/dev/null
+    rm -f "$CREATED_SWAP_FILE"
+    echo "Swap space removed."
+else
+    echo "No swap space to remove."
+fi
+
+echo "-->>-->>swap_space_delete.ends<<--<<--"
+
+
+# ==========================================
+# STATUS UPDATE & EXIT
+# ==========================================
+
 # Update status to completed on success
 if [ $COMMAND_EXIT_CODE -eq 0 ]; then
     if command -v jq &> /dev/null; then
         TEMP_FILE=$(mktemp)
-        cat "$STATUS_FILE" | jq \\
-            --arg stage "$STAGE_NAME" \\
-            'map(if .stage_name == $stage then .status = "completed" else . end)' \\
+        cat "$STATUS_FILE" | jq \\\\
+            --arg stage "$STAGE_NAME" \\\\
+            'map(if .stage_name == $stage then .status = "completed" else . end)' \\\\
             > "$TEMP_FILE"
         mv "$TEMP_FILE" "$STATUS_FILE"
     fi
@@ -161,7 +279,6 @@ fi
 exit $COMMAND_EXIT_CODE
 `.trim();
 
-    // Execute the wrapped command
-    return await executeCommand(serverId, updateStatusCommand, formattedCommandName);
+    // Execute the wrapped command, but log execute the original "command"
+    return await executeCommand(serverId, updateStatusCommand, formattedCommandName, command);
 }
-

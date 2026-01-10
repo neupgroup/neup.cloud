@@ -274,7 +274,7 @@ function CommandsContent() {
               {/* Run Custom Command */}
               <div
                 className={cn(
-                  "p-4 min-w-0 w-full transition-colors hover:bg-muted/50 group flex items-start gap-4 cursor-pointer",
+                  "p-4 min-w-0 w-full transition-colors hover:bg-muted/50 group flex items-start gap-4 cursor-pointer border-b border-border",
                 )}
                 onClick={() => router.push('/commands/custom')}
               >
@@ -293,6 +293,32 @@ function CommandsContent() {
                   </div>
                   <p className="text-sm text-muted-foreground line-clamp-2">
                     Execute a one-off command without saving
+                  </p>
+                </div>
+              </div>
+
+              {/* Start Live Session */}
+              <div
+                className={cn(
+                  "p-4 min-w-0 w-full transition-colors hover:bg-muted/50 group flex items-start gap-4 cursor-pointer",
+                )}
+                onClick={() => router.push('/commands/live')}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between mb-0 h-8">
+                    <h3 className="font-semibold leading-none tracking-tight truncate pr-4 text-foreground group-hover:underline decoration-muted-foreground/30 underline-offset-4">
+                      Start Live Session
+                    </h3>
+
+                    {/* Arrow Icon */}
+                    <div className="flex items-center gap-1">
+                      <div className="h-8 w-8 flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors">
+                        <ChevronRight className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Launch a temporary 15-minute interactive terminal
                   </p>
                 </div>
               </div>
