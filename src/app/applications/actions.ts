@@ -26,22 +26,21 @@ export async function getApplication(id: string) {
 
 export async function createApplication(appData: {
     name: string;
-    repo: string;
+    location: string;
     language: string;
-    status: string;
-    applicationLocation: string;
-    commands: {
-        start: string;
-        stop: string;
-        restart: string;
-    };
-    customCommands?: { name: string; command: string; }[];
-    allowNetwork: boolean;
-    allowedPorts: number[];
-    url?: string;
+    repository?: string;
+    networkAccess?: string[]; // Array of ports or empty
+    commands?: Record<string, string>; // { 'start': 'npm start', 'stop': 'npm stop' }
+    information?: Record<string, any>; // Additional JSON information
+    owner: string; // User ID of the owner
 }) {
-    await addDoc(collection(firestore, 'applications'), appData);
+    const docRef = await addDoc(collection(firestore, 'applications'), {
+        ...appData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    });
     revalidatePath('/applications');
+    return docRef.id;
 }
 
 export async function deleteApplication(id: string) {

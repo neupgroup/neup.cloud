@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Loader2, Copy, Trash, Move, Edit, Info, ClipboardPaste, X, FolderPlus, FilePlus, LayoutGrid, List } from 'lucide-react';
+import { Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Loader2, Copy, Trash, Move, Edit, Info, ClipboardPaste, X, FolderPlus, FilePlus, LayoutGrid, List, Shield, ShieldOff } from 'lucide-react';
 import { browseDirectory, uploadFile, renameFile, deleteFiles, moveFiles, copyFiles, createDirectory, createEmptyFile, type FileOrFolder } from '../servers/[id]/actions';
 import {
   Dialog,
@@ -72,6 +72,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
   const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
   const [newItemState, setNewItemState] = useState<{ type: 'file' | 'folder', isCreating: boolean } | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [rootMode, setRootMode] = useState(false);
 
   // Selection & Clipboard
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
@@ -104,7 +105,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
   const fetchFiles = useCallback(async (path: string) => {
     setIsLoading(true);
     try {
-      const { files: fetchedFiles, error } = await browseDirectory(serverId, path);
+      const { files: fetchedFiles, error } = await browseDirectory(serverId, path, rootMode);
       if (error) {
         toast({ variant: "destructive", title: "Failed to browse directory", description: error });
         setFiles([]);
@@ -122,7 +123,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       setIsLoading(false);
       setSelectedFiles(new Set()); // Clear selection on navigate
     }
-  }, [serverId, toast]);
+  }, [serverId, toast, rootMode]);
 
   useEffect(() => {
     fetchFiles(currentPath);
@@ -147,6 +148,14 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     const savedViewMode = localStorage.getItem('fileViewMode');
     if (savedViewMode === 'list' || savedViewMode === 'grid') {
       setViewMode(savedViewMode);
+    }
+  }, []);
+
+  // Load root mode preference from localStorage
+  useEffect(() => {
+    const savedRootMode = localStorage.getItem('fileRootMode');
+    if (savedRootMode === 'true') {
+      setRootMode(true);
     }
   }, []);
 
@@ -243,9 +252,9 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
 
     let result;
     if (op === 'copy') {
-      result = await copyFiles(serverId, sourcePaths, destPath);
+      result = await copyFiles(serverId, sourcePaths, destPath, rootMode);
     } else {
-      result = await moveFiles(serverId, sourcePaths, destPath);
+      result = await moveFiles(serverId, sourcePaths, destPath, rootMode);
     }
 
     if (result.error) {
@@ -271,7 +280,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     setIsProcessing(true);
     const currentFilePath = currentPath.endsWith('/') ? currentPath + renameState.oldName : currentPath + '/' + renameState.oldName;
 
-    const result = await renameFile(serverId, currentFilePath, renameState.newName);
+    const result = await renameFile(serverId, currentFilePath, renameState.newName, rootMode);
 
     if (result.error) {
       toast({ variant: 'destructive', title: 'Rename Failed', description: result.error });
@@ -301,7 +310,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       currentPath.endsWith('/') ? currentPath + name : currentPath + '/' + name
     );
 
-    const result = await deleteFiles(serverId, pathsToDelete);
+    const result = await deleteFiles(serverId, pathsToDelete, rootMode);
 
     if (result.error) {
       toast({ variant: 'destructive', title: 'Delete Failed', description: result.error });
@@ -458,9 +467,9 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
 
     let res;
     if (newItemState?.type === 'folder') {
-      res = await createDirectory(serverId, newPath);
+      res = await createDirectory(serverId, newPath, rootMode);
     } else {
-      res = await createEmptyFile(serverId, newPath);
+      res = await createEmptyFile(serverId, newPath, rootMode);
     }
 
     if (res.error) {
@@ -477,6 +486,17 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     const newMode = viewMode === 'grid' ? 'list' : 'grid';
     setViewMode(newMode);
     localStorage.setItem('fileViewMode', newMode);
+    setContextMenu(null);
+  }
+
+  const handleRootModeToggle = () => {
+    const newRootMode = !rootMode;
+    setRootMode(newRootMode);
+    localStorage.setItem('fileRootMode', newRootMode.toString());
+    toast({
+      title: newRootMode ? 'Root Mode Enabled' : 'Root Mode Disabled',
+      description: newRootMode ? 'All file operations will now use sudo.' : 'File operations will run with normal permissions.',
+    });
     setContextMenu(null);
   }
 
@@ -566,6 +586,15 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
                 <><LayoutGrid className="mr-2 h-4 w-4" /> View as Grid</>
               )}
             </button>
+
+            {/* Root Mode Toggle - Always shown */}
+            <button onClick={handleRootModeToggle} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground">
+              {rootMode ? (
+                <><ShieldOff className="mr-2 h-4 w-4" /> Turn Root Off</>
+              ) : (
+                <><Shield className="mr-2 h-4 w-4" /> Turn Root On</>
+              )}
+            </button>
           </div>
         </div>
       )}
@@ -617,6 +646,15 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
         </DialogContent>
       </Dialog>
 
+
+      {/* Root Mode Indicator */}
+      {rootMode && (
+        <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center gap-2 text-sm">
+          <Shield className="h-4 w-4 text-amber-500" />
+          <span className="font-medium text-amber-600 dark:text-amber-400">Root Mode Active</span>
+          <span className="text-muted-foreground">- All file operations will use sudo</span>
+        </div>
+      )}
 
       <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground p-1">
         <span className="font-semibold text-foreground">Path:</span>

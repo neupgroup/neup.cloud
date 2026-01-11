@@ -34,7 +34,8 @@ async function executeSingleCommand(
     serverId: string,
     command: string,
     originalCommandTemplate: string,
-    commandName?: string
+    commandName?: string,
+    variables: Record<string, any> = {}
 ): Promise<{ logId: string; status: 'Success' | 'Error'; output: string }> {
     const server = await getServerForRunner(serverId);
     if (!server) {
@@ -57,6 +58,14 @@ async function executeSingleCommand(
     let finalStatus: 'Success' | 'Error' = 'Error';
 
     try {
+        // Add server context variables
+        const serverVariables = {
+            'server.name': server.name,
+            'server.publicIp': server.publicIp,
+            'server.os': server.type || 'linux',
+            ...variables
+        };
+
         const result = await runCommandOnServer(
             server.publicIp,
             server.username,
@@ -69,7 +78,9 @@ async function executeSingleCommand(
             (chunk) => {
                 finalOutput += chunk;
                 updateDoc(logRef, { output: finalOutput });
-            }
+            },
+            false, // skipSwap
+            serverVariables
         );
 
         if (result.code === 0) {
@@ -151,7 +162,8 @@ export async function executeSavedCommand(serverId: string, savedCommandId: stri
         throw new Error("One or more variables were not provided or could not be resolved.");
     }
 
-    const mainResult = await executeSingleCommand(serverId, processedCommand, commandTemplate);
+    const combinedVariables = { ...variables, ...universalVars };
+    const mainResult = await executeSingleCommand(serverId, processedCommand, commandTemplate, undefined, combinedVariables);
 
     if (mainResult.status === 'Success' && savedCommand.nextCommands && savedCommand.nextCommands.length > 0) {
         for (const nextCommandId of savedCommand.nextCommands) {

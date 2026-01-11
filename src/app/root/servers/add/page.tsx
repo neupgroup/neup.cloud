@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Upload, X } from 'lucide-react';
 import { createServer } from '@/app/servers/actions';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -31,6 +31,9 @@ export default function AddServerPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string>('');
+  const [isDragging, setIsDragging] = useState(false);
 
   const [name, setName] = useState('');
   const [username, setUsername] = useState('root');
@@ -42,6 +45,69 @@ export default function AddServerPage() {
   const [privateIp, setPrivateIp] = useState('');
   const [privateKey, setPrivateKey] = useState('');
 
+  // Handle file reading on the client side
+  const handleFileRead = (file: File) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setPrivateKey(content);
+      setUploadedFileName(file.name);
+      toast({
+        title: 'File loaded',
+        description: `Successfully loaded ${file.name}`,
+      });
+    };
+
+    reader.onerror = () => {
+      toast({
+        variant: 'destructive',
+        title: 'Error reading file',
+        description: 'Could not read the file. Please try again.',
+      });
+    };
+
+    reader.readAsText(file);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleFileRead(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleFileRead(file);
+    }
+  };
+
+  const handleBrowseClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleRemoveFile = () => {
+    setPrivateKey('');
+    setUploadedFileName('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleCreateServer = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -177,7 +243,70 @@ export default function AddServerPage() {
 
             <div className="grid gap-2">
               <Label htmlFor="privateKey">Private Key (Optional)</Label>
-              <Textarea id="privateKey" name="privateKey" placeholder="Paste your SSH private key here" value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} className="font-mono h-32" />
+              <p className="text-sm text-muted-foreground">
+                Upload a key file (.pem, .txt, etc.) or paste your SSH private key below. The file is read locally and never uploaded.
+              </p>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pem,.txt,.key,text/plain"
+                onChange={handleFileSelect}
+                className="hidden"
+                aria-label="Upload private key file"
+              />
+
+              {/* Drag and drop zone */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragging
+                    ? 'border-primary bg-primary/5'
+                    : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+                  }`}
+              >
+                <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground mb-2">
+                  Drag and drop your key file here, or
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBrowseClick}
+                >
+                  Browse Files
+                </Button>
+                {uploadedFileName && (
+                  <div className="mt-3 flex items-center justify-center gap-2 text-sm">
+                    <span className="font-medium text-foreground">
+                      {uploadedFileName}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveFile}
+                      className="h-6 w-6 p-0"
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Remove file</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Textarea for manual entry or viewing loaded key */}
+              <Textarea
+                id="privateKey"
+                name="privateKey"
+                placeholder="Or paste your SSH private key here"
+                value={privateKey}
+                onChange={(e) => setPrivateKey(e.target.value)}
+                className="font-mono h-32"
+              />
             </div>
 
           </CardContent>

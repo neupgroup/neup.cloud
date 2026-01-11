@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save, Download, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Loader2, Save, Download, AlertTriangle, ArrowLeft, Shield, ShieldOff } from 'lucide-react';
 import { getFileContent, saveFileContent } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { PageTitleBack } from '@/components/page-header';
@@ -21,6 +21,7 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isBinary, setIsBinary] = useState(false);
+    const [rootMode, setRootMode] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Auto-resize textarea
@@ -45,6 +46,14 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
         setIsBinary(checkBinary());
     }, [path, type]);
 
+    // Load root mode preference from localStorage
+    useEffect(() => {
+        const savedRootMode = localStorage.getItem('viewerRootMode');
+        if (savedRootMode === 'true') {
+            setRootMode(true);
+        }
+    }, []);
+
     useEffect(() => {
         if (!serverId || !path) return;
 
@@ -59,7 +68,7 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
                 if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'mp4', 'webm'].includes(ext || '')) binary = true;
             }
 
-            const result = await getFileContent(serverId, path, binary);
+            const result = await getFileContent(serverId, path, binary, rootMode);
             if (result.error) {
                 setError(result.error);
             } else {
@@ -69,18 +78,28 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
         };
 
         fetchData();
-    }, [serverId, path, type]);
+    }, [serverId, path, type, rootMode]);
 
     const handleSave = async () => {
         if (!path || content === null) return;
         setSaving(true);
-        const result = await saveFileContent(serverId, path, content);
+        const result = await saveFileContent(serverId, path, content, rootMode);
         if (result.error) {
             toast({ variant: 'destructive', title: 'Error saving file', description: result.error });
         } else {
             toast({ title: 'Success', description: 'File saved successfully.' });
         }
         setSaving(false);
+    };
+
+    const handleRootModeToggle = () => {
+        const newRootMode = !rootMode;
+        setRootMode(newRootMode);
+        localStorage.setItem('viewerRootMode', newRootMode.toString());
+        toast({
+            title: newRootMode ? 'Root Mode Enabled' : 'Root Mode Disabled',
+            description: newRootMode ? 'File operations will now use sudo.' : 'File operations will run with normal permissions.',
+        });
     };
 
     if (!path) return <div className="p-8 text-center">No file path specified.</div>;
@@ -163,10 +182,30 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
             />
 
             <div className="flex-1 flex flex-col gap-4">
+                {/* Root Mode Indicator */}
+                {rootMode && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center gap-2 text-sm">
+                        <Shield className="h-4 w-4 text-amber-500" />
+                        <span className="font-medium text-amber-600 dark:text-amber-400">Root Mode Active</span>
+                        <span className="text-muted-foreground">- File operations will use sudo</span>
+                    </div>
+                )}
+
                 {renderContent()}
 
                 {!isBinary && (
-                    <div className="flex justify-end pb-8">
+                    <div className="flex justify-between items-center pb-8">
+                        <Button
+                            onClick={handleRootModeToggle}
+                            variant="outline"
+                            size="lg"
+                        >
+                            {rootMode ? (
+                                <><ShieldOff className="mr-2 h-4 w-4" /> Turn Root Off</>
+                            ) : (
+                                <><Shield className="mr-2 h-4 w-4" /> Turn Root On</>
+                            )}
+                        </Button>
                         <Button onClick={handleSave} disabled={saving} size="lg">
                             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                             Save Changes

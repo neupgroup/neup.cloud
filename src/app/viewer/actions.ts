@@ -4,7 +4,7 @@ import { getServerForRunner } from '../servers/actions';
 import { runCommandOnServer } from '@/services/ssh';
 import { revalidatePath } from 'next/cache';
 
-export async function getFileContent(serverId: string, path: string, isBinary: boolean = false) {
+export async function getFileContent(serverId: string, path: string, isBinary: boolean = false, rootMode: boolean = false) {
     const server = await getServerForRunner(serverId);
     if (!server) return { error: 'Server not found.' };
     if (!server.username || !server.privateKey) return { error: 'SSH config missing.' };
@@ -13,10 +13,10 @@ export async function getFileContent(serverId: string, path: string, isBinary: b
         let command;
         if (isBinary) {
             // Read binary file as base64
-            command = `base64 -w 0 ${path}`;
+            command = rootMode ? `sudo base64 -w 0 ${path}` : `base64 -w 0 ${path}`;
         } else {
             // Read text file
-            command = `cat ${path}`;
+            command = rootMode ? `sudo cat ${path}` : `cat ${path}`;
         }
 
         const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, command);
@@ -31,7 +31,7 @@ export async function getFileContent(serverId: string, path: string, isBinary: b
     }
 }
 
-export async function saveFileContent(serverId: string, path: string, content: string) {
+export async function saveFileContent(serverId: string, path: string, content: string, rootMode: boolean = false) {
     const server = await getServerForRunner(serverId);
     if (!server) return { error: 'Server not found.' };
     if (!server.username || !server.privateKey) return { error: 'SSH config missing.' };
@@ -42,7 +42,9 @@ export async function saveFileContent(serverId: string, path: string, content: s
         // Better approach: encode to base64 locally, then decode on server.
         // This avoids all shell escaping issues.
         const base64Content = Buffer.from(content).toString('base64');
-        const command = `echo "${base64Content}" | base64 -d > ${path}`;
+        const command = rootMode
+            ? `echo "${base64Content}" | base64 -d | sudo tee ${path} > /dev/null`
+            : `echo "${base64Content}" | base64 -d > ${path}`;
 
         const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, command);
 

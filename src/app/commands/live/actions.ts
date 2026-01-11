@@ -155,6 +155,13 @@ export async function executeLiveCommand(sessionId: string, serverId: string | u
                 const pwdMarker = '___PWD_MARKER___';
                 const fullCommand = `export TERM=xterm-256color; ${connectionCmd}${command}; echo "${pwdMarker}"; pwd`;
 
+                // Add server context variables
+                const serverVariables = {
+                    'server.name': server.name,
+                    'server.publicIp': server.publicIp,
+                    'server.os': server.type || 'linux'
+                };
+
                 const result = await runCommandOnServer(
                     server.publicIp,
                     server.username,
@@ -162,7 +169,8 @@ export async function executeLiveCommand(sessionId: string, serverId: string | u
                     fullCommand,
                     undefined,
                     undefined,
-                    true // skipSwap
+                    true, // skipSwap
+                    serverVariables
                 );
 
                 const fullOutput = result.stdout + (result.stderr ? '\n' + result.stderr : '');

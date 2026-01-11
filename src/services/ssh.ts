@@ -2,6 +2,7 @@
 'use server';
 
 import { NodeSSH } from 'node-ssh';
+import { UniversalLinux } from '../core/universal/linux';
 
 export async function runCommandOnServer(
     host: string,
@@ -10,7 +11,8 @@ export async function runCommandOnServer(
     command: string,
     onStdout?: (chunk: Buffer | string) => void,
     onStderr?: (chunk: Buffer | string) => void,
-    skipSwap: boolean = false
+    skipSwap: boolean = false,
+    variables: Record<string, string | number | boolean> = {}
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
     const ssh = new NodeSSH();
 
@@ -21,7 +23,26 @@ export async function runCommandOnServer(
             privateKey: privateKey,
         });
 
-        let finalCommand = command;
+        // Setup Executor wrapper around existing SSH connection
+        const executor = async (cmd: string) => {
+            return await ssh.execCommand(cmd);
+        };
+
+        // Initialize Universal System
+        // Detection of OS could be dynamic (uname) or passed in. 
+        // For now, defaulting to Linux, but ideally we know the server type. 
+        // We know it from the caller often, but here we just have host/user.
+        // Let's assume Linux for now as strict typing of OS isn't passed here.
+        // OR: run `uname` to check?
+        // Optimization: checking OS adds latency. 
+        // For now, using Linux implementation as default. 
+        // If we want Windows, we should pass an option `osType`.
+        // Upgrading signature to support osType later if needed.
+
+        const universal = new UniversalLinux({ variables }, executor);
+        const processedCommand = await universal.process(command);
+
+        let finalCommand = processedCommand;
         if (!skipSwap) {
             // Wrapper script to manage swap file
             finalCommand = `
@@ -30,7 +51,7 @@ export async function runCommandOnServer(
                 mkswap /tmp/swapfile;
                 swapon /tmp/swapfile;
                 trap "swapoff /tmp/swapfile; rm -f /tmp/swapfile" EXIT;
-                ${command}
+                ${processedCommand}
             `;
         }
 
