@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface PageTitleProps {
-    title: string;
-    description?: string;
+    title: React.ReactNode;
+    description?: React.ReactNode;
     className?: string;
     children?: React.ReactNode;
 }
@@ -18,7 +18,7 @@ export function PageTitle({ title, description, className, children }: PageTitle
                 <h1 className="text-3xl font-bold font-headline tracking-tight">{title}</h1>
                 {children}
             </div>
-            {description && <p className="text-muted-foreground text-lg">{description}</p>}
+            {description && <div className="text-muted-foreground text-lg">{description}</div>}
         </div>
     );
 }
@@ -40,7 +40,7 @@ export function PageTitleBack({ title, description, backHref, className, childre
                     <h1 className="text-3xl font-bold font-headline tracking-tight">{title}</h1>
                     {children}
                 </div>
-                {description && <p className="text-muted-foreground text-lg">{description}</p>}
+                {description && <div className="text-muted-foreground text-lg">{description}</div>}
             </div>
         </div>
     );
@@ -58,7 +58,7 @@ export function PageTitleWithComponent({ title, description, className, actionCo
                 {actionComponent}
                 {children && <div className="ml-auto">{children}</div>}
             </div>
-            {description && <p className="text-muted-foreground text-lg">{description}</p>}
+            {description && <div className="text-muted-foreground text-lg">{description}</div>}
         </div>
     );
 }
@@ -81,7 +81,7 @@ export function PageTitleBackWithComponent({ title, description, backHref, class
                     {actionComponent}
                     {children && <div className="ml-auto">{children}</div>}
                 </div>
-                {description && <p className="text-muted-foreground text-lg">{description}</p>}
+                {description && <div className="text-muted-foreground text-lg">{description}</div>}
             </div>
         </div>
     );

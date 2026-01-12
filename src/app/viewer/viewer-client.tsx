@@ -134,9 +134,13 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
             if (ext === 'svg') mime = 'image/svg+xml';
 
             return (
-                <div className="flex justify-center p-8 bg-muted/10 min-h-[60vh] items-center rounded-lg border shadow-sm">
+                <div className="flex justify-center bg-muted/10 items-center rounded-lg border shadow-sm overflow-hidden w-full">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`data:${mime};base64,${content}`} alt={path} className="max-w-full h-auto shadow-sm rounded bg-checkerboard" />
+                    <img
+                        src={`data:${mime};base64,${content}`}
+                        alt={path}
+                        className="max-w-full max-h-[calc(100vh-200px)] w-auto h-auto object-contain shadow-sm rounded bg-checkerboard"
+                    />
                 </div>
             );
         }
@@ -147,8 +151,8 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
             if (ext === 'webm') mime = 'video/webm';
 
             return (
-                <div className="flex justify-center p-8 bg-black min-h-[60vh] items-center rounded-lg border shadow-sm">
-                    <video controls className="max-w-full h-auto rounded shadow-sm">
+                <div className="flex justify-center bg-black items-center rounded-lg border shadow-sm overflow-hidden w-full">
+                    <video controls className="max-w-full max-h-[calc(100vh-200px)] w-auto h-auto object-contain rounded shadow-sm">
                         <source src={`data:${mime};base64,${content}`} type={mime} />
                         Your browser does not support the video tag.
                     </video>
@@ -171,13 +175,45 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
     };
 
     const parentPath = path.substring(0, path.lastIndexOf('/')) || '/';
-    const backHref = `/servers/${serverId}/files?path=${encodeURIComponent(parentPath)}`;
+    const backHref = `/files?path=${encodeURIComponent(parentPath)}`;
 
     return (
         <div className="container mx-auto p-4 py-6 max-w-6xl min-h-screen flex flex-col gap-6">
             <PageTitleBack
                 title={path.split('/').pop() || 'Unknown File'}
-                description={path}
+                description={
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">
+                        <span className="font-semibold text-foreground mr-1">Location:</span>
+                        <Button
+                            variant="link"
+                            className="p-0 h-auto text-muted-foreground font-normal hover:text-primary"
+                            onClick={() => router.push(`/files?path=/`)}
+                        >
+                            root
+                        </Button>
+                        {path.split('/').filter(Boolean).map((segment, index, array) => {
+                            const isLast = index === array.length - 1;
+                            const segmentPath = '/' + array.slice(0, index + 1).join('/');
+
+                            return (
+                                <React.Fragment key={index}>
+                                    <span className="text-muted-foreground/40 mx-1">&gt;</span>
+                                    {isLast ? (
+                                        <span className="text-foreground">{segment}</span>
+                                    ) : (
+                                        <Button
+                                            variant="link"
+                                            className="p-0 h-auto text-muted-foreground font-normal hover:text-primary"
+                                            onClick={() => router.push(`/files?path=${encodeURIComponent(segmentPath)}`)}
+                                        >
+                                            {segment}
+                                        </Button>
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
+                    </div>
+                }
                 backHref={backHref}
             />
 

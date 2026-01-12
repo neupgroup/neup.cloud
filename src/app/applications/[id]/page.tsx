@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { AppWindow, Code, FolderOpen, GitBranch, Network, User, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { PageTitleBack } from '@/components/page-header';
 
 export default async function ApplicationDetailPage({ params }: { params: { id: string } }) {
     const application = await getApplication(params.id) as any;
@@ -15,20 +16,16 @@ export default async function ApplicationDetailPage({ params }: { params: { id: 
 
     return (
         <div className="flex flex-col gap-6 max-w-5xl">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold font-headline tracking-tight flex items-center gap-3">
+            <PageTitleBack
+                title={
+                    <span className="flex items-center gap-3">
                         <AppWindow className="h-8 w-8 text-muted-foreground" />
                         {application.name}
-                    </h1>
-                    <p className="text-muted-foreground mt-1">
-                        Application details and management
-                    </p>
-                </div>
-                <Link href="/applications">
-                    <Button variant="outline">Back to Applications</Button>
-                </Link>
-            </div>
+                    </span>
+                }
+                description="Application details and management"
+                backHref="/applications"
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>

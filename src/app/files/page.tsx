@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FolderKanban, Server } from 'lucide-react';
+import { PageTitle } from '@/components/page-header';
 import ServerFilesPageContent from './files-client';
 
 export const metadata: Metadata = {
@@ -27,23 +28,23 @@ export default async function FilesPage() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold font-headline tracking-tight flex items-center gap-2">
+      <PageTitle
+        title={
+          <span className="flex items-center gap-2">
             <FolderKanban className="w-8 h-8" />
             File Manager
-          </h1>
-          {serverName ? (
-            <p className="text-muted-foreground">
+          </span>
+        }
+        description={
+          serverName ? (
+            <span>
               Browsing files for server: <span className="font-semibold text-foreground">{serverName}</span>
-            </p>
+            </span>
           ) : (
-            <p className="text-muted-foreground">
-              No server selected. Please select a server to manage its files.
-            </p>
-          )}
-        </div>
-      </div>
+            "No server selected. Please select a server to manage its files."
+          )
+        }
+      />
 
       {!serverId ? (
         <Card className="text-center p-8">

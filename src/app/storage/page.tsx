@@ -11,6 +11,7 @@ import { HardDrive, Folder, File, Database, Server } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
+import { PageTitle } from "@/components/page-header";
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -31,21 +32,23 @@ export default async function StoragePage() {
 
     return (
         <div className="grid gap-6">
-            <div>
-                <h1 className="text-3xl font-bold font-headline tracking-tight flex items-center gap-2">
-                    <HardDrive className="w-8 h-8" />
-                    Storage Management
-                </h1>
-                {serverName ? (
-                    <p className="text-muted-foreground">
-                        Showing storage for server: <span className="font-semibold text-foreground">{serverName}</span>
-                    </p>
-                ) : (
-                    <p className="text-muted-foreground">
-                        No server selected. Please select a server to view its storage.
-                    </p>
-                )}
-            </div>
+            <PageTitle
+                title={
+                    <span className="flex items-center gap-2">
+                        <HardDrive className="w-8 h-8" />
+                        Storage Management
+                    </span>
+                }
+                description={
+                    serverName ? (
+                        <span>
+                            Showing storage for server: <span className="font-semibold text-foreground">{serverName}</span>
+                        </span>
+                    ) : (
+                        "No server selected. Please select a server to view its storage."
+                    )
+                }
+            />
 
             {!serverId ? (
                 <Card className="text-center p-8">
