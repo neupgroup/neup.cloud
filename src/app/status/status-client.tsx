@@ -38,7 +38,12 @@ const CustomTooltip = ({ active, payload, label, unit }: any) => {
         return (
             <div className="rounded-lg border bg-background p-2 shadow-sm">
                 <div className="grid grid-cols-1 gap-2">
-                    <p className="text-sm text-muted-foreground">{format(new Date(label), "MMM d, h:mm a")}</p>
+                    <p className="text-sm text-muted-foreground">
+                        {(() => {
+                            const date = new Date(label);
+                            return !isNaN(date.getTime()) ? format(date, "MMM d, h:mm a") : "";
+                        })()}
+                    </p>
                     {payload.map((entry: any, index: number) => (
                         <div key={index} className="flex flex-col">
                             <span className="text-[0.70rem] uppercase text-muted-foreground">
@@ -236,7 +241,20 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
                                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                                         <Tooltip content={<CustomTooltip unit="%" />} />
                                         <Area type="monotone" dataKey="usage" name="CPU" strokeWidth={2} stroke="hsl(var(--primary))" fill="url(#colorCpu)" />
-                                        <XAxis dataKey="timestamp" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => format(new Date(value), timeFrame === '1h' ? "h:mm a" : "MMM d")} interval="preserveStartEnd" minTickGap={30} />
+                                        <XAxis
+                                            dataKey="timestamp"
+                                            stroke="hsl(var(--muted-foreground))"
+                                            fontSize={12}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickFormatter={(value) => {
+                                                const date = new Date(value);
+                                                if (isNaN(date.getTime())) return "";
+                                                return format(date, timeFrame === '1h' ? "h:mm a" : "MMM d");
+                                            }}
+                                            interval="preserveStartEnd"
+                                            minTickGap={30}
+                                        />
                                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`} />
                                     </AreaChart>
                                 </ResponsiveContainer>
@@ -275,7 +293,20 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
                                         <Tooltip content={<CustomTooltip unit="MB" />} />
                                         <Area type="monotone" dataKey="total" name="Total RAM" strokeWidth={1} stroke="hsl(var(--muted-foreground))" fill="url(#colorRamTotal)" fillOpacity={0.3} />
                                         <Area type="monotone" dataKey="used" name="Used RAM" strokeWidth={2} stroke="hsl(var(--accent))" fill="url(#colorRamUsed)" />
-                                        <XAxis dataKey="timestamp" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => format(new Date(value), timeFrame === '1h' ? "h:mm a" : "MMM d")} interval="preserveStartEnd" minTickGap={30} />
+                                        <XAxis
+                                            dataKey="timestamp"
+                                            stroke="hsl(var(--muted-foreground))"
+                                            fontSize={12}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickFormatter={(value) => {
+                                                const date = new Date(value);
+                                                if (isNaN(date.getTime())) return "";
+                                                return format(date, timeFrame === '1h' ? "h:mm a" : "MMM d");
+                                            }}
+                                            interval="preserveStartEnd"
+                                            minTickGap={30}
+                                        />
                                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}MB`} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.1)]} />
                                     </AreaChart>
                                 </ResponsiveContainer>
