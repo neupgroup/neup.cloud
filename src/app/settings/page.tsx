@@ -8,15 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import Link from 'next/link';
+
 import {
     User,
     Mail,
     Bell,
     Moon,
     Shield,
-    Smartphone,
-    Server
+    Smartphone
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -29,23 +28,7 @@ export default function SettingsPage() {
 
             <div className="grid gap-6">
 
-                {/* Server Configuration Section */}
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <Server className="h-5 w-5 text-muted-foreground" />
-                            <CardTitle>Server Configuration</CardTitle>
-                        </div>
-                        <CardDescription>
-                            Manage network settings, proxy, and load balancer.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardFooter className="border-t px-6 py-4 flex justify-end">
-                        <Button asChild>
-                            <Link href="/settings/server">Manage Server</Link>
-                        </Button>
-                    </CardFooter>
-                </Card>
+
 
                 {/* Profile Section */}
                 <Card>

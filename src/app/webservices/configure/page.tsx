@@ -136,7 +136,7 @@ export default function ServerSettingsPage() {
             <PageTitleBack
                 title="Server Settings"
                 description={`Configuration for ${serverName}`}
-                backHref="/settings"
+                backHref="/webservices"
             />
 
             <form onSubmit={handleSave}>
