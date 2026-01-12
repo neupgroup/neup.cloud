@@ -143,7 +143,10 @@ export async function browseDirectory(serverId: string, path: string, rootMode =
 
   try {
     // Use ls -lA to include hidden files except . and ..
-    const cmd = rootMode ? `sudo ls -lA --full-time ${path}` : `ls -lA --full-time ${path}`;
+    // Append / to path to ensure we list contents of symlinked directories
+    const safePath = path.endsWith('/') ? path : `${path}/`;
+    // Quote the path to handle spaces
+    const cmd = rootMode ? `sudo ls -lA --full-time "${safePath}"` : `ls -lA --full-time "${safePath}"`;
     const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd, undefined, undefined, true);
 
     if (result.code !== 0) {
@@ -154,6 +157,19 @@ export async function browseDirectory(serverId: string, path: string, rootMode =
     return { files };
   } catch (e: any) {
     return { files: [], error: `Failed to browse directory: ${e.message}` };
+  }
+}
+
+export async function isDirectory(serverId: string, path: string, rootMode = false): Promise<boolean> {
+  const server = await getServerForRunner(serverId);
+  if (!server || !server.username || !server.privateKey) return false;
+
+  try {
+    const cmd = rootMode ? `sudo test -d "${path}"` : `test -d "${path}"`;
+    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd, undefined, undefined, true);
+    return result.code === 0;
+  } catch (e) {
+    return false;
   }
 }
 

@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Loader2, Copy, Trash, Move, Edit, Info, ClipboardPaste, X, FolderPlus, FilePlus, LayoutGrid, List, Shield, ShieldOff } from 'lucide-react';
-import { browseDirectory, uploadFile, renameFile, deleteFiles, moveFiles, copyFiles, createDirectory, createEmptyFile, type FileOrFolder } from '../servers/[id]/actions';
+import { browseDirectory, uploadFile, renameFile, deleteFiles, moveFiles, copyFiles, createDirectory, createEmptyFile, isDirectory, type FileOrFolder } from '../servers/[id]/actions';
 import {
   Dialog,
   DialogContent,
@@ -194,7 +194,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     }
   };
 
-  const handleItemClick = (e: React.MouseEvent, item: FileOrFolder) => {
+  const handleItemClick = async (e: React.MouseEvent, item: FileOrFolder) => {
     e.stopPropagation();
     if (e.metaKey || e.ctrlKey) {
       handleCreateSelection(item, true);
@@ -204,9 +204,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     // Normal navigation
     const fullPath = `${currentPath.endsWith('/') ? currentPath : currentPath + '/'}${item.name}`;
 
-    if (item.type === 'directory') {
-      router.push(pathname + '?' + createQueryString('path', fullPath));
-    } else {
+    const openViewer = () => {
       const ext = item.name.split('.').pop()?.toLowerCase() || '';
       let type = 'text';
 
@@ -219,6 +217,27 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       else if (codeExts.includes(ext)) type = 'code';
 
       router.push(`/viewer?path=${encodeURIComponent(fullPath)}&type=${type}`);
+    };
+
+    if (item.type === 'directory') {
+      router.push(pathname + '?' + createQueryString('path', fullPath));
+    } else if (item.type === 'symlink') {
+      setIsProcessing(true);
+      try {
+        const isDir = await isDirectory(serverId, fullPath, rootMode);
+        if (isDir) {
+          router.push(pathname + '?' + createQueryString('path', fullPath));
+        } else {
+          openViewer();
+        }
+      } catch (e) {
+        // Fallback to viewer if check fails
+        openViewer();
+      } finally {
+        setIsProcessing(false);
+      }
+    } else {
+      openViewer();
     }
   };
 
