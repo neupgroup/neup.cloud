@@ -16,7 +16,6 @@ import {
   FileCode,
   Terminal,
   FileText,
-
   ShieldAlert,
   FolderKanban,
   History,
@@ -128,7 +127,6 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
   const serverLinks = [
     { href: "/status", label: "Status", icon: HeartPulse },
     { href: "/applications", label: "Applications", icon: AppWindow },
-
     { href: "/storage", label: "Storage", icon: HardDrive },
     { href: "/processes", label: "Processes", icon: FileCode },
     { href: "/network", label: "Network", icon: Network },
