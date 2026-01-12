@@ -397,7 +397,7 @@ export async function deployNginxConfig(serverId: string) {
             deployCommand,
             undefined,
             undefined,
-            true
+            false // Use enhanced runner (with swap) for deployment
         );
 
         if (result.code !== 0) {

@@ -99,7 +99,7 @@ function parseLsOutput(output: string): FileOrFolder[] {
   if (!output) return [];
   const lines = output.trim().split('\n');
 
-  return lines.slice(1).map(line => {
+  return lines.slice(1).map((line): FileOrFolder | null => {
     const parts = line.split(/\s+/);
     if (parts.length < 9) return null;
 
@@ -144,7 +144,7 @@ export async function browseDirectory(serverId: string, path: string, rootMode =
   try {
     // Use ls -lA to include hidden files except . and ..
     const cmd = rootMode ? `sudo ls -lA --full-time ${path}` : `ls -lA --full-time ${path}`;
-    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd, undefined, undefined, true);
 
     if (result.code !== 0) {
       return { files: [], error: result.stderr || `Failed to list directory contents. Exit code: ${result.code}` };
@@ -207,7 +207,7 @@ export async function renameFile(serverId: string, currentPath: string, newName:
     const directory = currentPath.substring(0, currentPath.lastIndexOf('/'));
     const newPath = directory ? `${directory}/${newName}` : newName;
     const cmd = rootMode ? `sudo mv "${currentPath}" "${newPath}"` : `mv "${currentPath}" "${newPath}"`;
-    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd, undefined, undefined, true);
 
     if (result.code !== 0) return { error: result.stderr || 'Rename failed.' };
 
@@ -225,7 +225,7 @@ export async function deleteFiles(serverId: string, paths: string[], rootMode = 
   try {
     const pathArgs = paths.map(p => `"${p}"`).join(' ');
     const cmd = rootMode ? `sudo rm -rf ${pathArgs}` : `rm -rf ${pathArgs}`;
-    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd, undefined, undefined, true);
 
     if (result.code !== 0) return { error: result.stderr || 'Delete failed.' };
     revalidatePath(`/files`);
@@ -242,7 +242,7 @@ export async function moveFiles(serverId: string, sourcePaths: string[], destPat
   try {
     const pathArgs = sourcePaths.map(p => `"${p}"`).join(' ');
     const cmd = rootMode ? `sudo mv ${pathArgs} "${destPath}"` : `mv ${pathArgs} "${destPath}"`;
-    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd, undefined, undefined, true);
 
     if (result.code !== 0) return { error: result.stderr || 'Move failed.' };
     revalidatePath(`/files`);
@@ -259,7 +259,7 @@ export async function copyFiles(serverId: string, sourcePaths: string[], destPat
   try {
     const pathArgs = sourcePaths.map(p => `"${p}"`).join(' ');
     const cmd = rootMode ? `sudo cp -r ${pathArgs} "${destPath}"` : `cp -r ${pathArgs} "${destPath}"`;
-    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd, undefined, undefined, true);
 
     if (result.code !== 0) return { error: result.stderr || 'Copy failed.' };
     revalidatePath(`/files`);
@@ -275,7 +275,7 @@ export async function createDirectory(serverId: string, path: string, rootMode =
 
   try {
     const cmd = rootMode ? `sudo mkdir -p "${path}"` : `mkdir -p "${path}"`;
-    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd, undefined, undefined, true);
     if (result.code !== 0) return { error: result.stderr || 'Directory creation failed.' };
     revalidatePath(`/files`);
     return { success: true };
@@ -290,7 +290,7 @@ export async function createEmptyFile(serverId: string, path: string, rootMode =
 
   try {
     const cmd = rootMode ? `sudo touch "${path}"` : `touch "${path}"`;
-    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd, undefined, undefined, true);
     if (result.code !== 0) return { error: result.stderr || 'File creation failed.' };
     revalidatePath(`/files`);
     return { success: true };
