@@ -35,7 +35,7 @@ export default async function DatabaseDetailsPage({ params }: Props) {
     const parts = id.split('-');
     if (parts.length < 2) notFound();
 
-    const engine = parts[0] as 'mysql' | 'postgres';
+    const engine = parts[0] as 'mariadb' | 'postgres';
     const dbName = parts.slice(1).join('-');
 
     let details = null;
@@ -161,14 +161,14 @@ export default async function DatabaseDetailsPage({ params }: Props) {
                         <CardContent className="pt-6">
                             <div className="space-y-4">
                                 <div className="p-3 bg-black rounded-lg font-mono text-xs text-green-400 overflow-x-auto shadow-inner border border-white/5">
-                                    {details.engine === 'mysql'
+                                    {details.engine === 'mariadb'
                                         ? `mysql -h ${details.name}.neup.cloud -u owner -p`
                                         : `psql "postgresql://owner@${details.name}.neup.cloud:5432/${details.name}"`
                                     }
                                 </div>
                                 <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
                                     <span className="flex items-center gap-1.5"><ShieldCheck className="h-3 w-3" /> SSL Mode Required</span>
-                                    <span className="flex items-center gap-1.5 font-mono">Port: {details.engine === 'mysql' ? '3306' : '5432'}</span>
+                                    <span className="flex items-center gap-1.5 font-mono">Port: {details.engine === 'mariadb' ? '3306' : '5432'}</span>
                                 </div>
                             </div>
                         </CardContent>

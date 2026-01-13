@@ -47,11 +47,11 @@ export async function checkDatabaseInstallation(serverId: string): Promise<Datab
         }
 
         // 2. Cross-verify with system status
-        const engines = ['mysql', 'postgres'];
+        const engines = ['mariadb', 'postgres'];
         const finalDetails: Record<string, EngineStatus> = { ...trackDetails };
 
         for (const engine of engines) {
-            const checkCmd = engine === 'mysql' ? 'mysql --version' : 'psql --version';
+            const checkCmd = engine === 'mariadb' ? 'mysql --version' : 'psql --version';
             const sysResult = await runCommandOnServer(
                 server.publicIp,
                 server.username,
@@ -91,17 +91,17 @@ export async function checkDatabaseInstallation(serverId: string): Promise<Datab
     }
 }
 
-export async function installDatabaseEngine(serverId: string, engine: 'mysql' | 'postgres'): Promise<{ success: boolean; message: string }> {
+export async function installDatabaseEngine(serverId: string, engine: 'mariadb' | 'postgres'): Promise<{ success: boolean; message: string }> {
     const server = await getServerForRunner(serverId);
     if (!server || !server.username || !server.privateKey) {
         throw new Error('Server not found or missing credentials.');
     }
 
     try {
-        // PRODUCTION-GRADE INSTALLATION: Using MariaDB as the default "mysql" engine for reliability
+        // PRODUCTION-GRADE INSTALLATION: Using MariaDB for reliability
         let installCmd = "";
 
-        if (engine === 'mysql') {
+        if (engine === 'mariadb') {
             installCmd = `
                 sudo DEBIAN_FRONTEND=noninteractive apt-get update && \\
                 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-server mariadb-client && \\
@@ -157,7 +157,7 @@ max_connections = 100" | sudo tee /etc/mysql/mariadb.conf.d/99-neup-cloud.cnf &&
         }
 
         // Get actual version installed (handles MariaDB reporting)
-        const versionCmd = engine === 'mysql' ? 'mysql --version' : 'psql --version';
+        const versionCmd = engine === 'mariadb' ? 'mysql --version' : 'psql --version';
         const versionResult = await runCommandOnServer(
             server.publicIp,
             server.username,
@@ -173,7 +173,7 @@ max_connections = 100" | sudo tee /etc/mysql/mariadb.conf.d/99-neup-cloud.cnf &&
 
         currentDetails[engine] = {
             status: 'installed',
-            version: versionMatch ? versionMatch[1] : (engine === 'mysql' ? '10.x' : '14'),
+            version: versionMatch ? versionMatch[1] : (engine === 'mariadb' ? '10.x' : '14'),
             installed_on: new Date().toISOString(),
         };
 
@@ -205,7 +205,7 @@ EOF`,
 
 export type DatabaseInstance = {
     name: string;
-    engine: 'mysql' | 'postgres';
+    engine: 'mariadb' | 'postgres';
     size?: string;
     created_at?: string;
 };
@@ -219,8 +219,8 @@ export async function listAllDatabases(serverId: string): Promise<DatabaseInstan
     const instances: DatabaseInstance[] = [];
     const installation = await checkDatabaseInstallation(serverId);
 
-    // List MySQL/MariaDB Databases
-    if (installation.details['mysql']?.status === 'installed') {
+    // List MariaDB Databases
+    if (installation.details['mariadb']?.status === 'installed') {
         try {
             const mysqlResult = await runCommandOnServer(
                 server.publicIp,
@@ -237,12 +237,12 @@ export async function listAllDatabases(serverId: string): Promise<DatabaseInstan
                 dbs.forEach(db => {
                     instances.push({
                         name: db.trim(),
-                        engine: 'mysql'
+                        engine: 'mariadb'
                     });
                 });
             }
         } catch (e) {
-            console.error('Failed to list MySQL databases', e);
+            console.error('Failed to list MariaDB databases', e);
         }
     }
 
@@ -278,14 +278,14 @@ export async function listAllDatabases(serverId: string): Promise<DatabaseInstan
 
 export type DatabaseDetails = {
     name: string;
-    engine: 'mysql' | 'postgres';
+    engine: 'mariadb' | 'postgres';
     size: string;
     tablesCount: number;
     userCount: number;
     status: 'healthy' | 'warning' | 'error';
 };
 
-export async function getDatabaseDetails(serverId: string, engine: 'mysql' | 'postgres', dbName: string): Promise<DatabaseDetails> {
+export async function getDatabaseDetails(serverId: string, engine: 'mariadb' | 'postgres', dbName: string): Promise<DatabaseDetails> {
     const server = await getServerForRunner(serverId);
     if (!server || !server.username || !server.privateKey) {
         throw new Error('Server not found or missing credentials.');
@@ -295,7 +295,7 @@ export async function getDatabaseDetails(serverId: string, engine: 'mysql' | 'po
         let size = "0 MB";
         let tablesCount = 0;
 
-        if (engine === 'mysql') {
+        if (engine === 'mariadb') {
             // Check existence and metrics
             const mysqlResult = await runCommandOnServer(
                 server.publicIp,
@@ -364,7 +364,7 @@ export async function getDatabaseDetails(serverId: string, engine: 'mysql' | 'po
 
 export async function createDatabaseInstance(
     serverId: string,
-    engine: 'mysql' | 'postgres',
+    engine: 'mariadb' | 'postgres',
     dbName: string,
     dbUser: string,
     dbPass: string
@@ -377,7 +377,7 @@ export async function createDatabaseInstance(
     try {
         let commands: string[] = [];
 
-        if (engine === 'mysql') {
+        if (engine === 'mariadb') {
             // Sanitize names (simple)
             const safeDbName = dbName.replace(/[^a-zA-Z0-9_]/g, '');
             const safeDbUser = dbUser.replace(/[^a-zA-Z0-9_]/g, '');
@@ -436,7 +436,7 @@ export type DatabaseUser = {
     permissions?: 'full' | 'read' | 'custom';
 };
 
-export async function listDatabaseUsers(serverId: string, engine: 'mysql' | 'postgres', dbName: string): Promise<DatabaseUser[]> {
+export async function listDatabaseUsers(serverId: string, engine: 'mariadb' | 'postgres', dbName: string): Promise<DatabaseUser[]> {
     const server = await getServerForRunner(serverId);
     if (!server || !server.username || !server.privateKey) {
         throw new Error('Server not found or missing credentials.');
@@ -444,7 +444,7 @@ export async function listDatabaseUsers(serverId: string, engine: 'mysql' | 'pos
 
     const users: DatabaseUser[] = [];
     try {
-        if (engine === 'mysql') {
+        if (engine === 'mariadb') {
             const result = await runCommandOnServer(
                 server.publicIp,
                 server.username,
@@ -510,7 +510,7 @@ export async function listDatabaseUsers(serverId: string, engine: 'mysql' | 'pos
 
 export async function createDatabaseUser(
     serverId: string,
-    engine: 'mysql' | 'postgres',
+    engine: 'mariadb' | 'postgres',
     dbName: string,
     username: string,
     password: string,
@@ -526,7 +526,7 @@ export async function createDatabaseUser(
         const safeUser = username.replace(/[^a-zA-Z0-9_]/g, '');
         let commands: string[] = [];
 
-        if (engine === 'mysql') {
+        if (engine === 'mariadb') {
             const privs = permissions === 'full' ? 'ALL PRIVILEGES' : 'SELECT, SHOW VIEW';
             commands = [
                 `sudo mysql -e "CREATE USER IF NOT EXISTS '${safeUser}'@'%' IDENTIFIED BY '${password}';"`,
@@ -560,7 +560,7 @@ export async function createDatabaseUser(
 
 export async function deleteDatabaseUser(
     serverId: string,
-    engine: 'mysql' | 'postgres',
+    engine: 'mariadb' | 'postgres',
     dbName: string,
     username: string,
     host: string = '%'
@@ -572,7 +572,7 @@ export async function deleteDatabaseUser(
 
     try {
         let commands: string[] = [];
-        if (engine === 'mysql') {
+        if (engine === 'mariadb') {
             commands = [
                 `sudo mysql -e "DROP USER '${username}'@'${host}';"`,
                 `sudo mysql -e "FLUSH PRIVILEGES;"`
@@ -595,7 +595,7 @@ export async function deleteDatabaseUser(
 
 export async function updateDatabaseUserPermissions(
     serverId: string,
-    engine: 'mysql' | 'postgres',
+    engine: 'mariadb' | 'postgres',
     dbName: string,
     username: string,
     host: string = '%',
@@ -610,7 +610,7 @@ export async function updateDatabaseUserPermissions(
         const safeDb = dbName.replace(/[^a-zA-Z0-9_]/g, '');
         let commands: string[] = [];
 
-        if (engine === 'mysql') {
+        if (engine === 'mariadb') {
             const privs = permissions === 'full' ? 'ALL PRIVILEGES' : 'SELECT, SHOW VIEW';
             commands = [
                 `sudo mysql -e "REVOKE ALL PRIVILEGES ON \\\`${safeDb}\\\`.* FROM '${username}'@'${host}';"`,
@@ -640,7 +640,7 @@ export async function updateDatabaseUserPermissions(
 
 export async function generateDatabaseBackup(
     serverId: string,
-    engine: 'mysql' | 'postgres',
+    engine: 'mariadb' | 'postgres',
     dbName: string,
     mode: 'full' | 'schema'
 ): Promise<{ success: boolean; content?: string; filename?: string; message: string }> {
@@ -654,7 +654,7 @@ export async function generateDatabaseBackup(
         const filename = `${dbName}_${mode}_${timestamp}.sql`;
         let backupCmd = "";
 
-        if (engine === 'mysql') {
+        if (engine === 'mariadb') {
             const options = mode === 'schema' ? '--no-data' : '';
             // Using sudo to ensure we have access to the databases
             backupCmd = `sudo mysqldump ${options} ${dbName}`;

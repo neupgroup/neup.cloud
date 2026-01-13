@@ -12,7 +12,7 @@ import Link from 'next/link';
 
 interface BackupClientPageProps {
     serverId: string;
-    engine: 'mysql' | 'postgres';
+    engine: 'mariadb' | 'postgres';
     dbName: string;
 }
 

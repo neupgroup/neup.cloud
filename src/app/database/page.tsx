@@ -169,7 +169,7 @@ export default async function DatabasePage() {
                                             <div className={`p-4 min-w-0 w-full transition-colors hover:bg-muted/50 ${idx !== databaseInstances.length - 1 ? 'border-b border-border' : ''}`}>
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-4 min-w-0 flex-1">
-                                                        <div className={`p-2 rounded-lg shrink-0 ${db.engine === 'mysql' ? 'bg-blue-500/10 text-blue-500' : 'bg-indigo-500/10 text-indigo-500'}`}>
+                                                        <div className={`p-2 rounded-lg shrink-0 ${db.engine === 'mariadb' ? 'bg-blue-500/10 text-blue-500' : 'bg-indigo-500/10 text-indigo-500'}`}>
                                                             <Database className="h-5 w-5" />
                                                         </div>
                                                         <div className="min-w-0 flex-1">

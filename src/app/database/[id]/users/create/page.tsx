@@ -16,7 +16,7 @@ export default async function CreateUserPage({ params }: { params: Promise<{ id:
 
     const parts = id.split('-');
     if (parts.length < 2) notFound();
-    const engine = parts[0] as 'mysql' | 'postgres';
+    const engine = parts[0] as 'mariadb' | 'postgres';
     const dbName = parts.slice(1).join('-');
 
     try {

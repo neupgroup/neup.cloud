@@ -26,7 +26,7 @@ export function DatabaseCreateForm({ serverId, initialInstallation }: DatabaseCr
     const [installation, setInstallation] = useState<DatabaseInstallation | null>(initialInstallation);
 
     // Form state
-    const [engine, setEngine] = useState('mysql');
+    const [engine, setEngine] = useState('mariadb');
     const [dbName, setDbName] = useState('');
     const [dbUser, setDbUser] = useState('');
     const [dbPassword, setDbPassword] = useState('');
@@ -37,7 +37,7 @@ export function DatabaseCreateForm({ serverId, initialInstallation }: DatabaseCr
         if (!serverId) return;
         setIsInstalling(true);
         try {
-            const result = await installDatabaseEngine(serverId, engine as 'mysql' | 'postgres');
+            const result = await installDatabaseEngine(serverId, engine as 'mariadb' | 'postgres');
             if (result.success) {
                 toast({
                     title: 'Installation Successful',
@@ -89,7 +89,7 @@ export function DatabaseCreateForm({ serverId, initialInstallation }: DatabaseCr
         try {
             const result = await createDatabaseInstance(
                 serverId,
-                engine as 'mysql' | 'postgres',
+                engine as 'mariadb' | 'postgres',
                 dbName,
                 dbUser,
                 dbPassword
@@ -136,16 +136,16 @@ export function DatabaseCreateForm({ serverId, initialInstallation }: DatabaseCr
                         className="grid grid-cols-1 md:grid-cols-2 gap-4"
                     >
                         <div>
-                            <RadioGroupItem value="mysql" id="mysql" className="peer sr-only" />
+                            <RadioGroupItem value="mariadb" id="mariadb" className="peer sr-only" />
                             <Label
-                                htmlFor="mysql"
+                                htmlFor="mariadb"
                                 className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary transition-all cursor-pointer"
                             >
                                 <div className="flex items-center gap-3 mb-2">
                                     <div className="p-2 bg-blue-500/10 rounded-full">
                                         <span className="font-bold text-blue-500">My</span>
                                     </div>
-                                    <span className="font-semibold text-lg">MySQL</span>
+                                    <span className="font-semibold text-lg">MariaDB</span>
                                 </div>
                                 <p className="text-xs text-center text-muted-foreground">
                                     Reliable, performant and popular relational database engine.

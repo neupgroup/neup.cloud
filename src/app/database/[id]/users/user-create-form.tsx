@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 interface UserCreateFormProps {
     serverId: string;
-    engine: 'mysql' | 'postgres';
+    engine: 'mariadb' | 'postgres';
     dbName: string;
     onSuccess: () => void;
 }

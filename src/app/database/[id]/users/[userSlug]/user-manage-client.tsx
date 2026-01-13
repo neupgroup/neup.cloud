@@ -14,7 +14,7 @@ import Link from 'next/link';
 
 interface UserManageClientProps {
     serverId: string;
-    engine: 'mysql' | 'postgres';
+    engine: 'mariadb' | 'postgres';
     dbName: string;
     username: string;
     host: string;
