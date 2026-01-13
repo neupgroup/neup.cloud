@@ -19,7 +19,7 @@ export async function getFileContent(serverId: string, path: string, isBinary: b
             command = rootMode ? `sudo cat ${path}` : `cat ${path}`;
         }
 
-        const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, command, undefined, undefined, true);
+        const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, command, undefined, undefined, true); // skipSwap - Don't use swap space for file viewer operations
 
         if (result.code !== 0) {
             return { error: result.stderr || 'Failed to read file.' };
@@ -46,7 +46,7 @@ export async function saveFileContent(serverId: string, path: string, content: s
             ? `echo "${base64Content}" | base64 -d | sudo tee ${path} > /dev/null`
             : `echo "${base64Content}" | base64 -d > ${path}`;
 
-        const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, command, undefined, undefined, true);
+        const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, command, undefined, undefined, true); // skipSwap - Don't use swap space for file viewer operations
 
         if (result.code !== 0) {
             return { error: result.stderr || 'Failed to save file.' };

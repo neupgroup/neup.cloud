@@ -169,7 +169,7 @@ export async function executeLiveCommand(sessionId: string, serverId: string | u
                     fullCommand,
                     undefined,
                     undefined,
-                    true, // skipSwap
+                    true, // skipSwap - Don't use swap space for live terminal sessions (better performance and responsiveness)
                     serverVariables
                 );
 

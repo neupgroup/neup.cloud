@@ -28,7 +28,10 @@ export async function checkDatabaseInstallation(serverId: string): Promise<Datab
             server.publicIp,
             server.username,
             server.privateKey,
-            'cat ~/.database 2>/dev/null || echo "{}"'
+            'cat ~/.database 2>/dev/null || echo "{}"',
+            undefined,
+            undefined,
+            true // skipSwap - Don't use swap space for database operations
         );
 
         if (trackResult.code === 0) {
@@ -53,7 +56,10 @@ export async function checkDatabaseInstallation(serverId: string): Promise<Datab
                 server.publicIp,
                 server.username,
                 server.privateKey,
-                checkCmd
+                checkCmd,
+                undefined,
+                undefined,
+                true // skipSwap - Don't use swap space for database operations
             );
 
             if (sysResult.code === 0) {
@@ -121,7 +127,10 @@ max_connections = 100" | sudo tee /etc/mysql/mariadb.conf.d/99-neup-cloud.cnf &&
             server.publicIp,
             server.username,
             server.privateKey,
-            installCmd
+            installCmd,
+            undefined,
+            undefined,
+            true // skipSwap - Don't use swap space for database operations
         );
 
         if (installResult.code !== 0) {
@@ -134,7 +143,10 @@ max_connections = 100" | sudo tee /etc/mysql/mariadb.conf.d/99-neup-cloud.cnf &&
             server.publicIp,
             server.username,
             server.privateKey,
-            'cat ~/.database 2>/dev/null || echo "{}"'
+            'cat ~/.database 2>/dev/null || echo "{}"',
+            undefined,
+            undefined,
+            true // skipSwap - Don't use swap space for database operations
         );
 
         if (checkResult.code === 0) {
@@ -150,7 +162,10 @@ max_connections = 100" | sudo tee /etc/mysql/mariadb.conf.d/99-neup-cloud.cnf &&
             server.publicIp,
             server.username,
             server.privateKey,
-            versionCmd
+            versionCmd,
+            undefined,
+            undefined,
+            true // skipSwap - Don't use swap space for database operations
         );
 
         const versionMatch = versionResult.stdout.match(/Distrib\s+([\d\.]+)/)
@@ -171,7 +186,10 @@ max_connections = 100" | sudo tee /etc/mysql/mariadb.conf.d/99-neup-cloud.cnf &&
             server.privateKey,
             `cat <<EOF > ~/.database
 ${jsonString}
-EOF`
+EOF`,
+            undefined,
+            undefined,
+            true // skipSwap - Don't use swap space for database operations
         );
 
         if (writeResult.code !== 0) {
@@ -208,7 +226,10 @@ export async function listAllDatabases(serverId: string): Promise<DatabaseInstan
                 server.publicIp,
                 server.username,
                 server.privateKey,
-                `sudo mysql -e "SHOW DATABASES;" | grep -v -E "Database|information_schema|performance_schema|mysql|sys"`
+                `sudo mysql -e "SHOW DATABASES;" | grep -v -E "Database|information_schema|performance_schema|mysql|sys"`,
+                undefined,
+                undefined,
+                true // skipSwap - Don't use swap space for database operations
             );
 
             if (mysqlResult.code === 0) {
@@ -232,7 +253,10 @@ export async function listAllDatabases(serverId: string): Promise<DatabaseInstan
                 server.publicIp,
                 server.username,
                 server.privateKey,
-                `sudo -u postgres psql -t -c "SELECT datname FROM pg_database WHERE datistemplate = false AND datname != 'postgres';"`
+                `sudo -u postgres psql -t -c "SELECT datname FROM pg_database WHERE datistemplate = false AND datname != 'postgres';"`,
+                undefined,
+                undefined,
+                true // skipSwap - Don't use swap space for database operations
             );
 
             if (pgResult.code === 0) {
@@ -281,7 +305,10 @@ export async function getDatabaseDetails(serverId: string, engine: 'mysql' | 'po
                     SELECT 'RESULT_START_EXISTS', COUNT(*) FROM information_schema.SCHEMATA WHERE schema_name = '${dbName}';
                     SELECT 'RESULT_START_SIZE', ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) FROM information_schema.TABLES WHERE table_schema = '${dbName}';
                     SELECT 'RESULT_START_TABLES', COUNT(*) FROM information_schema.TABLES WHERE table_schema = '${dbName}';
-                "`
+                "`,
+                undefined,
+                undefined,
+                true // skipSwap - Don't use swap space for database operations
             );
 
             if (mysqlResult.code === 0) {
@@ -303,7 +330,10 @@ export async function getDatabaseDetails(serverId: string, engine: 'mysql' | 'po
                     SELECT 'RESULT_START_EXISTS' || count(*) FROM pg_database WHERE datname = '${dbName}';
                     SELECT 'RESULT_START_SIZE' || pg_size_pretty(pg_database_size('${dbName}'));
                     SELECT 'RESULT_START_TABLES' || count(*) FROM information_schema.tables WHERE table_schema = 'public';
-                "`
+                "`,
+                undefined,
+                undefined,
+                true // skipSwap - Don't use swap space for database operations
             );
 
             if (pgResult.code === 0) {
@@ -376,7 +406,10 @@ export async function createDatabaseInstance(
                 server.publicIp,
                 server.username,
                 server.privateKey,
-                cmd
+                cmd,
+                undefined,
+                undefined,
+                true // skipSwap - Don't use swap space for database operations
             );
 
             if (result.code !== 0 && !result.stderr.toLowerCase().includes('already exists')) {
@@ -416,7 +449,10 @@ export async function listDatabaseUsers(serverId: string, engine: 'mysql' | 'pos
                 server.publicIp,
                 server.username,
                 server.privateKey,
-                `sudo mysql -N -s -e "SELECT 'RESULT_START', User, Host, Select_priv, Insert_priv, Update_priv, Delete_priv, Create_priv FROM mysql.db WHERE Db = '${dbName}';"`
+                `sudo mysql -N -s -e "SELECT 'RESULT_START', User, Host, Select_priv, Insert_priv, Update_priv, Delete_priv, Create_priv FROM mysql.db WHERE Db = '${dbName}';"`,
+                undefined,
+                undefined,
+                true // skipSwap - Don't use swap space for database operations
             );
 
             if (result.code === 0) {
@@ -445,7 +481,10 @@ export async function listDatabaseUsers(serverId: string, engine: 'mysql' | 'pos
                 server.publicIp,
                 server.username,
                 server.privateKey,
-                `sudo -u postgres psql -t -c "SELECT 'RESULT_START' || r.rolname || ',' || has_database_privilege(r.rolname, '${dbName}', 'CREATE') FROM pg_roles r WHERE r.rolcanlogin = true;"`
+                `sudo -u postgres psql -t -c "SELECT 'RESULT_START' || r.rolname || ',' || has_database_privilege(r.rolname, '${dbName}', 'CREATE') FROM pg_roles r WHERE r.rolcanlogin = true;"`,
+                undefined,
+                undefined,
+                true // skipSwap - Don't use swap space for database operations
             );
 
             if (result.code === 0) {
@@ -507,7 +546,7 @@ export async function createDatabaseUser(
         }
 
         for (const cmd of commands) {
-            const res = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+            const res = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd, undefined, undefined, true); // skipSwap - Don't use swap space for database operations
             if (res.code !== 0 && !res.stderr.toLowerCase().includes('already exists')) {
                 throw new Error(res.stderr);
             }
@@ -545,7 +584,7 @@ export async function deleteDatabaseUser(
         }
 
         for (const cmd of commands) {
-            await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+            await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd, undefined, undefined, true); // skipSwap - Don't use swap space for database operations
         }
 
         return { success: true, message: `User ${username} deleted.` };
@@ -590,7 +629,7 @@ export async function updateDatabaseUserPermissions(
         }
 
         for (const cmd of commands) {
-            await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+            await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd, undefined, undefined, true); // skipSwap - Don't use swap space for database operations
         }
 
         return { success: true, message: `Permissions updated to ${permissions}.` };
@@ -628,7 +667,10 @@ export async function generateDatabaseBackup(
             server.publicIp,
             server.username,
             server.privateKey,
-            backupCmd
+            backupCmd,
+            undefined,
+            undefined,
+            true // skipSwap - Don't use swap space for database operations
         );
 
         if (result.code !== 0) {
