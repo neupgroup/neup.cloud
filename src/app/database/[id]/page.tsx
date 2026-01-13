@@ -78,6 +78,7 @@ export default async function DatabaseDetailsPage({ params }: Props) {
                 </div>
             </div>
 
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
                 <Card className="bg-primary/5 border-primary/10">
                     <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
@@ -123,113 +124,128 @@ export default async function DatabaseDetailsPage({ params }: Props) {
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <Card className="border-2 border-primary/5">
-                        <CardHeader className="flex flex-row items-center justify-between bg-muted/20">
-                            <div>
-                                <CardTitle className="text-lg">Credentials & Access</CardTitle>
-                                <CardDescription>Manage users and connection strings</CardDescription>
-                            </div>
-                            <Button size="sm" variant="outline" className="gap-2">
-                                <Plus className="h-3.5 w-3.5" /> Add User
-                            </Button>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <div className="divide-y">
-                                <div className="p-4 flex items-center justify-between hover:bg-muted/5 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-muted rounded-lg">
-                                            <Key className="h-4 w-4 text-muted-foreground" />
-                                        </div>
-                                        <div>
-                                            <p className="font-semibold text-sm">Primary Owner</p>
-                                            <p className="text-xs text-muted-foreground">Internal role with full access</p>
-                                        </div>
+            {/* Process-Style Cards - Single Column */}
+            <div className="space-y-6">
+                <h2 className="text-xl font-semibold font-headline tracking-tight">Management</h2>
+
+                <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+                    {/* Manage Users */}
+                    <Link href={`/database/${id}/users`} className="block">
+                        <div className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 border-b border-border">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                    <div className="p-2 rounded-lg shrink-0 bg-blue-500/10 text-blue-500">
+                                        <Users className="h-5 w-5" />
                                     </div>
-                                    <Button variant="ghost" size="sm" className="text-xs">View Credentials</Button>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-bold text-base">Manage Users</span>
+                                            <Badge variant="secondary" className="text-[10px]">{details.userCount} users</Badge>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            View, create, and manage database users and their permissions
+                                        </p>
+                                    </div>
                                 </div>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
                             </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-2 border-primary/5">
-                        <CardHeader className="bg-muted/20">
-                            <CardTitle className="text-lg">Remote Connection</CardTitle>
-                            <CardDescription>How to connect to this database externally</CardDescription>
-                        </CardHeader>
-                        <CardContent className="pt-6">
-                            <div className="space-y-4">
-                                <div className="p-3 bg-black rounded-lg font-mono text-xs text-green-400 overflow-x-auto shadow-inner border border-white/5">
-                                    {details.engine === 'mariadb'
-                                        ? `mysql -h ${details.name}.neup.cloud -u owner -p`
-                                        : `psql "postgresql://owner@${details.name}.neup.cloud:5432/${details.name}"`
-                                    }
-                                </div>
-                                <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-                                    <span className="flex items-center gap-1.5"><ShieldCheck className="h-3 w-3" /> SSL Mode Required</span>
-                                    <span className="flex items-center gap-1.5 font-mono">Port: {details.engine === 'mariadb' ? '3306' : '5432'}</span>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <div className="space-y-6">
-                    <Card className="border-2 border-primary/5">
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Terminal className="h-4 w-4 text-primary" />
-                                Quick Shell
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <Button className="w-full justify-between" variant="secondary">
-                                Opening Interactive SQL <ChevronRight className="h-4 w-4" />
-                            </Button>
-                            <Button className="w-full justify-between" variant="outline" asChild>
-                                <Link href={`/database/${id}/backup`}>
-                                    Generate Backup <Download className="h-4 w-4" />
-                                </Link>
-                            </Button>
-                            <p className="text-[10px] text-muted-foreground text-center">
-                                Runs a secure temporary session on the server
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-2 border-primary/5">
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Settings className="h-4 w-4 text-primary" />
-                                Engine Settings
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 cursor-pointer transition-all">
-                                <span className="text-sm">Slow Query Log</span>
-                                <Badge variant="secondary">OFF</Badge>
-                            </div>
-                            <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 cursor-pointer transition-all">
-                                <span className="text-sm">Max Connections</span>
-                                <span className="text-sm font-bold">150</span>
-                            </div>
-                            <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 cursor-pointer transition-all">
-                                <span className="text-sm">Data Retention</span>
-                                <span className="text-sm font-bold text-muted-foreground">30d</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl space-y-3">
-                        <div className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
-                            <Activity className="h-4 w-4" />
-                            <span className="text-xs font-bold uppercase tracking-wider">Maintenance</span>
                         </div>
-                        <p className="text-[11px] text-amber-900/70 dark:text-amber-500/70 leading-relaxed">
-                            Backups are scheduled every 24 hours. The next backup is scheduled for midnight (GMT).
-                        </p>
+                    </Link>
+
+                    {/* Remote Connection */}
+                    <Link href={`/database/${id}/connection`} className="block">
+                        <div className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 border-b border-border">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                    <div className="p-2 rounded-lg shrink-0 bg-green-500/10 text-green-500">
+                                        <Terminal className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-bold text-base">Remote Connection</span>
+                                            <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-500 border-green-500/20">SSL Required</Badge>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            View connection details and code examples • Port: {details.engine === 'mariadb' ? '3306' : '5432'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+                            </div>
+                        </div>
+                    </Link>
+
+                    {/* Quick Shell */}
+                    <div className="p-4 min-w-0 w-full border-b border-border">
+                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                            <div className="p-2 rounded-lg shrink-0 bg-purple-500/10 text-purple-500">
+                                <Terminal className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-bold text-base">Quick Shell</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Run interactive SQL commands in a secure temporary session
+                                </p>
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Generate Backup */}
+                    <Link href={`/database/${id}/backup`} className="block">
+                        <div className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 border-b border-border">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                    <div className="p-2 rounded-lg shrink-0 bg-indigo-500/10 text-indigo-500">
+                                        <Download className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-bold text-base">Generate Backup</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Export database schema and data as SQL dump file
+                                        </p>
+                                    </div>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+                            </div>
+                        </div>
+                    </Link>
+
+                    {/* Engine Settings */}
+                    <Link href={`/database/${id}/settings`} className="block">
+                        <div className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                    <div className="p-2 rounded-lg shrink-0 bg-orange-500/10 text-orange-500">
+                                        <Settings className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-bold text-base">Engine Settings</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Configure remote access, shell sessions, and performance tuning
+                                        </p>
+                                    </div>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+                            </div>
+                        </div>
+                    </Link>
+                </Card>
+
+                {/* Maintenance Notice */}
+                <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl space-y-3">
+                    <div className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
+                        <Activity className="h-4 w-4" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Maintenance Schedule</span>
+                    </div>
+                    <p className="text-[11px] text-amber-900/70 dark:text-amber-500/70 leading-relaxed">
+                        Backups are scheduled every 24 hours. The next backup is scheduled for midnight (GMT).
+                    </p>
                 </div>
             </div>
         </div>
