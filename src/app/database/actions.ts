@@ -303,7 +303,7 @@ export async function getDatabaseDetails(serverId: string, engine: 'mariadb' | '
                 server.privateKey,
                 `sudo mysql -N -s -e "
                     SELECT 'RESULT_START_EXISTS', COUNT(*) FROM information_schema.SCHEMATA WHERE schema_name = '${dbName}';
-                    SELECT 'RESULT_START_SIZE', ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) FROM information_schema.TABLES WHERE table_schema = '${dbName}';
+                    SELECT 'RESULT_START_SIZE', COALESCE(ROUND(SUM(data_length + index_length) / 1024 / 1024, 2), 0) FROM information_schema.TABLES WHERE table_schema = '${dbName}';
                     SELECT 'RESULT_START_TABLES', COUNT(*) FROM information_schema.TABLES WHERE table_schema = '${dbName}';
                 "`,
                 undefined,
@@ -317,7 +317,8 @@ export async function getDatabaseDetails(serverId: string, engine: 'mariadb' | '
                 const exists = lines.find(l => l.includes('RESULT_START_EXISTS'))?.replace('RESULT_START_EXISTS', '').trim();
                 if (exists === '0') throw new Error('Database not found');
 
-                size = `${lines.find(l => l.includes('RESULT_START_SIZE'))?.replace('RESULT_START_SIZE', '').trim() || '0'} MB`;
+                const sizeValue = lines.find(l => l.includes('RESULT_START_SIZE'))?.replace('RESULT_START_SIZE', '').trim() || '0';
+                size = `${sizeValue} MB`;
                 tablesCount = parseInt(lines.find(l => l.includes('RESULT_START_TABLES'))?.replace('RESULT_START_TABLES', '').trim() || '0');
             }
         } else {
