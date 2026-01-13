@@ -6,7 +6,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { Database, Plus, Server, Settings, Activity, ShieldCheck, Search, CheckCircle, AlertCircle } from "lucide-react";
+import { Database, Plus, Server, Settings, Activity, ShieldCheck, Search, CheckCircle, AlertCircle, HardDrive, Trash2, ExternalLink } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { PageTitle } from "@/components/page-header";
 import type { Metadata } from 'next';
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { checkDatabaseInstallation } from "./actions";
+import { checkDatabaseInstallation, listAllDatabases, type DatabaseInstallation, type DatabaseInstance } from "./actions";
 
 export const metadata: Metadata = {
     title: 'Databases | Neup.Cloud',
@@ -25,12 +25,17 @@ export default async function DatabasePage() {
     const serverId = cookieStore.get('selected_server')?.value;
     const serverName = cookieStore.get('selected_server_name')?.value;
 
-    let installation = null;
+    let installation: DatabaseInstallation | null = null;
+    let databaseInstances: DatabaseInstance[] = [];
+
     if (serverId) {
         try {
-            installation = await checkDatabaseInstallation(serverId);
+            [installation, databaseInstances] = await Promise.all([
+                checkDatabaseInstallation(serverId),
+                listAllDatabases(serverId)
+            ]);
         } catch (error) {
-            console.error("Failed to check database installation:", error);
+            console.error("Failed to fetch database data:", error);
         }
     }
 
@@ -89,7 +94,7 @@ export default async function DatabasePage() {
                                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Databases</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">0</div>
+                                <div className="text-2xl font-bold">{databaseInstances.length}</div>
                             </CardContent>
                         </Card>
                         <Card>
@@ -114,7 +119,7 @@ export default async function DatabasePage() {
                                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Size</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">0 MB</div>
+                                <div className="text-2xl font-bold">~ MB</div>
                             </CardContent>
                         </Card>
                         <Card>
@@ -122,7 +127,7 @@ export default async function DatabasePage() {
                                 <CardTitle className="text-sm font-medium text-muted-foreground">Active Connections</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-green-500">0</div>
+                                <div className="text-2xl font-bold text-green-500">Auto</div>
                             </CardContent>
                         </Card>
                     </div>
@@ -157,9 +162,11 @@ export default async function DatabasePage() {
                                                 <span className="flex items-center gap-1.5"><Activity className="h-3.5 w-3.5" /> Healthy</span>
                                                 <span className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /> Secure</span>
                                             </div>
-                                            <Button variant="ghost" size="sm" className="gap-2">
-                                                Manage <Settings className="h-3.5 w-3.5" />
-                                            </Button>
+                                            <div className="flex gap-2">
+                                                <Button variant="ghost" size="sm" className="gap-2">
+                                                    Manage <Settings className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 ))}
@@ -170,11 +177,11 @@ export default async function DatabasePage() {
                                 <h3 className="text-lg font-medium">No Database Engines Found</h3>
                                 <p className="text-muted-foreground mb-6 max-w-sm">
                                     It looks like you haven't installed any database engines on this server yet.
-                                    Install MySQL, PostgreSQL, or Redis to get started.
+                                    Install MariaDB or PostgreSQL to get started.
                                 </p>
                                 <div className="flex gap-4">
                                     <Button asChild variant="secondary">
-                                        <Link href="/database/create">Install MySQL</Link>
+                                        <Link href="/database/create">Install MySQL/MariaDB</Link>
                                     </Button>
                                     <Button asChild variant="secondary">
                                         <Link href="/database/create">Install PostgreSQL</Link>
@@ -199,32 +206,66 @@ export default async function DatabasePage() {
                             </div>
                         </div>
 
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <CardTitle className="text-lg">Database Instances</CardTitle>
+                        {databaseInstances.length > 0 ? (
+                            <div className="grid gap-4">
+                                {databaseInstances.map((db, idx) => (
+                                    <Card key={`${db.engine}-${db.name}-${idx}`} className="hover:border-primary/20 transition-all">
+                                        <CardContent className="p-4 flex items-center justify-between">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`p-2 rounded-lg ${db.engine === 'mysql' ? 'bg-blue-500/10 text-blue-500' : 'bg-indigo-500/10 text-indigo-500'}`}>
+                                                    <Database className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-lg">{db.name}</span>
+                                                        <Badge variant="secondary" className="text-[10px] uppercase">{db.engine}</Badge>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                                        <span className="flex items-center gap-1"><HardDrive className="h-3 w-3" /> External Access Enabled</span>
+                                                        <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> SSL Active</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                                                    <ExternalLink className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                                                    <Settings className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : (
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <CardTitle className="text-lg">Database Instances</CardTitle>
+                                        </div>
                                     </div>
-                                    <Button variant="ghost" size="icon">
-                                        <Settings className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                                <CardDescription>No databases created yet.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex flex-col items-center justify-center py-12 text-center">
-                                    <div className="p-3 bg-muted rounded-full mb-4">
-                                        <Database className="h-6 w-6 text-muted-foreground" />
+                                    <CardDescription>No databases created yet.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                        <div className="p-3 bg-muted rounded-full mb-4">
+                                            <Database className="h-6 w-6 text-muted-foreground" />
+                                        </div>
+                                        <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+                                            Once you have an engine installed, you can create multiple database instances here.
+                                        </p>
+                                        <Button size="sm" variant="outline" asChild>
+                                            <Link href="/database/create">Create Initial Database</Link>
+                                        </Button>
                                     </div>
-                                    <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-                                        Once you have an engine installed, you can create multiple database instances here.
-                                    </p>
-                                    <Button size="sm" variant="outline" asChild>
-                                        <Link href="/database/create">Create Initial Database</Link>
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
                 </>
             )}

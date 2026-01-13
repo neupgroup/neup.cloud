@@ -171,3 +171,135 @@ EOF`
         return { success: false, message: error.message || 'Installation failed.' };
     }
 }
+
+export type DatabaseInstance = {
+    name: string;
+    engine: 'mysql' | 'postgres';
+    size?: string;
+    created_at?: string;
+};
+
+export async function listAllDatabases(serverId: string): Promise<DatabaseInstance[]> {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) {
+        throw new Error('Server not found or missing credentials.');
+    }
+
+    const instances: DatabaseInstance[] = [];
+    const installation = await checkDatabaseInstallation(serverId);
+
+    // List MySQL/MariaDB Databases
+    if (installation.details['mysql']?.status === 'installed') {
+        try {
+            const mysqlResult = await runCommandOnServer(
+                server.publicIp,
+                server.username,
+                server.privateKey,
+                `sudo mysql -e "SHOW DATABASES;" | grep -v -E "Database|information_schema|performance_schema|mysql|sys"`
+            );
+
+            if (mysqlResult.code === 0) {
+                const dbs = mysqlResult.stdout.trim().split('\n').filter(Boolean);
+                dbs.forEach(db => {
+                    instances.push({
+                        name: db.trim(),
+                        engine: 'mysql'
+                    });
+                });
+            }
+        } catch (e) {
+            console.error('Failed to list MySQL databases', e);
+        }
+    }
+
+    // List PostgreSQL Databases
+    if (installation.details['postgres']?.status === 'installed') {
+        try {
+            const pgResult = await runCommandOnServer(
+                server.publicIp,
+                server.username,
+                server.privateKey,
+                `sudo -u postgres psql -t -c "SELECT datname FROM pg_database WHERE datistemplate = false AND datname != 'postgres';"`
+            );
+
+            if (pgResult.code === 0) {
+                const dbs = pgResult.stdout.trim().split('\n').filter(Boolean);
+                dbs.forEach(db => {
+                    instances.push({
+                        name: db.trim(),
+                        engine: 'postgres'
+                    });
+                });
+            }
+        } catch (e) {
+            console.error('Failed to list Postgres databases', e);
+        }
+    }
+
+    return instances;
+}
+
+export async function createDatabaseInstance(
+    serverId: string,
+    engine: 'mysql' | 'postgres',
+    dbName: string,
+    dbUser: string,
+    dbPass: string
+): Promise<{ success: boolean; message: string }> {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) {
+        throw new Error('Server not found or missing credentials.');
+    }
+
+    try {
+        let commands: string[] = [];
+
+        if (engine === 'mysql') {
+            // Sanitize names (simple)
+            const safeDbName = dbName.replace(/[^a-zA-Z0-9_]/g, '');
+            const safeDbUser = dbUser.replace(/[^a-zA-Z0-9_]/g, '');
+
+            commands = [
+                `sudo mysql -e "CREATE DATABASE IF NOT EXISTS \\\`${safeDbName}\\\`;"`,
+                `sudo mysql -e "CREATE USER IF NOT EXISTS '${safeDbUser}'@'%' IDENTIFIED BY '${dbPass}';"`,
+                `sudo mysql -e "GRANT ALL PRIVILEGES ON \\\`${safeDbName}\\\`.* TO '${safeDbUser}'@'%';"`,
+                `sudo mysql -e "FLUSH PRIVILEGES;"`
+            ];
+        } else {
+            // Postgres logic
+            const safeDbName = dbName.replace(/[^a-zA-Z0-9_]/g, '');
+            const safeDbUser = dbUser.replace(/[^a-zA-Z0-9_]/g, '');
+
+            commands = [
+                `sudo -u postgres psql -c "CREATE USER ${safeDbUser} WITH PASSWORD '${dbPass}';"`,
+                `sudo -u postgres psql -c "CREATE DATABASE ${safeDbName} OWNER ${safeDbUser};"`,
+                `sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ${safeDbName} TO ${safeDbUser};"`
+            ];
+        }
+
+        // Run commands sequentially
+        for (const cmd of commands) {
+            const result = await runCommandOnServer(
+                server.publicIp,
+                server.username,
+                server.privateKey,
+                cmd
+            );
+
+            if (result.code !== 0 && !result.stderr.toLowerCase().includes('already exists')) {
+                throw new Error(`Failed to execute: ${cmd}. Error: ${result.stderr}`);
+            }
+        }
+
+        return {
+            success: true,
+            message: `Database ${dbName} and user ${dbUser} created successfully.`
+        };
+    } catch (error: any) {
+        console.error('Error creating database instance:', error);
+        return {
+            success: false,
+            message: error.message || 'Database creation failed.'
+        };
+    }
+}

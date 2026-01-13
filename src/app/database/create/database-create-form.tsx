@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Database, ShieldCheck, Key, User, AlertTriangle, CheckCircle, ArrowRight, Server } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { type DatabaseInstallation, installDatabaseEngine, checkDatabaseInstallation } from '../actions';
+import { type DatabaseInstallation, installDatabaseEngine, checkDatabaseInstallation, createDatabaseInstance } from '../actions';
 
 interface DatabaseCreateFormProps {
     serverId?: string;
@@ -87,15 +87,27 @@ export function DatabaseCreateForm({ serverId, initialInstallation }: DatabaseCr
         setIsLoading(true);
 
         try {
-            // Placeholder for actual creation logic
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            const result = await createDatabaseInstance(
+                serverId,
+                engine as 'mysql' | 'postgres',
+                dbName,
+                dbUser,
+                dbPassword
+            );
 
-            toast({
-                title: 'Database creation started',
-                description: `${dbName} is being created on the server.`,
-            });
-
-            router.push('/database');
+            if (result.success) {
+                toast({
+                    title: 'Database created',
+                    description: result.message,
+                });
+                router.push('/database');
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Creation Failed',
+                    description: result.message,
+                });
+            }
         } catch (error: any) {
             toast({
                 variant: 'destructive',
