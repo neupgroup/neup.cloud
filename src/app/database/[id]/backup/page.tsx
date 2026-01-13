@@ -1,19 +1,19 @@
 
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { listDatabaseUsers, getDatabaseDetails } from "../../actions";
-import { UsersClientPage } from "./users-client";
+import { BackupClientPage } from "./backup-client";
+import { getDatabaseDetails } from "../../actions";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: 'Manage Users | Neup.Cloud',
+    title: 'Database Backup | Neup.Cloud',
 };
 
 type Props = {
     params: Promise<{ id: string }>
 }
 
-export default async function DatabaseUsersPage({ params }: Props) {
+export default async function DatabaseBackupPage({ params }: Props) {
     const { id } = await params;
     const cookieStore = await cookies();
     const serverId = cookieStore.get('selected_server')?.value;
@@ -27,22 +27,18 @@ export default async function DatabaseUsersPage({ params }: Props) {
     const engine = parts[0] as 'mysql' | 'postgres';
     const dbName = parts.slice(1).join('-');
 
-    let users = [];
     try {
         // Verify existence first
         await getDatabaseDetails(serverId, engine, dbName);
-        users = await listDatabaseUsers(serverId, engine, dbName);
     } catch (error) {
-        console.error("Failed to fetch database users:", error);
         notFound();
     }
 
     return (
-        <UsersClientPage
+        <BackupClientPage
             serverId={serverId}
             engine={engine}
             dbName={dbName}
-            initialUsers={users}
         />
     );
 }

@@ -6,7 +6,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { Database, Settings, Activity, ShieldCheck, HardDrive, Trash2, Key, Users, Table, Terminal, RefreshCw, ChevronRight, Plus } from "lucide-react";
+import { Database, Settings, Activity, ShieldCheck, HardDrive, Trash2, Key, Users, Table, Terminal, RefreshCw, ChevronRight, Plus, Download } from "lucide-react";
 import { cookies } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { PageTitleBack } from "@/components/page-header";
@@ -14,6 +14,7 @@ import type { Metadata } from 'next';
 import { Badge } from "@/components/ui/badge";
 import { getDatabaseDetails } from "../actions";
 import { notFound } from "next/navigation";
+import Link from 'next/link';
 
 export const metadata: Metadata = {
     title: 'Database Details | Neup.Cloud',
@@ -185,6 +186,11 @@ export default async function DatabaseDetailsPage({ params }: Props) {
                         <CardContent className="space-y-4">
                             <Button className="w-full justify-between" variant="secondary">
                                 Opening Interactive SQL <ChevronRight className="h-4 w-4" />
+                            </Button>
+                            <Button className="w-full justify-between" variant="outline" asChild>
+                                <Link href={`/database/${id}/backup`}>
+                                    Generate Backup <Download className="h-4 w-4" />
+                                </Link>
                             </Button>
                             <p className="text-[10px] text-muted-foreground text-center">
                                 Runs a secure temporary session on the server

@@ -272,39 +272,48 @@ export async function getDatabaseDetails(serverId: string, engine: 'mysql' | 'po
         let tablesCount = 0;
 
         if (engine === 'mysql') {
+            // Check existence and metrics
             const mysqlResult = await runCommandOnServer(
                 server.publicIp,
                 server.username,
                 server.privateKey,
-                `sudo mysql -N -s -e "SELECT 'RESULT_START', ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) FROM information_schema.TABLES WHERE table_schema = '${dbName}'; SELECT 'RESULT_START', COUNT(*) FROM information_schema.TABLES WHERE table_schema = '${dbName}';"`
+                `sudo mysql -N -s -e "
+                    SELECT 'RESULT_START_EXISTS', COUNT(*) FROM information_schema.SCHEMATA WHERE schema_name = '${dbName}';
+                    SELECT 'RESULT_START_SIZE', ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) FROM information_schema.TABLES WHERE table_schema = '${dbName}';
+                    SELECT 'RESULT_START_TABLES', COUNT(*) FROM information_schema.TABLES WHERE table_schema = '${dbName}';
+                "`
             );
 
             if (mysqlResult.code === 0) {
-                // Find lines that start with our marker to ignore noise (like swap messages)
                 const lines = mysqlResult.stdout.trim().split('\n');
-                const cleanResults = lines
-                    .filter(l => l.includes('RESULT_START'))
-                    .map(l => l.replace('RESULT_START', '').trim());
 
-                size = `${cleanResults[0] || '0'} MB`;
-                tablesCount = parseInt(cleanResults[1] || '0');
+                const exists = lines.find(l => l.includes('RESULT_START_EXISTS'))?.replace('RESULT_START_EXISTS', '').trim();
+                if (exists === '0') throw new Error('Database not found');
+
+                size = `${lines.find(l => l.includes('RESULT_START_SIZE'))?.replace('RESULT_START_SIZE', '').trim() || '0'} MB`;
+                tablesCount = parseInt(lines.find(l => l.includes('RESULT_START_TABLES'))?.replace('RESULT_START_TABLES', '').trim() || '0');
             }
         } else {
+            // Postgres existence check
             const pgResult = await runCommandOnServer(
                 server.publicIp,
                 server.username,
                 server.privateKey,
-                `sudo -u postgres psql -t -c "SELECT 'RESULT_START' || pg_size_pretty(pg_database_size('${dbName}')); SELECT 'RESULT_START' || count(*) FROM information_schema.tables WHERE table_schema = 'public';"`
+                `sudo -u postgres psql -t -c "
+                    SELECT 'RESULT_START_EXISTS' || count(*) FROM pg_database WHERE datname = '${dbName}';
+                    SELECT 'RESULT_START_SIZE' || pg_size_pretty(pg_database_size('${dbName}'));
+                    SELECT 'RESULT_START_TABLES' || count(*) FROM information_schema.tables WHERE table_schema = 'public';
+                "`
             );
 
             if (pgResult.code === 0) {
                 const lines = pgResult.stdout.trim().split('\n');
-                const cleanResults = lines
-                    .filter(l => l.includes('RESULT_START'))
-                    .map(l => l.replace('RESULT_START', '').trim());
 
-                size = cleanResults[0] || "0 MB";
-                tablesCount = parseInt(cleanResults[1] || "0");
+                const exists = lines.find(l => l.includes('RESULT_START_EXISTS'))?.replace('RESULT_START_EXISTS', '').trim();
+                if (exists === '0') throw new Error('Database not found');
+
+                size = lines.find(l => l.includes('RESULT_START_SIZE'))?.replace('RESULT_START_SIZE', '').trim() || "0 MB";
+                tablesCount = parseInt(lines.find(l => l.includes('RESULT_START_TABLES'))?.replace('RESULT_START_TABLES', '').trim() || "0");
             }
         }
 
@@ -313,10 +322,11 @@ export async function getDatabaseDetails(serverId: string, engine: 'mysql' | 'po
             engine,
             size,
             tablesCount,
-            userCount: engine === 'mysql' ? 1 : 1, // Simplified for now
+            userCount: 1,
             status: 'healthy'
         };
     } catch (error: any) {
+        if (error.message === 'Database not found') throw error;
         console.error('Error fetching database details:', error);
         throw new Error('Failed to fetch database details.');
     }
