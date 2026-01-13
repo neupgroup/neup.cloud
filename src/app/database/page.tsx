@@ -6,7 +6,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { Database, Plus, Server, Settings, Activity, ShieldCheck, Search, CheckCircle, AlertCircle, HardDrive, Trash2, ExternalLink } from "lucide-react";
+import { Database, Plus, Server, Settings, Activity, ShieldCheck, Search, CheckCircle, AlertCircle, HardDrive, Trash2, ExternalLink, ChevronRight } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
@@ -209,36 +209,36 @@ export default async function DatabasePage() {
                         {databaseInstances.length > 0 ? (
                             <div className="grid gap-4">
                                 {databaseInstances.map((db, idx) => (
-                                    <Card key={`${db.engine}-${db.name}-${idx}`} className="hover:border-primary/20 transition-all">
-                                        <CardContent className="p-4 flex items-center justify-between">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`p-2 rounded-lg ${db.engine === 'mysql' ? 'bg-blue-500/10 text-blue-500' : 'bg-indigo-500/10 text-indigo-500'}`}>
-                                                    <Database className="h-5 w-5" />
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-lg">{db.name}</span>
-                                                        <Badge variant="secondary" className="text-[10px] uppercase">{db.engine}</Badge>
+                                    <Link
+                                        key={`${db.engine}-${db.name}-${idx}`}
+                                        href={`/database/${db.engine}-${db.name}`}
+                                        className="group"
+                                    >
+                                        <Card className="hover:border-primary/20 hover:shadow-md transition-all">
+                                            <CardContent className="p-4 flex items-center justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`p-2 rounded-lg ${db.engine === 'mysql' ? 'bg-blue-500/10 text-blue-500' : 'bg-indigo-500/10 text-indigo-500'}`}>
+                                                        <Database className="h-5 w-5" />
                                                     </div>
-                                                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                                                        <span className="flex items-center gap-1"><HardDrive className="h-3 w-3" /> External Access Enabled</span>
-                                                        <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> SSL Active</span>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-lg">{db.name}</span>
+                                                            <Badge variant="secondary" className="text-[10px] uppercase">{db.engine}</Badge>
+                                                        </div>
+                                                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                                            <span className="flex items-center gap-1"><HardDrive className="h-3 w-3" /> External Access Enabled</span>
+                                                            <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> SSL Active</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                                                    <ExternalLink className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                                                    <Settings className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                                <div className="flex items-center gap-2">
+                                                    <Button variant="ghost" size="icon" className="text-muted-foreground group-hover:text-primary transition-colors">
+                                                        <ChevronRight className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </Link>
                                 ))}
                             </div>
                         ) : (

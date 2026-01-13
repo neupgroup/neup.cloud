@@ -98,10 +98,23 @@ export async function installDatabaseEngine(serverId: string, engine: 'mysql' | 
         if (engine === 'mysql') {
             installCmd = `
                 sudo DEBIAN_FRONTEND=noninteractive apt-get update && \\
-                sudo DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-server mariadb-client
+                sudo DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-server mariadb-client && \\
+                echo "[mysqld]
+# Optimized for No-Swap Environment
+performance_schema = OFF
+innodb_buffer_pool_size = 64M
+innodb_log_file_size = 16M
+max_connections = 100" | sudo tee /etc/mysql/mariadb.conf.d/99-neup-cloud.cnf && \\
+                sudo systemctl restart mariadb
             `;
         } else {
-            installCmd = 'sudo DEBIAN_FRONTEND=noninteractive apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql postgresql-contrib';
+            installCmd = `
+                sudo DEBIAN_FRONTEND=noninteractive apt-get update && \\
+                sudo DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql postgresql-contrib && \\
+                sudo sed -i "s/^#\\?shared_buffers = .*/shared_buffers = 64MB/" /etc/postgresql/*/main/postgresql.conf && \\
+                sudo sed -i "s/^#\\?max_connections = .*/max_connections = 100/" /etc/postgresql/*/main/postgresql.conf && \\
+                sudo systemctl restart postgresql
+            `;
         }
 
         const installResult = await runCommandOnServer(
@@ -239,6 +252,76 @@ export async function listAllDatabases(serverId: string): Promise<DatabaseInstan
     return instances;
 }
 
+export type DatabaseDetails = {
+    name: string;
+    engine: 'mysql' | 'postgres';
+    size: string;
+    tablesCount: number;
+    userCount: number;
+    status: 'healthy' | 'warning' | 'error';
+};
+
+export async function getDatabaseDetails(serverId: string, engine: 'mysql' | 'postgres', dbName: string): Promise<DatabaseDetails> {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) {
+        throw new Error('Server not found or missing credentials.');
+    }
+
+    try {
+        let size = "0 MB";
+        let tablesCount = 0;
+
+        if (engine === 'mysql') {
+            const mysqlResult = await runCommandOnServer(
+                server.publicIp,
+                server.username,
+                server.privateKey,
+                `sudo mysql -N -s -e "SELECT 'RESULT_START', ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) FROM information_schema.TABLES WHERE table_schema = '${dbName}'; SELECT 'RESULT_START', COUNT(*) FROM information_schema.TABLES WHERE table_schema = '${dbName}';"`
+            );
+
+            if (mysqlResult.code === 0) {
+                // Find lines that start with our marker to ignore noise (like swap messages)
+                const lines = mysqlResult.stdout.trim().split('\n');
+                const cleanResults = lines
+                    .filter(l => l.includes('RESULT_START'))
+                    .map(l => l.replace('RESULT_START', '').trim());
+
+                size = `${cleanResults[0] || '0'} MB`;
+                tablesCount = parseInt(cleanResults[1] || '0');
+            }
+        } else {
+            const pgResult = await runCommandOnServer(
+                server.publicIp,
+                server.username,
+                server.privateKey,
+                `sudo -u postgres psql -t -c "SELECT 'RESULT_START' || pg_size_pretty(pg_database_size('${dbName}')); SELECT 'RESULT_START' || count(*) FROM information_schema.tables WHERE table_schema = 'public';"`
+            );
+
+            if (pgResult.code === 0) {
+                const lines = pgResult.stdout.trim().split('\n');
+                const cleanResults = lines
+                    .filter(l => l.includes('RESULT_START'))
+                    .map(l => l.replace('RESULT_START', '').trim());
+
+                size = cleanResults[0] || "0 MB";
+                tablesCount = parseInt(cleanResults[1] || "0");
+            }
+        }
+
+        return {
+            name: dbName,
+            engine,
+            size,
+            tablesCount,
+            userCount: engine === 'mysql' ? 1 : 1, // Simplified for now
+            status: 'healthy'
+        };
+    } catch (error: any) {
+        console.error('Error fetching database details:', error);
+        throw new Error('Failed to fetch database details.');
+    }
+}
+
 export async function createDatabaseInstance(
     serverId: string,
     engine: 'mysql' | 'postgres',
@@ -300,6 +383,157 @@ export async function createDatabaseInstance(
         return {
             success: false,
             message: error.message || 'Database creation failed.'
+        };
+    }
+}
+
+export type DatabaseUser = {
+    username: string;
+    host?: string;
+    privileges?: string;
+};
+
+export async function listDatabaseUsers(serverId: string, engine: 'mysql' | 'postgres', dbName: string): Promise<DatabaseUser[]> {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) {
+        throw new Error('Server not found or missing credentials.');
+    }
+
+    const users: DatabaseUser[] = [];
+    try {
+        if (engine === 'mysql') {
+            // Get users with access to this specific database
+            const result = await runCommandOnServer(
+                server.publicIp,
+                server.username,
+                server.privateKey,
+                `sudo mysql -N -s -e "SELECT 'RESULT_START', User, Host FROM mysql.db WHERE Db = '${dbName}';"`
+            );
+
+            if (result.code === 0) {
+                const lines = result.stdout.trim().split('\n');
+                lines.filter(l => l.includes('RESULT_START')).forEach(line => {
+                    const [_, user, host] = line.replace('RESULT_START', '').trim().split(/\s+/);
+                    if (user) {
+                        users.push({ username: user, host: host || '%' });
+                    }
+                });
+            }
+        } else {
+            // PostgreSQL: Get users/roles that have permissions on this database
+            const result = await runCommandOnServer(
+                server.publicIp,
+                server.username,
+                server.privateKey,
+                `sudo -u postgres psql -t -c "SELECT 'RESULT_START' || rolname FROM pg_roles r JOIN pg_auth_members m ON r.oid = m.member WHERE r.rolcanlogin = true;"`
+            );
+
+            if (result.code === 0) {
+                const lines = result.stdout.trim().split('\n');
+                lines.filter(l => l.includes('RESULT_START')).forEach(line => {
+                    const user = line.replace('RESULT_START', '').trim();
+                    if (user) users.push({ username: user });
+                });
+            }
+        }
+    } catch (e) {
+        console.error('Failed to list database users', e);
+    }
+    return users;
+}
+
+export async function createDatabaseUser(
+    serverId: string,
+    engine: 'mysql' | 'postgres',
+    dbName: string,
+    username: string,
+    password: string
+): Promise<{ success: boolean; message: string }> {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) {
+        throw new Error('Server not found or missing credentials.');
+    }
+
+    try {
+        const safeDb = dbName.replace(/[^a-zA-Z0-9_]/g, '');
+        const safeUser = username.replace(/[^a-zA-Z0-9_]/g, '');
+        let commands: string[] = [];
+
+        if (engine === 'mysql') {
+            commands = [
+                `sudo mysql -e "CREATE USER IF NOT EXISTS '${safeUser}'@'%' IDENTIFIED BY '${password}';"`,
+                `sudo mysql -e "GRANT ALL PRIVILEGES ON \\\`${safeDb}\\\`.* TO '${safeUser}'@'%';"`,
+                `sudo mysql -e "FLUSH PRIVILEGES;"`
+            ];
+        } else {
+            commands = [
+                `sudo -u postgres psql -c "CREATE USER ${safeUser} WITH PASSWORD '${password}';"`,
+                `sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ${safeDb} TO ${safeUser};"`
+            ];
+        }
+
+        for (const cmd of commands) {
+            const res = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+            if (res.code !== 0 && !res.stderr.toLowerCase().includes('already exists')) {
+                throw new Error(res.stderr);
+            }
+        }
+
+        return { success: true, message: `User ${username} created and granted access to ${dbName}.` };
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Failed to create user.' };
+    }
+}
+
+export async function generateDatabaseBackup(
+    serverId: string,
+    engine: 'mysql' | 'postgres',
+    dbName: string,
+    mode: 'full' | 'schema'
+): Promise<{ success: boolean; content?: string; filename?: string; message: string }> {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) {
+        throw new Error('Server not found or missing credentials.');
+    }
+
+    try {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const filename = `${dbName}_${mode}_${timestamp}.sql`;
+        let backupCmd = "";
+
+        if (engine === 'mysql') {
+            const options = mode === 'schema' ? '--no-data' : '';
+            // Using sudo to ensure we have access to the databases
+            backupCmd = `sudo mysqldump ${options} ${dbName}`;
+        } else {
+            const options = mode === 'schema' ? '--schema-only' : '';
+            backupCmd = `sudo -u postgres pg_dump ${options} ${dbName}`;
+        }
+
+        const result = await runCommandOnServer(
+            server.publicIp,
+            server.username,
+            server.privateKey,
+            backupCmd
+        );
+
+        if (result.code !== 0) {
+            throw new Error(`Backup failed: ${result.stderr}`);
+        }
+
+        // For very large databases, this might hit memory limits in the Next.js process.
+        // In a real production app, we would stream this to S3 and return a signed URL.
+        return {
+            success: true,
+            content: result.stdout,
+            filename,
+            message: 'Backup generated successfully.'
+        };
+    } catch (error: any) {
+        console.error('Backup error:', error);
+        return {
+            success: false,
+            message: error.message || 'Failed to generate backup.'
         };
     }
 }
