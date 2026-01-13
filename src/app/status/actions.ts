@@ -5,10 +5,12 @@ import { getServerForRunner } from '../servers/actions';
 import { runCommandOnServer } from '@/services/ssh';
 import { revalidatePath } from 'next/cache';
 
+
 const STATUS_DIR = ".status";
 const PID_FILE = `${STATUS_DIR}/status.pid`;
 const CPU_LOG = `${STATUS_DIR}/cpu.usage`;
 const RAM_LOG = `${STATUS_DIR}/ram.usage`;
+const NET_LOG = `${STATUS_DIR}/network.usage`;
 
 const SCRIPT_CONTENT = `
 mkdir -p ~/${STATUS_DIR}
@@ -21,6 +23,17 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM
 
+# Detect Interface
+IFACE=$(ip route | grep default | awk '{print $5}' | head -n1)
+if [ -z "$IFACE" ]; then IFACE=$(ls /sys/class/net | grep -v lo | head -n1); fi
+
+get_net_bytes() {
+    grep "$IFACE" /proc/net/dev | sed 's/:/ /' | awk '{print $2, $10}'
+}
+
+# Initialize previous values
+read PREV_RX PREV_TX <<< $(get_net_bytes)
+
 echo "Starting status tracking in the background..."
 while true; do
     # CPU usage: user, system, idle
@@ -30,6 +43,20 @@ while true; do
     # RAM usage: total, used, free
     ram_info=$(free -m | grep Mem | awk '{print $2, $3, $4}')
     echo "$(date +%s) $ram_info" >> ~/${RAM_LOG}
+    
+    # Network usage: calc delta
+    read CURR_RX CURR_TX <<< $(get_net_bytes)
+    DIFF_RX=$((CURR_RX - PREV_RX))
+    DIFF_TX=$((CURR_TX - PREV_TX))
+    
+    # Basic check for overflow/reset
+    if [ $DIFF_RX -lt 0 ]; then DIFF_RX=0; fi
+    if [ $DIFF_TX -lt 0 ]; then DIFF_TX=0; fi
+    
+    echo "$(date +%s) $DIFF_RX $DIFF_TX" >> ~/${NET_LOG}
+    
+    PREV_RX=$CURR_RX
+    PREV_TX=$CURR_TX
     
     sleep 60
 done
@@ -86,6 +113,7 @@ export type StatusData = {
     isTracking: boolean;
     cpuHistory: { timestamp: number; usage: number }[];
     ramHistory: { timestamp: number; used: number; total: number }[];
+    networkHistory: { timestamp: number; incoming: number; outgoing: number }[];
 };
 
 export async function getStatus(
@@ -114,11 +142,11 @@ export async function getStatus(
         intervalSec = 15 * 60;
     } else if (durationMinutes <= 720) { // 12h -> 30m
         intervalSec = 30 * 60;
-    } else if (durationMinutes <= 1440) { // 24h -> 30m (approx 48 points)
+    } else if (durationMinutes <= 1440) { // 24h -> 30m
         intervalSec = 30 * 60;
-    } else if (durationMinutes <= 10080) { // 7d -> 4h (42 points)
+    } else if (durationMinutes <= 10080) { // 7d -> 4h
         intervalSec = 240 * 60;
-    } else { // 30d -> 12h (60 points)
+    } else { // 30d -> 12h
         intervalSec = 720 * 60;
     }
 
@@ -150,11 +178,26 @@ export async function getStatus(
             }
            ' ~/${RAM_LOG} 2>/dev/null | sort -n`;
 
+    const readNetCmd = intervalSec === 0
+        ? `awk -v start=${startSec} -v end=${endSec} '$1 >= start && $1 <= end' ~/${NET_LOG} 2>/dev/null`
+        : `awk -v start=${startSec} -v end=${endSec} -v interval=${intervalSec} '
+            $1 >= start && $1 <= end {
+                bin = int($1 / interval) * interval;
+                sumRX[bin] += $2;
+                sumTX[bin] += $3;
+                count[bin]++;
+            }
+            END {
+                for (b in sumRX) print b, int(sumRX[b]/count[b]), int(sumTX[b]/count[b])
+            }
+           ' ~/${NET_LOG} 2>/dev/null | sort -n`;
+
     try {
-        const [pidResult, cpuResult, ramResult] = await Promise.all([
+        const [pidResult, cpuResult, ramResult, netResult] = await Promise.all([
             runCommandOnServer(server.publicIp, server.username, server.privateKey, checkPidCmd),
             runCommandOnServer(server.publicIp, server.username, server.privateKey, readCpuCmd),
             runCommandOnServer(server.publicIp, server.username, server.privateKey, readRamCmd),
+            runCommandOnServer(server.publicIp, server.username, server.privateKey, readNetCmd),
         ]);
 
         const isTracking = pidResult.stdout.trim() !== 'not_found';
@@ -169,7 +212,17 @@ export async function getStatus(
             return { timestamp: parseInt(timestamp) * 1000, used: parseInt(used), total: parseInt(total) };
         });
 
-        return { data: { isTracking, cpuHistory, ramHistory } };
+        const networkHistory = netResult.stdout.trim().split('\n').filter(Boolean).map(line => {
+            const [timestamp, rx, tx] = line.split(' ');
+            // Convert bytes to MB
+            return {
+                timestamp: parseInt(timestamp) * 1000,
+                incoming: parseFloat((parseInt(rx) / (1024 * 1024)).toFixed(2)),
+                outgoing: parseFloat((parseInt(tx) / (1024 * 1024)).toFixed(2))
+            };
+        });
+
+        return { data: { isTracking, cpuHistory, ramHistory, networkHistory } };
 
     } catch (e: any) {
         return { error: `Failed to get status: ${e.message}` };

@@ -24,7 +24,8 @@ import {
   Settings,
   Globe,
   Plus,
-  Layers
+  Layers,
+  Database
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -131,6 +132,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
     { href: "/processes", label: "Processes", icon: FileCode },
     { href: "/network", label: "Network", icon: Network },
     { href: "/webservices", label: "Web Services", icon: Globe },
+    { href: "/database", label: "Databases", icon: Database },
     { href: "/commands", label: "Commands", icon: Terminal },
     { href: "/history", label: "History", icon: History },
     { href: "/files", label: "File Manager", icon: FolderKanban },

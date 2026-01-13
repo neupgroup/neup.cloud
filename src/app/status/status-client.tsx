@@ -316,6 +316,58 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
                         </CardContent>
                     </Card>
 
+                    <Card>
+                        <CardHeader>
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <CardTitle className="font-headline">Network Traffic</CardTitle>
+                                    <CardDescription>
+                                        Bandwidth usage (Incoming/Outgoing) per minute
+                                    </CardDescription>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="h-[250px] w-full">
+                            {statusData && statusData.networkHistory && statusData.networkHistory.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={statusData.networkHistory} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorNetRx" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                                            </linearGradient>
+                                            <linearGradient id="colorNetTx" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                        <Tooltip content={<CustomTooltip unit="MB" />} />
+                                        <Area type="monotone" dataKey="incoming" name="Incoming" strokeWidth={2} stroke="hsl(var(--chart-1))" fill="url(#colorNetRx)" />
+                                        <Area type="monotone" dataKey="outgoing" name="Outgoing" strokeWidth={2} stroke="hsl(var(--chart-2))" fill="url(#colorNetTx)" />
+                                        <XAxis
+                                            dataKey="timestamp"
+                                            stroke="hsl(var(--muted-foreground))"
+                                            fontSize={12}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickFormatter={(value) => {
+                                                const date = new Date(value);
+                                                if (isNaN(date.getTime())) return "";
+                                                return format(date, timeFrame === '1h' ? "h:mm a" : "MMM d");
+                                            }}
+                                            interval="preserveStartEnd"
+                                            minTickGap={30}
+                                        />
+                                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}MB`} />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="flex justify-center items-center h-full text-muted-foreground">No Network data available for this period.</div>
+                            )}
+                        </CardContent>
+                    </Card>
+
                 </div>
             )}
         </div>
