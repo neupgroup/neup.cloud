@@ -6,7 +6,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { Database, Settings, Terminal, Globe, Zap, Activity } from "lucide-react";
+import { Database, Settings, Terminal, Globe, Zap, Activity, Trash2 } from "lucide-react";
 import { cookies } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { PageTitleBack } from "@/components/page-header";
@@ -271,6 +271,34 @@ export default async function DatabaseSettingsPage({ params }: Props) {
                         Save Changes
                     </Button>
                 </div>
+
+                {/* Danger Zone */}
+                <Card className="border-destructive/50">
+                    <CardHeader>
+                        <div className="flex items-center gap-2">
+                            <Trash2 className="h-5 w-5 text-destructive" />
+                            <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                        </div>
+                        <CardDescription>
+                            Destructive actions that cannot be undone
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/20 bg-destructive/5">
+                            <div className="space-y-0.5">
+                                <Label className="text-base font-semibold text-destructive">
+                                    Drop Database
+                                </Label>
+                                <p className="text-sm text-destructive/80">
+                                    Permanently delete this database and all its data
+                                </p>
+                            </div>
+                            <Button variant="destructive">
+                                Drop Database
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

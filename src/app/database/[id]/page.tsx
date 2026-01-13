@@ -72,9 +72,7 @@ export default async function DatabaseDetailsPage({ params }: Props) {
                     <Button variant="outline" size="sm" className="gap-2">
                         <RefreshCw className="h-3.5 w-3.5" /> Refresh
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-2 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all">
-                        <Trash2 className="h-3.5 w-3.5" /> Drop Database
-                    </Button>
+
                 </div>
             </div>
 
@@ -92,16 +90,18 @@ export default async function DatabaseDetailsPage({ params }: Props) {
                         </p>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                        <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Tables</CardTitle>
-                        <Table className="h-4 w-4 text-muted-foreground opacity-70" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{details.tablesCount}</div>
-                        <p className="text-[10px] text-muted-foreground mt-1">Schema defined</p>
-                    </CardContent>
-                </Card>
+                <Link href={`/database/${id}/table`}>
+                    <Card className="transition-all hover:bg-muted/50 cursor-pointer h-full">
+                        <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Tables</CardTitle>
+                            <Table className="h-4 w-4 text-muted-foreground opacity-70" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{details.tablesCount}</div>
+                            <p className="text-[10px] text-muted-foreground mt-1">Schema defined</p>
+                        </CardContent>
+                    </Card>
+                </Link>
                 <Card>
                     <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                         <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Users</CardTitle>
@@ -129,6 +129,29 @@ export default async function DatabaseDetailsPage({ params }: Props) {
                 <h2 className="text-xl font-semibold font-headline tracking-tight">Management</h2>
 
                 <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+                    {/* Database Tables */}
+                    <Link href={`/database/${id}/table`} className="block">
+                        <div className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 border-b border-border">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                    <div className="p-2 rounded-lg shrink-0 bg-cyan-500/10 text-cyan-500">
+                                        <Table className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-bold text-base">Database Tables</span>
+                                            <Badge variant="secondary" className="text-[10px]">{details.tablesCount} tables</Badge>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            View schema information, row counts, and storage usage
+                                        </p>
+                                    </div>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
+                            </div>
+                        </div>
+                    </Link>
+
                     {/* Manage Users */}
                     <Link href={`/database/${id}/users`} className="block">
                         <div className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 border-b border-border">
@@ -176,21 +199,26 @@ export default async function DatabaseDetailsPage({ params }: Props) {
                     </Link>
 
                     {/* Quick Shell */}
-                    <div className="p-4 min-w-0 w-full border-b border-border">
-                        <div className="flex items-center gap-4 min-w-0 flex-1">
-                            <div className="p-2 rounded-lg shrink-0 bg-purple-500/10 text-purple-500">
-                                <Terminal className="h-5 w-5" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-bold text-base">Quick Shell</span>
+                    <Link href={`/database/${id}/shell`} className="block">
+                        <div className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 border-b border-border">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                    <div className="p-2 rounded-lg shrink-0 bg-purple-500/10 text-purple-500">
+                                        <Terminal className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-bold text-base">Quick Shell</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Run interactive SQL commands in a secure temporary session
+                                        </p>
+                                    </div>
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Run interactive SQL commands in a secure temporary session
-                                </p>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
                             </div>
                         </div>
-                    </div>
+                    </Link>
 
                     {/* Generate Backup */}
                     <Link href={`/database/${id}/backup`} className="block">

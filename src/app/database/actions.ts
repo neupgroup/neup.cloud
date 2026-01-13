@@ -322,29 +322,33 @@ export async function getDatabaseDetails(serverId: string, engine: 'mariadb' | '
                 tablesCount = parseInt(lines.find(l => l.includes('RESULT_START_TABLES'))?.replace('RESULT_START_TABLES', '').trim() || '0');
             }
         } else {
-            // Postgres existence check
+            // Postgres existence check and metrics - Connect to the specific database
             const pgResult = await runCommandOnServer(
                 server.publicIp,
                 server.username,
                 server.privateKey,
-                `sudo -u postgres psql -t -c "
-                    SELECT 'RESULT_START_EXISTS' || count(*) FROM pg_database WHERE datname = '${dbName}';
+                `sudo -u postgres psql -d ${dbName} -t -c "
                     SELECT 'RESULT_START_SIZE' || pg_size_pretty(pg_database_size('${dbName}'));
-                    SELECT 'RESULT_START_TABLES' || count(*) FROM information_schema.tables WHERE table_schema = 'public';
+                    SELECT 'RESULT_START_TABLES' || count(*) FROM pg_stat_user_tables;
                 "`,
                 undefined,
                 undefined,
-                true // skipSwap - Don't use swap space for database operations
+                true // skipSwap
             );
 
             if (pgResult.code === 0) {
                 const lines = pgResult.stdout.trim().split('\n');
-
-                const exists = lines.find(l => l.includes('RESULT_START_EXISTS'))?.replace('RESULT_START_EXISTS', '').trim();
-                if (exists === '0') throw new Error('Database not found');
+                // If we connected successfully, the database exists
 
                 size = lines.find(l => l.includes('RESULT_START_SIZE'))?.replace('RESULT_START_SIZE', '').trim() || "0 MB";
                 tablesCount = parseInt(lines.find(l => l.includes('RESULT_START_TABLES'))?.replace('RESULT_START_TABLES', '').trim() || "0");
+            } else {
+                // If connection failed, check if it's because DB doesn't exist
+                if (pgResult.stderr.includes('does not exist')) {
+                    throw new Error('Database not found');
+                }
+                // Other errors
+                console.error('Postgres check error:', pgResult.stderr);
             }
         }
 
@@ -692,5 +696,166 @@ export async function generateDatabaseBackup(
             success: false,
             message: error.message || 'Failed to generate backup.'
         };
+    }
+}
+
+export async function executeDatabaseQuery(
+    serverId: string,
+    engine: 'mariadb' | 'postgres',
+    dbName: string,
+    query: string
+): Promise<{ success: boolean; data?: any[]; message?: string; rowCount?: number; executionTime?: number }> {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) {
+        throw new Error('Server not found or missing credentials.');
+    }
+
+    const startTime = performance.now();
+    const timestamp = Date.now();
+    const tempFile = `/tmp/query_${timestamp}.sql`;
+
+    try {
+        // Safe query transfer using base64
+        const queryBase64 = Buffer.from(query + (query.trim().endsWith(';') ? '' : ';')).toString('base64');
+        await runCommandOnServer(
+            server.publicIp,
+            server.username,
+            server.privateKey,
+            `echo "${queryBase64}" | base64 -d > ${tempFile}`,
+            undefined,
+            undefined,
+            true // skipSwap
+        );
+
+        let cmd = '';
+        if (engine === 'mariadb') {
+            // -B: Batch mode (tab-separated output)
+            // -N: Skip column names (we want them though, so don't use -N, except maybe specific parsing)
+            // By default piping file gives headers.
+            cmd = `sudo mysql -D ${dbName} -B < ${tempFile}`;
+        } else {
+            // -A: Unaligned output
+            // -F: Field separator (tab)
+            // -P footer=off: Turn off row count footer "(N rows)" to simplify parsing
+            cmd = `sudo -u postgres psql -d ${dbName} -A -F "\t" -P footer=off -f ${tempFile}`;
+        }
+
+        const result = await runCommandOnServer(
+            server.publicIp,
+            server.username,
+            server.privateKey,
+            cmd,
+            undefined,
+            undefined,
+            true // skipSwap
+        );
+
+        // Cleanup
+        await runCommandOnServer(server.publicIp, server.username, server.privateKey, `rm ${tempFile}`, undefined, undefined, true);
+
+        if (result.code !== 0) {
+            // Attempt to cleanup error message
+            const error = result.stderr.replace(/ERROR \d+ \(\w+\): /, '').trim() || result.stdout.trim() || 'Unknown error';
+            return { success: false, message: error };
+        }
+
+        // Parse TSV output
+        const lines = result.stdout.trim().split('\n');
+        if (lines.length === 0) {
+            // Empty result (e.g. UPDATE/DELETE)
+            return {
+                success: true,
+                data: [],
+                rowCount: 0,
+                executionTime: (performance.now() - startTime) / 1000,
+                message: 'Query executed successfully. No results returned.'
+            };
+        }
+
+        // Check if output looks like TSV headers
+        // For non-SELECT queries, output might be empty or different status
+
+        let data: any[] = [];
+        if (lines.length > 0) {
+            const headers = lines[0].split('\t');
+            // If headers look weird or just one empty string, maybe no results
+            if (headers.length === 1 && headers[0] === '') {
+                data = [];
+            } else {
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split('\t');
+                    const row: any = {};
+                    headers.forEach((header, index) => {
+                        row[header] = values[index];
+                    });
+                    data.push(row);
+                }
+            }
+        }
+
+        return {
+            success: true,
+            data,
+            rowCount: data.length,
+            executionTime: (performance.now() - startTime) / 1000,
+            message: 'Query executed successfully'
+        };
+
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Failed to execute query' };
+    }
+}
+
+export async function getDatabaseTables(
+    serverId: string,
+    engine: 'mariadb' | 'postgres',
+    dbName: string
+): Promise<Array<{ name: string; rows: number; size: string; created?: string }>> {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) {
+        throw new Error('Server not found');
+    }
+
+    try {
+        let query = '';
+        if (engine === 'mariadb') {
+            query = `
+                SELECT 
+                    table_name as name, 
+                    table_rows as rows, 
+                    ROUND((data_length + index_length) / 1024 / 1024, 2) as size_mb,
+                    create_time as created
+                FROM information_schema.TABLES 
+                WHERE table_schema = '${dbName}'
+                ORDER BY table_name;
+            `;
+        } else {
+            // Updated Postgres query using pg_stat_user_tables for reliable row counts and sizes
+            query = `
+                SELECT
+                    relname as name,
+                    n_live_tup as rows,
+                    pg_size_pretty(pg_total_relation_size(relid)) as size
+                FROM pg_stat_user_tables
+                ORDER BY relname;
+            `;
+        }
+
+        const result = await executeDatabaseQuery(serverId, engine, dbName, query);
+
+        if (!result.success || !result.data) {
+            return [];
+        }
+
+        return result.data.map(row => ({
+            name: row.name,
+            rows: parseInt(row.rows || '0'),
+            size: engine === 'mariadb' ? `${row.size_mb} MB` : row.size,
+            created: row.created
+        }));
+
+    } catch (error) {
+        console.error('Failed to list tables:', error);
+        return [];
     }
 }
