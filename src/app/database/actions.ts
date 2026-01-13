@@ -400,7 +400,7 @@ export async function createDatabaseInstance(
 export type DatabaseUser = {
     username: string;
     host?: string;
-    privileges?: string;
+    permissions?: 'full' | 'read' | 'custom';
 };
 
 export async function listDatabaseUsers(serverId: string, engine: 'mysql' | 'postgres', dbName: string): Promise<DatabaseUser[]> {
@@ -412,37 +412,54 @@ export async function listDatabaseUsers(serverId: string, engine: 'mysql' | 'pos
     const users: DatabaseUser[] = [];
     try {
         if (engine === 'mysql') {
-            // Get users with access to this specific database
             const result = await runCommandOnServer(
                 server.publicIp,
                 server.username,
                 server.privateKey,
-                `sudo mysql -N -s -e "SELECT 'RESULT_START', User, Host FROM mysql.db WHERE Db = '${dbName}';"`
+                `sudo mysql -N -s -e "SELECT 'RESULT_START', User, Host, Select_priv, Insert_priv, Update_priv, Delete_priv, Create_priv FROM mysql.db WHERE Db = '${dbName}';"`
             );
 
             if (result.code === 0) {
                 const lines = result.stdout.trim().split('\n');
                 lines.filter(l => l.includes('RESULT_START')).forEach(line => {
-                    const [_, user, host] = line.replace('RESULT_START', '').trim().split(/\s+/);
-                    if (user) {
-                        users.push({ username: user, host: host || '%' });
+                    const cleanLine = line.replace('RESULT_START', '').trim();
+                    const parts = cleanLine.split(/\s+/);
+                    if (parts.length >= 2) {
+                        // Detect permissions
+                        // parts[2] is Select_priv, parts[3] is Insert_priv, etc.
+                        let perms: 'full' | 'read' | 'custom' = 'read';
+                        // Check Insert_priv, Update_priv, Delete_priv, Create_priv
+                        const hasWrite = parts.slice(3, 7).some(p => p === 'Y'); // parts[3] to parts[6] are Insert, Update, Delete, Create
+                        if (hasWrite) perms = 'full';
+
+                        users.push({
+                            username: parts[0],
+                            host: parts[1],
+                            permissions: perms
+                        });
                     }
                 });
             }
         } else {
-            // PostgreSQL: Get users/roles that have permissions on this database
             const result = await runCommandOnServer(
                 server.publicIp,
                 server.username,
                 server.privateKey,
-                `sudo -u postgres psql -t -c "SELECT 'RESULT_START' || rolname FROM pg_roles r JOIN pg_auth_members m ON r.oid = m.member WHERE r.rolcanlogin = true;"`
+                `sudo -u postgres psql -t -c "SELECT 'RESULT_START' || r.rolname || ',' || has_database_privilege(r.rolname, '${dbName}', 'CREATE') FROM pg_roles r WHERE r.rolcanlogin = true;"`
             );
 
             if (result.code === 0) {
                 const lines = result.stdout.trim().split('\n');
                 lines.filter(l => l.includes('RESULT_START')).forEach(line => {
-                    const user = line.replace('RESULT_START', '').trim();
-                    if (user) users.push({ username: user });
+                    const clean = line.replace('RESULT_START', '').trim();
+                    const [uname, hasCreate] = clean.split(',');
+                    if (uname) {
+                        users.push({
+                            username: uname,
+                            host: 'localhost',
+                            permissions: hasCreate === 't' ? 'full' : 'read'
+                        });
+                    }
                 });
             }
         }
@@ -457,7 +474,8 @@ export async function createDatabaseUser(
     engine: 'mysql' | 'postgres',
     dbName: string,
     username: string,
-    password: string
+    password: string,
+    permissions: 'full' | 'read' = 'full'
 ): Promise<{ success: boolean; message: string }> {
     const server = await getServerForRunner(serverId);
     if (!server || !server.username || !server.privateKey) {
@@ -470,16 +488,22 @@ export async function createDatabaseUser(
         let commands: string[] = [];
 
         if (engine === 'mysql') {
+            const privs = permissions === 'full' ? 'ALL PRIVILEGES' : 'SELECT, SHOW VIEW';
             commands = [
                 `sudo mysql -e "CREATE USER IF NOT EXISTS '${safeUser}'@'%' IDENTIFIED BY '${password}';"`,
-                `sudo mysql -e "GRANT ALL PRIVILEGES ON \\\`${safeDb}\\\`.* TO '${safeUser}'@'%';"`,
+                `sudo mysql -e "GRANT ${privs} ON \\\`${safeDb}\\\`.* TO '${safeUser}'@'%';"`,
                 `sudo mysql -e "FLUSH PRIVILEGES;"`
             ];
         } else {
+            const privs = permissions === 'full' ? 'ALL PRIVILEGES' : 'SELECT';
             commands = [
                 `sudo -u postgres psql -c "CREATE USER ${safeUser} WITH PASSWORD '${password}';"`,
-                `sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ${safeDb} TO ${safeUser};"`
+                `sudo -u postgres psql -c "GRANT ${privs} ON DATABASE ${safeDb} TO ${safeUser};"`
             ];
+            if (permissions === 'read') {
+                // For Postgres read-only, we also need to grant on schema tables
+                commands.push(`sudo -u postgres psql -d ${safeDb} -c "GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${safeUser};"`);
+            }
         }
 
         for (const cmd of commands) {
@@ -489,9 +513,89 @@ export async function createDatabaseUser(
             }
         }
 
-        return { success: true, message: `User ${username} created and granted access to ${dbName}.` };
+        return { success: true, message: `User ${username} created with ${permissions} access.` };
     } catch (error: any) {
         return { success: false, message: error.message || 'Failed to create user.' };
+    }
+}
+
+export async function deleteDatabaseUser(
+    serverId: string,
+    engine: 'mysql' | 'postgres',
+    dbName: string,
+    username: string,
+    host: string = '%'
+): Promise<{ success: boolean; message: string }> {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) {
+        throw new Error('Server missing.');
+    }
+
+    try {
+        let commands: string[] = [];
+        if (engine === 'mysql') {
+            commands = [
+                `sudo mysql -e "DROP USER '${username}'@'${host}';"`,
+                `sudo mysql -e "FLUSH PRIVILEGES;"`
+            ];
+        } else {
+            commands = [
+                `sudo -u postgres psql -c "DROP ROLE ${username};"`
+            ];
+        }
+
+        for (const cmd of commands) {
+            await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+        }
+
+        return { success: true, message: `User ${username} deleted.` };
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Delete failed.' };
+    }
+}
+
+export async function updateDatabaseUserPermissions(
+    serverId: string,
+    engine: 'mysql' | 'postgres',
+    dbName: string,
+    username: string,
+    host: string = '%',
+    permissions: 'full' | 'read'
+): Promise<{ success: boolean; message: string }> {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) {
+        throw new Error('Server missing.');
+    }
+
+    try {
+        const safeDb = dbName.replace(/[^a-zA-Z0-9_]/g, '');
+        let commands: string[] = [];
+
+        if (engine === 'mysql') {
+            const privs = permissions === 'full' ? 'ALL PRIVILEGES' : 'SELECT, SHOW VIEW';
+            commands = [
+                `sudo mysql -e "REVOKE ALL PRIVILEGES ON \\\`${safeDb}\\\`.* FROM '${username}'@'${host}';"`,
+                `sudo mysql -e "GRANT ${privs} ON \\\`${safeDb}\\\`.* TO '${username}'@'${host}';"`,
+                `sudo mysql -e "FLUSH PRIVILEGES;"`
+            ];
+        } else {
+            const privs = permissions === 'full' ? 'ALL PRIVILEGES' : 'SELECT';
+            commands = [
+                `sudo -u postgres psql -c "REVOKE ALL PRIVILEGES ON DATABASE ${safeDb} FROM ${username};"`,
+                `sudo -u postgres psql -c "GRANT ${privs} ON DATABASE ${safeDb} TO ${username};"`
+            ];
+            if (permissions === 'read') {
+                commands.push(`sudo -u postgres psql -d ${safeDb} -c "GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${username};"`);
+            }
+        }
+
+        for (const cmd of commands) {
+            await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+        }
+
+        return { success: true, message: `Permissions updated to ${permissions}.` };
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Update failed.' };
     }
 }
 

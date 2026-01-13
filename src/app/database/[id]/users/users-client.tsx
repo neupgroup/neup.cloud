@@ -1,13 +1,15 @@
 
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Database, User, ShieldCheck, Trash2, Key, Globe, LayoutGrid, ChevronLeft } from "lucide-react";
+import { Database, User, ShieldCheck, Trash2, Key, Globe, LayoutGrid, ChevronLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from '@/hooks/use-toast';
 import { UserCreateForm } from "./user-create-form";
-import type { DatabaseUser } from "../../actions";
+import { deleteDatabaseUser, type DatabaseUser } from "../../actions";
 import Link from 'next/link';
 
 interface UsersClientPageProps {
@@ -19,9 +21,30 @@ interface UsersClientPageProps {
 
 export function UsersClientPage({ serverId, engine, dbName, initialUsers }: UsersClientPageProps) {
     const router = useRouter();
+    const { toast } = useToast();
+    const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
     const handleSuccess = () => {
         router.refresh();
+    };
+
+    const handleDelete = async (username: string, host: string) => {
+        if (!confirm(`Are you sure you want to delete user ${username}?`)) return;
+
+        setIsDeleting(`${username}-${host}`);
+        try {
+            const res = await deleteDatabaseUser(serverId, engine, dbName, username, host);
+            if (res.success) {
+                toast({ title: 'User deleted', description: res.message });
+                router.refresh();
+            } else {
+                toast({ variant: 'destructive', title: 'Error', description: res.message });
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } finally {
+            setIsDeleting(null);
+        }
     };
 
     return (
@@ -52,7 +75,7 @@ export function UsersClientPage({ serverId, engine, dbName, initialUsers }: User
                             {initialUsers.length > 0 ? (
                                 <div className="divide-y border-t">
                                     {initialUsers.map((user, idx) => (
-                                        <div key={`${user.username}-${idx}`} className="p-4 flex items-center justify-between hover:bg-muted/5 transition-colors group">
+                                        <div key={`${user.username}-${user.host}-${idx}`} className="p-4 flex items-center justify-between hover:bg-muted/5 transition-colors group">
                                             <div className="flex items-center gap-4">
                                                 <div className="p-2.5 bg-primary/5 rounded-xl group-hover:bg-primary/10 transition-colors">
                                                     <User className="h-5 w-5 text-primary" />
@@ -65,17 +88,32 @@ export function UsersClientPage({ serverId, engine, dbName, initialUsers }: User
                                                         </Badge>
                                                     </div>
                                                     <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                                                        <span className="flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Full Privileges</span>
+                                                        <span className="flex items-center gap-1">
+                                                            <ShieldCheck className={`h-3 w-3 ${user.permissions === 'full' ? 'text-primary' : 'text-amber-500'}`} />
+                                                            {user.permissions === 'full' ? 'Full Privileges' : user.permissions === 'read' ? 'Read Only' : 'Custom Permissions'}
+                                                        </span>
                                                         <span className="flex items-center gap-1"><Globe className="h-3 w-3" /> External Auth</span>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                                                    <Key className="h-4 w-4" />
+                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" asChild>
+                                                    <Link href={`/database/${engine}-${dbName}/users/${user.username}-${user.host || 'local'}`}>
+                                                        <Key className="h-4 w-4" />
+                                                    </Link>
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
-                                                    <Trash2 className="h-4 w-4" />
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-muted-foreground hover:text-destructive"
+                                                    onClick={() => handleDelete(user.username, user.host || '%')}
+                                                    disabled={isDeleting === `${user.username}-${user.host}`}
+                                                >
+                                                    {isDeleting === `${user.username}-${user.host}` ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                        <Trash2 className="h-4 w-4" />
+                                                    )}
                                                 </Button>
                                             </div>
                                         </div>
