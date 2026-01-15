@@ -87,12 +87,7 @@ export function PackagesClient({ serverId, serverName }: { serverId: string, ser
             <PageTitleWithComponent
                 title="Packages"
                 description={`Manage software on ${serverName} (${installedPackages.length} installed)`}
-                actionComponent={
-                    <Button onClick={() => router.push('/packages/install')} className="gap-2">
-                        <PackagePlus className="h-4 w-4" />
-                        Install New Package
-                    </Button>
-                }
+                actionComponent={<div />}
             />
 
             <div className="space-y-4">
@@ -135,6 +130,28 @@ export function PackagesClient({ serverId, serverName }: { serverId: string, ser
                             </p>
                         </div>
                         <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+                            {/* Install New Package Card */}
+                            <div
+                                className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 cursor-pointer border-b border-border"
+                                onClick={() => router.push('/packages/install')}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="h-9 w-9 rounded-md flex items-center justify-center bg-primary/10 text-primary shrink-0 font-bold shadow-sm">
+                                        <PackagePlus className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-start justify-between mb-1">
+                                            <p className="text-sm font-medium text-foreground">
+                                                Install New Package
+                                            </p>
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                            Search and install new software from the repository
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             {displayedPackages.length === 0 ? (
                                 <div className="p-12 text-center text-muted-foreground flex flex-col items-center">
                                     <PackageCheck className="h-10 w-10 mb-3 opacity-20" />
