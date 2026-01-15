@@ -563,7 +563,7 @@ export default function NginxConfigPage() {
     }
 
     return (
-        <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500 pb-10">
+        <div className="mr-auto w-full max-w-4xl space-y-12 animate-in fade-in duration-500 pb-20">
             {/* Header */}
             <PageTitleBack
                 title="Nginx Configuration"
@@ -572,626 +572,616 @@ export default function NginxConfigPage() {
             />
 
             {/* Step 1: Server Selection */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+            <div className="space-y-4">
+                <div className="px-1">
+                    <h3 className="text-xl font-semibold flex items-center gap-2">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
                             1
                         </div>
                         Select Server
-                    </CardTitle>
-                    <CardDescription>
+                    </h3>
+                    <p className="text-sm text-muted-foreground ml-10">
                         Choose the server where Nginx is running
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="server-select">Server</Label>
-                        <Select
-                            value={selectedServerId || ''}
-                            onValueChange={handleServerSelect}
-                        >
-                            <SelectTrigger id="server-select">
-                                <SelectValue placeholder="Select a server" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {servers.map(server => (
-                                    <SelectItem key={server.id} value={server.id}>
-                                        {server.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </CardContent>
-            </Card>
+                    </p>
+                </div>
+                <div className="space-y-2 ml-10">
+                    <Label htmlFor="server-select">Server</Label>
+                    <Select
+                        value={selectedServerId || ''}
+                        onValueChange={handleServerSelect}
+                    >
+                        <SelectTrigger id="server-select">
+                            <SelectValue placeholder="Select a server" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {servers.map(server => (
+                                <SelectItem key={server.id} value={server.id}>
+                                    {server.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
 
             {/* Step 2: Public IP - Only show if server is selected */}
             {selectedServerId && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                <div className="space-y-4">
+                    <div className="px-1">
+                        <h3 className="text-xl font-semibold flex items-center gap-2">
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
                                 2
                             </div>
                             Public IP
-                        </CardTitle>
-                        <CardDescription>
+                        </h3>
+                        <p className="text-sm text-muted-foreground ml-10">
                             Server public IP address
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="server-ip">Public IP Address</Label>
-                            <div className="flex gap-2">
-                                <Input
-                                    id="server-ip"
-                                    value={selectedServerIp}
-                                    onChange={(e) => setSelectedServerIp(e.target.value)}
-                                    placeholder="Server public IP"
-                                />
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={fetchPublicIp}
-                                    disabled={fetchingIp}
-                                >
-                                    {fetchingIp ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <RefreshCw className="h-4 w-4" />
-                                    )}
-                                </Button>
-                            </div>
+                        </p>
+                    </div>
+                    <div className="space-y-2 ml-10">
+                        <Label htmlFor="server-ip">Public IP Address</Label>
+                        <div className="flex gap-2">
+                            <Input
+                                id="server-ip"
+                                value={selectedServerIp}
+                                onChange={(e) => setSelectedServerIp(e.target.value)}
+                                placeholder="Server public IP"
+                            />
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={fetchPublicIp}
+                                disabled={fetchingIp}
+                            >
+                                {fetchingIp ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <RefreshCw className="h-4 w-4" />
+                                )}
+                            </Button>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
             )}
 
             {/* Step 3: Domain Configuration - Only show if server is selected */}
             {selectedServerId && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                <div className="space-y-4">
+                    <div className="px-1">
+                        <h3 className="text-xl font-semibold flex items-center gap-2">
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
                                 3
                             </div>
                             Domain Configuration
-                        </CardTitle>
-                        <CardDescription>
+                        </h3>
+                        <p className="text-sm text-muted-foreground ml-10">
                             Configure domain or use IP address
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-4">
-                            <RadioGroup value={domainMode} onValueChange={(value) => setDomainMode(value as DomainMode)}>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="none" id="no-domain" />
-                                    <Label htmlFor="no-domain" className="font-normal cursor-pointer">
-                                        No Domain (use IP address)
-                                    </Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="domain" id="use-domain" />
-                                    <Label htmlFor="use-domain" className="font-normal cursor-pointer">
-                                        Use Domain
-                                    </Label>
-                                </div>
-                            </RadioGroup>
+                        </p>
+                    </div>
+                    <div className="space-y-4 ml-10">
+                        <RadioGroup value={domainMode} onValueChange={(value) => setDomainMode(value as DomainMode)}>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="none" id="no-domain" />
+                                <Label htmlFor="no-domain" className="font-normal cursor-pointer">
+                                    No Domain (use IP address)
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="domain" id="use-domain" />
+                                <Label htmlFor="use-domain" className="font-normal cursor-pointer">
+                                    Use Domain
+                                </Label>
+                            </div>
+                        </RadioGroup>
 
-                            {domainMode === 'domain' && (
-                                <div className="space-y-4 pl-6 border-l-2 border-muted">
+                        {domainMode === 'domain' && (
+                            <div className="space-y-4 pl-6 border-l-2 border-muted">
+                                <div className="space-y-2">
+                                    <Label htmlFor="domain-select">Select Domain</Label>
+                                    <Select
+                                        value={selectedDomainId}
+                                        onValueChange={handleDomainSelect}
+                                    >
+                                        <SelectTrigger id="domain-select">
+                                            <SelectValue placeholder="Select a domain" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {domains.length === 0 ? (
+                                                <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                                                    No domains found. <Link href="/domains/add" className="text-primary underline">Add a domain</Link>
+                                                </div>
+                                            ) : (
+                                                domains.map(domain => (
+                                                    <SelectItem key={domain.id} value={domain.id}>
+                                                        <div className="flex items-center gap-2">
+                                                            {domain.name}
+                                                            {domain.verified && (
+                                                                <Badge variant="secondary" className="text-xs">Verified</Badge>
+                                                            )}
+                                                        </div>
+                                                    </SelectItem>
+                                                ))
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {selectedDomainName && (
                                     <div className="space-y-2">
-                                        <Label htmlFor="domain-select">Select Domain</Label>
-                                        <Select
-                                            value={selectedDomainId}
-                                            onValueChange={handleDomainSelect}
-                                        >
-                                            <SelectTrigger id="domain-select">
-                                                <SelectValue placeholder="Select a domain" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {domains.length === 0 ? (
-                                                    <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                                                        No domains found. <Link href="/domains/add" className="text-primary underline">Add a domain</Link>
-                                                    </div>
-                                                ) : (
-                                                    domains.map(domain => (
-                                                        <SelectItem key={domain.id} value={domain.id}>
-                                                            <div className="flex items-center gap-2">
-                                                                {domain.name}
-                                                                {domain.verified && (
-                                                                    <Badge variant="secondary" className="text-xs">Verified</Badge>
-                                                                )}
-                                                            </div>
-                                                        </SelectItem>
-                                                    ))
-                                                )}
-                                            </SelectContent>
-                                        </Select>
+                                        <Label htmlFor="domain-paths">Domain Paths (Optional)</Label>
+                                        <Input
+                                            id="domain-paths"
+                                            value={domainPaths}
+                                            onChange={(e) => setDomainPaths(e.target.value)}
+                                            placeholder="e.g., /api, /admin (comma separated)"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Leave empty to use all paths, or specify specific paths for this domain
+                                        </p>
                                     </div>
-
-                                    {selectedDomainName && (
-                                        <div className="space-y-2">
-                                            <Label htmlFor="domain-paths">Domain Paths (Optional)</Label>
-                                            <Input
-                                                id="domain-paths"
-                                                value={domainPaths}
-                                                onChange={(e) => setDomainPaths(e.target.value)}
-                                                placeholder="e.g., /api, /admin (comma separated)"
-                                            />
-                                            <p className="text-xs text-muted-foreground">
-                                                Leave empty to use all paths, or specify specific paths for this domain
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
             )}
 
             {/* Step 4: Path Routing Rules - Only show if server is selected */}
             {selectedServerId && (
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle className="flex items-center gap-2">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                                        4
-                                    </div>
-                                    Path Routing Rules
-                                </CardTitle>
-                                <CardDescription>
-                                    Define which paths point to which server and port
-                                </CardDescription>
-                            </div>
-                            <Button onClick={addPathRule} size="sm">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Rule
-                            </Button>
+                <div className="space-y-6 pt-6">
+                    <div className="flex items-center justify-between px-1">
+                        <div>
+                            <h3 className="text-xl font-semibold flex items-center gap-2">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
+                                    4
+                                </div>
+                                Path Routing Rules
+                            </h3>
+                            <p className="text-sm text-muted-foreground ml-10">
+                                Define which paths point to which server and port
+                            </p>
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        {(() => {
-                            const hasDefault = pathRules.some(r => r.path === '/');
-                            const sortedRules = [...pathRules].sort((a, b) => {
-                                if (a.path === '/') return -1;
-                                if (b.path === '/') return 1;
-                                return 0;
-                            });
+                        <Button onClick={addPathRule} size="sm">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Rule
+                        </Button>
+                    </div>
+                    {(() => {
+                        const hasDefault = pathRules.some(r => r.path === '/');
+                        const sortedRules = [...pathRules].sort((a, b) => {
+                            if (a.path === '/') return -1;
+                            if (b.path === '/') return 1;
+                            return 0;
+                        });
 
-                            return (
-                                <div className="space-y-6">
-                                    {!hasDefault && (
-                                        <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg bg-muted/20">
-                                            <p className="text-sm font-medium mb-2">Default (Root) Rule Missing</p>
-                                            <p className="text-xs text-muted-foreground mb-4">A rule for the root path (/) is required.</p>
-                                            <Button onClick={() => addPathRule('/')} variant="default" size="sm">
-                                                <Plus className="mr-2 h-4 w-4" />
-                                                Create Default Rule
-                                            </Button>
-                                        </div>
-                                    )}
+                        return (
+                            <div className="space-y-6">
+                                {!hasDefault && (
+                                    <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg bg-muted/20">
+                                        <p className="text-sm font-medium mb-2">Default (Root) Rule Missing</p>
+                                        <p className="text-xs text-muted-foreground mb-4">A rule for the root path (/) is required.</p>
+                                        <Button onClick={() => addPathRule('/')} variant="default" size="sm">
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            Create Default Rule
+                                        </Button>
+                                    </div>
+                                )}
 
-                                    {sortedRules.map((rule, index) => {
-                                        const isDefault = rule.path === '/';
-                                        const ruleNumber = isDefault ? 0 : (index - (hasDefault ? 1 : 0)) + 1;
+                                {sortedRules.map((rule, index) => {
+                                    const isDefault = rule.path === '/';
+                                    const ruleNumber = isDefault ? 0 : (index - (hasDefault ? 1 : 0)) + 1;
 
-                                        const baseUrl = domainMode === 'domain' && selectedDomainName
-                                            ? `http://${selectedDomainName}`
-                                            : `http://${selectedServerIp || 'ip.ip.ip.ip'}`;
-                                        const ruleUrl = `${baseUrl}${isDefault ? '/' : rule.path}`;
+                                    const baseUrl = domainMode === 'domain' && selectedDomainName
+                                        ? `http://${selectedDomainName}`
+                                        : `http://${selectedServerIp || 'ip.ip.ip.ip'}`;
+                                    const ruleUrl = `${baseUrl}${isDefault ? '/' : rule.path}`;
 
-                                        return (
-                                            <div key={rule.id} className="space-y-4">
-                                                {isDefault && (
-                                                    <div className="pb-4 border-b">
-                                                        <h3 className="text-base font-semibold flex items-center gap-2">
-                                                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">Step 1</span>
-                                                            Default Rule (Root)
-                                                        </h3>
-                                                        <p className="text-xs text-muted-foreground ml-9">
-                                                            Handles requests to {baseUrl}/
-                                                        </p>
-                                                    </div>
-                                                )}
+                                    return (
+                                        <div key={rule.id} className="space-y-4">
+                                            {isDefault && (
+                                                <div className="pb-4 border-b">
+                                                    <h3 className="text-base font-semibold flex items-center gap-2">
+                                                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">Step 1</span>
+                                                        Default Rule (Root)
+                                                    </h3>
+                                                    <p className="text-xs text-muted-foreground ml-9">
+                                                        Handles requests to {baseUrl}/
+                                                    </p>
+                                                </div>
+                                            )}
 
-                                                {!isDefault && (index === 0 || (index > 0 && sortedRules[index - 1].path === '/')) && (
-                                                    <div className={`pb-4 border-b ${index > 0 ? 'mt-8' : ''}`}>
-                                                        <h3 className="text-base font-semibold flex items-center gap-2">
-                                                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">Step 2</span>
-                                                            Additional Path Rules
-                                                        </h3>
-                                                        <p className="text-xs text-muted-foreground ml-9">
-                                                            Rules for specific sub-paths (e.g., /api, /app)
-                                                        </p>
-                                                    </div>
-                                                )}
+                                            {!isDefault && (index === 0 || (index > 0 && sortedRules[index - 1].path === '/')) && (
+                                                <div className={`pb-4 border-b ${index > 0 ? 'mt-8' : ''}`}>
+                                                    <h3 className="text-base font-semibold flex items-center gap-2">
+                                                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">Step 2</span>
+                                                        Additional Path Rules
+                                                    </h3>
+                                                    <p className="text-xs text-muted-foreground ml-9">
+                                                        Rules for specific sub-paths (e.g., /api, /app)
+                                                    </p>
+                                                </div>
+                                            )}
 
-                                                <div className={`p-4 rounded-lg border bg-card text-card-foreground shadow-sm ${isDefault ? 'border-primary/30 bg-primary/5' : ''}`}>
-                                                    <div className="flex items-start justify-between mb-6">
-                                                        <div className="flex items-center gap-2">
-                                                            <Badge variant={isDefault ? "default" : "outline"}>
-                                                                {isDefault ? "Default Rule" : `Rule ${ruleNumber}`}
-                                                            </Badge>
-                                                            {rule.action === 'return-404' && (
-                                                                <Badge variant="secondary">404</Badge>
-                                                            )}
-                                                            {rule.action === 'proxy' && (
-                                                                <Badge variant="default">Proxy</Badge>
-                                                            )}
-                                                        </div>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => removePathRule(rule.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                                        </Button>
-                                                    </div>
-
-                                                    <div className="space-y-4">
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor={`path-${rule.id}`}>
-                                                                Path <span className="text-destructive">*</span>
-                                                            </Label>
-                                                            <Input
-                                                                id={`path-${rule.id}`}
-                                                                value={rule.path}
-                                                                onChange={(e) =>
-                                                                    updatePathRule(rule.id, 'path', e.target.value)
-                                                                }
-                                                                disabled={isDefault}
-                                                                placeholder="/app"
-                                                                className={isDefault ? "bg-muted font-mono" : "font-mono"}
-                                                            />
-                                                            {isDefault && <p className="text-xs text-muted-foreground">The root path is fixed for the default rule.</p>}
-                                                        </div>
-
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor={`action-${rule.id}`}>
-                                                                Action <span className="text-destructive">*</span>
-                                                            </Label>
-                                                            <Select
-                                                                value={rule.action}
-                                                                onValueChange={(value) =>
-                                                                    updatePathRule(rule.id, 'action', value as 'proxy' | 'return-404')
-                                                                }
-                                                            >
-                                                                <SelectTrigger id={`action-${rule.id}`}>
-                                                                    <SelectValue placeholder="Select action" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="proxy">Proxy to Server</SelectItem>
-                                                                    <SelectItem value="return-404">Return 404</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-
+                                            <div className={`p-4 rounded-lg border bg-card text-card-foreground shadow-sm ${isDefault ? 'border-primary/30 bg-primary/5' : ''}`}>
+                                                <div className="flex items-start justify-between mb-6">
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant={isDefault ? "default" : "outline"}>
+                                                            {isDefault ? "Default Rule" : `Rule ${ruleNumber}`}
+                                                        </Badge>
+                                                        {rule.action === 'return-404' && (
+                                                            <Badge variant="secondary">404</Badge>
+                                                        )}
                                                         {rule.action === 'proxy' && (
-                                                            <>
+                                                            <Badge variant="default">Proxy</Badge>
+                                                        )}
+                                                    </div>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => removePathRule(rule.id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                    </Button>
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor={`path-${rule.id}`}>
+                                                            Path <span className="text-destructive">*</span>
+                                                        </Label>
+                                                        <Input
+                                                            id={`path-${rule.id}`}
+                                                            value={rule.path}
+                                                            onChange={(e) =>
+                                                                updatePathRule(rule.id, 'path', e.target.value)
+                                                            }
+                                                            disabled={isDefault}
+                                                            placeholder="/app"
+                                                            className={isDefault ? "bg-muted font-mono" : "font-mono"}
+                                                        />
+                                                        {isDefault && <p className="text-xs text-muted-foreground">The root path is fixed for the default rule.</p>}
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor={`action-${rule.id}`}>
+                                                            Action <span className="text-destructive">*</span>
+                                                        </Label>
+                                                        <Select
+                                                            value={rule.action}
+                                                            onValueChange={(value) =>
+                                                                updatePathRule(rule.id, 'action', value as 'proxy' | 'return-404')
+                                                            }
+                                                        >
+                                                            <SelectTrigger id={`action-${rule.id}`}>
+                                                                <SelectValue placeholder="Select action" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="proxy">Proxy to Server</SelectItem>
+                                                                <SelectItem value="return-404">Return 404</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+
+                                                    {rule.action === 'proxy' && (
+                                                        <>
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor={`proxy-target-${rule.id}`}>
+                                                                    Proxy Target <span className="text-destructive">*</span>
+                                                                </Label>
+                                                                <Select
+                                                                    value={rule.proxyTarget || 'local-port'}
+                                                                    onValueChange={(value) =>
+                                                                        updatePathRule(rule.id, 'proxyTarget', value as 'local-port' | 'remote-server')
+                                                                    }
+                                                                >
+                                                                    <SelectTrigger id={`proxy-target-${rule.id}`}>
+                                                                        <SelectValue placeholder="Select proxy target" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="local-port">Local Port (localhost)</SelectItem>
+                                                                        <SelectItem value="remote-server">Remote Server</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {rule.proxyTarget === 'local-port'
+                                                                        ? 'Proxy to an app running on this nginx server'
+                                                                        : 'Proxy to an app running on another server'}
+                                                                </p>
+                                                            </div>
+
+                                                            {rule.proxyTarget === 'local-port' ? (
                                                                 <div className="space-y-2">
-                                                                    <Label htmlFor={`proxy-target-${rule.id}`}>
-                                                                        Proxy Target <span className="text-destructive">*</span>
+                                                                    <Label htmlFor={`local-port-${rule.id}`}>
+                                                                        Local Port <span className="text-destructive">*</span>
                                                                     </Label>
-                                                                    <Select
-                                                                        value={rule.proxyTarget || 'local-port'}
-                                                                        onValueChange={(value) =>
-                                                                            updatePathRule(rule.id, 'proxyTarget', value as 'local-port' | 'remote-server')
+                                                                    <Input
+                                                                        id={`local-port-${rule.id}`}
+                                                                        value={rule.localPort || ''}
+                                                                        onChange={(e) =>
+                                                                            updatePathRule(rule.id, 'localPort', e.target.value)
                                                                         }
-                                                                    >
-                                                                        <SelectTrigger id={`proxy-target-${rule.id}`}>
-                                                                            <SelectValue placeholder="Select proxy target" />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent>
-                                                                            <SelectItem value="local-port">Local Port (localhost)</SelectItem>
-                                                                            <SelectItem value="remote-server">Remote Server</SelectItem>
-                                                                        </SelectContent>
-                                                                    </Select>
+                                                                        placeholder="3000"
+                                                                    />
                                                                     <p className="text-xs text-muted-foreground">
-                                                                        {rule.proxyTarget === 'local-port'
-                                                                            ? 'Proxy to an app running on this nginx server'
-                                                                            : 'Proxy to an app running on another server'}
+                                                                        Port where your app is running (e.g., Next.js on 3000)
                                                                     </p>
                                                                 </div>
-
-                                                                {rule.proxyTarget === 'local-port' ? (
+                                                            ) : (
+                                                                <>
                                                                     <div className="space-y-2">
-                                                                        <Label htmlFor={`local-port-${rule.id}`}>
-                                                                            Local Port <span className="text-destructive">*</span>
+                                                                        <Label htmlFor={`server-${rule.id}`}>
+                                                                            Target Server <span className="text-destructive">*</span>
                                                                         </Label>
+                                                                        <Select
+                                                                            value={rule.serverId || ''}
+                                                                            onValueChange={(value) =>
+                                                                                updatePathRule(rule.id, 'serverId', value)
+                                                                            }
+                                                                        >
+                                                                            <SelectTrigger id={`server-${rule.id}`}>
+                                                                                <SelectValue placeholder="Select target server" />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                {servers.map(server => (
+                                                                                    <SelectItem key={server.id} value={server.id}>
+                                                                                        {server.name}
+                                                                                    </SelectItem>
+                                                                                ))}
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </div>
+
+                                                                    <div className="space-y-2">
+                                                                        <Label htmlFor={`port-${rule.id}`}>Port</Label>
                                                                         <Input
-                                                                            id={`local-port-${rule.id}`}
-                                                                            value={rule.localPort || ''}
+                                                                            id={`port-${rule.id}`}
+                                                                            value={rule.port || ''}
                                                                             onChange={(e) =>
-                                                                                updatePathRule(rule.id, 'localPort', e.target.value)
+                                                                                updatePathRule(rule.id, 'port', e.target.value)
                                                                             }
                                                                             placeholder="3000"
                                                                         />
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            Port where your app is running (e.g., Next.js on 3000)
-                                                                        </p>
                                                                     </div>
-                                                                ) : (
-                                                                    <>
-                                                                        <div className="space-y-2">
-                                                                            <Label htmlFor={`server-${rule.id}`}>
-                                                                                Target Server <span className="text-destructive">*</span>
-                                                                            </Label>
-                                                                            <Select
-                                                                                value={rule.serverId || ''}
-                                                                                onValueChange={(value) =>
-                                                                                    updatePathRule(rule.id, 'serverId', value)
-                                                                                }
-                                                                            >
-                                                                                <SelectTrigger id={`server-${rule.id}`}>
-                                                                                    <SelectValue placeholder="Select target server" />
-                                                                                </SelectTrigger>
-                                                                                <SelectContent>
-                                                                                    {servers.map(server => (
-                                                                                        <SelectItem key={server.id} value={server.id}>
-                                                                                            {server.name}
-                                                                                        </SelectItem>
-                                                                                    ))}
-                                                                                </SelectContent>
-                                                                            </Select>
-                                                                        </div>
+                                                                </>
+                                                            )}
 
-                                                                        <div className="space-y-2">
-                                                                            <Label htmlFor={`port-${rule.id}`}>Port</Label>
-                                                                            <Input
-                                                                                id={`port-${rule.id}`}
-                                                                                value={rule.port || ''}
-                                                                                onChange={(e) =>
-                                                                                    updatePathRule(rule.id, 'port', e.target.value)
-                                                                                }
-                                                                                placeholder="3000"
-                                                                            />
-                                                                        </div>
-                                                                    </>
-                                                                )}
-
-                                                                {/* Sub-paths section */}
-                                                                <div className="space-y-3 pt-4 border-t">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <Label className="text-sm font-medium">
-                                                                            Sub-paths (Optional)
-                                                                        </Label>
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            onClick={() => addSubPath(rule.id)}
-                                                                        >
-                                                                            <Plus className="h-3 w-3 mr-1" />
-                                                                            Add Sub-path
-                                                                        </Button>
-                                                                    </div>
-                                                                    <p className="text-xs text-muted-foreground">
-                                                                        Define specific sub-paths under {rule.path || '/'} to handle differently
-                                                                    </p>
-
-                                                                    {rule.subPaths && rule.subPaths.length > 0 && (
-                                                                        <div className="space-y-3 pl-4 border-l-2 border-muted">
-                                                                            {rule.subPaths.map((subPath, subIndex) => (
-                                                                                <div key={subPath.id} className="space-y-2 p-3 bg-muted/30 rounded-md">
-                                                                                    <div className="flex items-center justify-between">
-                                                                                        <Badge variant="secondary" className="text-xs">
-                                                                                            Sub-path {subIndex + 1}
-                                                                                        </Badge>
-                                                                                        <Button
-                                                                                            type="button"
-                                                                                            variant="ghost"
-                                                                                            size="icon"
-                                                                                            className="h-6 w-6"
-                                                                                            onClick={() => removeSubPath(rule.id, subPath.id)}
-                                                                                        >
-                                                                                            <X className="h-3 w-3" />
-                                                                                        </Button>
-                                                                                    </div>
-
-                                                                                    <div className="space-y-2">
-                                                                                        <Label htmlFor={`subpath-path-${subPath.id}`} className="text-xs">
-                                                                                            Path
-                                                                                        </Label>
-                                                                                        <Input
-                                                                                            id={`subpath-path-${subPath.id}`}
-                                                                                            value={subPath.path}
-                                                                                            onChange={(e) =>
-                                                                                                updateSubPath(rule.id, subPath.id, 'path', e.target.value)
-                                                                                            }
-                                                                                            placeholder="/about"
-                                                                                            className="h-8 text-sm"
-                                                                                        />
-                                                                                        <p className="text-xs text-muted-foreground">
-                                                                                            Full path: {rule.path}{subPath.path}
-                                                                                        </p>
-                                                                                    </div>
-
-                                                                                    <div className="space-y-2">
-                                                                                        <Label htmlFor={`subpath-action-${subPath.id}`} className="text-xs">
-                                                                                            Action
-                                                                                        </Label>
-                                                                                        <Select
-                                                                                            value={subPath.action}
-                                                                                            onValueChange={(value) =>
-                                                                                                updateSubPath(rule.id, subPath.id, 'action', value as 'serve-local' | 'return-404')
-                                                                                            }
-                                                                                        >
-                                                                                            <SelectTrigger id={`subpath-action-${subPath.id}`} className="h-8 text-sm">
-                                                                                                <SelectValue />
-                                                                                            </SelectTrigger>
-                                                                                            <SelectContent>
-                                                                                                <SelectItem value="serve-local">Serve Locally</SelectItem>
-                                                                                                <SelectItem value="return-404">Return 404</SelectItem>
-                                                                                            </SelectContent>
-                                                                                        </Select>
-                                                                                    </div>
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Advanced Proxy Settings */}
-                                                                <div className="space-y-3 pt-4 border-t">
+                                                            {/* Sub-paths section */}
+                                                            <div className="space-y-3 pt-4 border-t">
+                                                                <div className="flex items-center justify-between">
                                                                     <Label className="text-sm font-medium">
-                                                                        Advanced Proxy Settings
+                                                                        Sub-paths (Optional)
                                                                     </Label>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => addSubPath(rule.id)}
+                                                                    >
+                                                                        <Plus className="h-3 w-3 mr-1" />
+                                                                        Add Sub-path
+                                                                    </Button>
+                                                                </div>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Define specific sub-paths under {rule.path || '/'} to handle differently
+                                                                </p>
 
-                                                                    {rule.proxySettings && (
-                                                                        <div className="space-y-4 p-4 border rounded-md bg-muted/20">
-                                                                            <div className="grid grid-cols-2 gap-4">
-                                                                                <div className="flex items-center space-x-2">
-                                                                                    <input
-                                                                                        type="checkbox"
-                                                                                        id={`setHost-${rule.id}`}
-                                                                                        checked={rule.proxySettings.setHost !== false}
-                                                                                        onChange={(e) => updateProxySetting(rule.id, 'setHost', e.target.checked)}
-                                                                                        className="h-4 w-4 rounded border-gray-300"
-                                                                                    />
-                                                                                    <Label htmlFor={`setHost-${rule.id}`} className="text-xs">Pass Host Header</Label>
-                                                                                </div>
-                                                                                <div className="flex items-center space-x-2">
-                                                                                    <input
-                                                                                        type="checkbox"
-                                                                                        id={`setRealIp-${rule.id}`}
-                                                                                        checked={rule.proxySettings.setRealIp !== false}
-                                                                                        onChange={(e) => updateProxySetting(rule.id, 'setRealIp', e.target.checked)}
-                                                                                        className="h-4 w-4 rounded border-gray-300"
-                                                                                    />
-                                                                                    <Label htmlFor={`setRealIp-${rule.id}`} className="text-xs">Pass Real IP</Label>
-                                                                                </div>
-                                                                                <div className="flex items-center space-x-2">
-                                                                                    <input
-                                                                                        type="checkbox"
-                                                                                        id={`setForwardedFor-${rule.id}`}
-                                                                                        checked={rule.proxySettings.setForwardedFor !== false}
-                                                                                        onChange={(e) => updateProxySetting(rule.id, 'setForwardedFor', e.target.checked)}
-                                                                                        className="h-4 w-4 rounded border-gray-300"
-                                                                                    />
-                                                                                    <Label htmlFor={`setForwardedFor-${rule.id}`} className="text-xs">Pass X-Forwarded-For</Label>
-                                                                                </div>
-                                                                                <div className="flex items-center space-x-2">
-                                                                                    <input
-                                                                                        type="checkbox"
-                                                                                        id={`setForwardedProto-${rule.id}`}
-                                                                                        checked={rule.proxySettings.setForwardedProto !== false}
-                                                                                        onChange={(e) => updateProxySetting(rule.id, 'setForwardedProto', e.target.checked)}
-                                                                                        className="h-4 w-4 rounded border-gray-300"
-                                                                                    />
-                                                                                    <Label htmlFor={`setForwardedProto-${rule.id}`} className="text-xs">Pass X-Forwarded-Proto</Label>
-                                                                                </div>
-                                                                                <div className="flex items-center space-x-2">
-                                                                                    <input
-                                                                                        type="checkbox"
-                                                                                        id={`upgradeWebSocket-${rule.id}`}
-                                                                                        checked={rule.proxySettings.upgradeWebSocket !== false}
-                                                                                        onChange={(e) => updateProxySetting(rule.id, 'upgradeWebSocket', e.target.checked)}
-                                                                                        className="h-4 w-4 rounded border-gray-300"
-                                                                                    />
-                                                                                    <Label htmlFor={`upgradeWebSocket-${rule.id}`} className="text-xs">Upgrade WebSocket</Label>
-                                                                                </div>
-                                                                            </div>
-
-                                                                            <div className="space-y-2 pt-2 border-t">
+                                                                {rule.subPaths && rule.subPaths.length > 0 && (
+                                                                    <div className="space-y-3 pl-4 border-l-2 border-muted">
+                                                                        {rule.subPaths.map((subPath, subIndex) => (
+                                                                            <div key={subPath.id} className="space-y-2 p-3 bg-muted/30 rounded-md">
                                                                                 <div className="flex items-center justify-between">
-                                                                                    <Label className="text-xs font-medium">Custom Headers</Label>
+                                                                                    <Badge variant="secondary" className="text-xs">
+                                                                                        Sub-path {subIndex + 1}
+                                                                                    </Badge>
                                                                                     <Button
                                                                                         type="button"
-                                                                                        variant="outline"
-                                                                                        size="sm"
-                                                                                        onClick={() => addCustomHeader(rule.id)}
-                                                                                        className="h-6 text-xs"
+                                                                                        variant="ghost"
+                                                                                        size="icon"
+                                                                                        className="h-6 w-6"
+                                                                                        onClick={() => removeSubPath(rule.id, subPath.id)}
                                                                                     >
-                                                                                        <Plus className="h-3 w-3 mr-1" /> Add Header
+                                                                                        <X className="h-3 w-3" />
                                                                                     </Button>
                                                                                 </div>
-                                                                                {rule.proxySettings.customHeaders && rule.proxySettings.customHeaders.length > 0 && (
-                                                                                    <div className="space-y-2">
-                                                                                        {rule.proxySettings.customHeaders.map((header) => (
-                                                                                            <div key={header.id} className="flex items-center gap-2">
-                                                                                                <Input
-                                                                                                    placeholder="Header Name"
-                                                                                                    value={header.key}
-                                                                                                    onChange={(e) => updateCustomHeader(rule.id, header.id, 'key', e.target.value)}
-                                                                                                    className="h-8 text-xs"
-                                                                                                />
-                                                                                                <Input
-                                                                                                    placeholder="Value"
-                                                                                                    value={header.value}
-                                                                                                    onChange={(e) => updateCustomHeader(rule.id, header.id, 'value', e.target.value)}
-                                                                                                    className="h-8 text-xs"
-                                                                                                />
-                                                                                                <Button
-                                                                                                    type="button"
-                                                                                                    variant="ghost"
-                                                                                                    size="icon"
-                                                                                                    className="h-8 w-8"
-                                                                                                    onClick={() => removeCustomHeader(rule.id, header.id)}
-                                                                                                >
-                                                                                                    <X className="h-3 w-3" />
-                                                                                                </Button>
-                                                                                            </div>
-                                                                                        ))}
-                                                                                    </div>
-                                                                                )}
+
+                                                                                <div className="space-y-2">
+                                                                                    <Label htmlFor={`subpath-path-${subPath.id}`} className="text-xs">
+                                                                                        Path
+                                                                                    </Label>
+                                                                                    <Input
+                                                                                        id={`subpath-path-${subPath.id}`}
+                                                                                        value={subPath.path}
+                                                                                        onChange={(e) =>
+                                                                                            updateSubPath(rule.id, subPath.id, 'path', e.target.value)
+                                                                                        }
+                                                                                        placeholder="/about"
+                                                                                        className="h-8 text-sm"
+                                                                                    />
+                                                                                    <p className="text-xs text-muted-foreground">
+                                                                                        Full path: {rule.path}{subPath.path}
+                                                                                    </p>
+                                                                                </div>
+
+                                                                                <div className="space-y-2">
+                                                                                    <Label htmlFor={`subpath-action-${subPath.id}`} className="text-xs">
+                                                                                        Action
+                                                                                    </Label>
+                                                                                    <Select
+                                                                                        value={subPath.action}
+                                                                                        onValueChange={(value) =>
+                                                                                            updateSubPath(rule.id, subPath.id, 'action', value as 'serve-local' | 'return-404')
+                                                                                        }
+                                                                                    >
+                                                                                        <SelectTrigger id={`subpath-action-${subPath.id}`} className="h-8 text-sm">
+                                                                                            <SelectValue />
+                                                                                        </SelectTrigger>
+                                                                                        <SelectContent>
+                                                                                            <SelectItem value="serve-local">Serve Locally</SelectItem>
+                                                                                            <SelectItem value="return-404">Return 404</SelectItem>
+                                                                                        </SelectContent>
+                                                                                    </Select>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Advanced Proxy Settings */}
+                                                            <div className="space-y-3 pt-4 border-t">
+                                                                <Label className="text-sm font-medium">
+                                                                    Advanced Proxy Settings
+                                                                </Label>
+
+                                                                {rule.proxySettings && (
+                                                                    <div className="space-y-4 p-4 border rounded-md bg-muted/20">
+                                                                        <div className="grid grid-cols-2 gap-4">
+                                                                            <div className="flex items-center space-x-2">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    id={`setHost-${rule.id}`}
+                                                                                    checked={rule.proxySettings.setHost !== false}
+                                                                                    onChange={(e) => updateProxySetting(rule.id, 'setHost', e.target.checked)}
+                                                                                    className="h-4 w-4 rounded border-gray-300"
+                                                                                />
+                                                                                <Label htmlFor={`setHost-${rule.id}`} className="text-xs">Pass Host Header</Label>
+                                                                            </div>
+                                                                            <div className="flex items-center space-x-2">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    id={`setRealIp-${rule.id}`}
+                                                                                    checked={rule.proxySettings.setRealIp !== false}
+                                                                                    onChange={(e) => updateProxySetting(rule.id, 'setRealIp', e.target.checked)}
+                                                                                    className="h-4 w-4 rounded border-gray-300"
+                                                                                />
+                                                                                <Label htmlFor={`setRealIp-${rule.id}`} className="text-xs">Pass Real IP</Label>
+                                                                            </div>
+                                                                            <div className="flex items-center space-x-2">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    id={`setForwardedFor-${rule.id}`}
+                                                                                    checked={rule.proxySettings.setForwardedFor !== false}
+                                                                                    onChange={(e) => updateProxySetting(rule.id, 'setForwardedFor', e.target.checked)}
+                                                                                    className="h-4 w-4 rounded border-gray-300"
+                                                                                />
+                                                                                <Label htmlFor={`setForwardedFor-${rule.id}`} className="text-xs">Pass X-Forwarded-For</Label>
+                                                                            </div>
+                                                                            <div className="flex items-center space-x-2">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    id={`setForwardedProto-${rule.id}`}
+                                                                                    checked={rule.proxySettings.setForwardedProto !== false}
+                                                                                    onChange={(e) => updateProxySetting(rule.id, 'setForwardedProto', e.target.checked)}
+                                                                                    className="h-4 w-4 rounded border-gray-300"
+                                                                                />
+                                                                                <Label htmlFor={`setForwardedProto-${rule.id}`} className="text-xs">Pass X-Forwarded-Proto</Label>
+                                                                            </div>
+                                                                            <div className="flex items-center space-x-2">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    id={`upgradeWebSocket-${rule.id}`}
+                                                                                    checked={rule.proxySettings.upgradeWebSocket !== false}
+                                                                                    onChange={(e) => updateProxySetting(rule.id, 'upgradeWebSocket', e.target.checked)}
+                                                                                    className="h-4 w-4 rounded border-gray-300"
+                                                                                />
+                                                                                <Label htmlFor={`upgradeWebSocket-${rule.id}`} className="text-xs">Upgrade WebSocket</Label>
                                                                             </div>
                                                                         </div>
-                                                                    )}
-                                                                </div>
-                                                            </>
-                                                        )}
 
-                                                        <div className="bg-muted/50 p-3 rounded-md text-sm mt-4">
-                                                            <p className="text-muted-foreground">
-                                                                <strong>Route:</strong> {ruleUrl} → {
-                                                                    rule.action === 'return-404'
-                                                                        ? '404 Not Found'
-                                                                        : (
-                                                                            rule.proxyTarget === 'local-port'
-                                                                                ? `localhost:${rule.localPort}`
-                                                                                : `${rule.serverIp || 'N/A'}:${rule.port || '3000'}`
-                                                                        )
-                                                                }
-                                                            </p>
-                                                        </div>
+                                                                        <div className="space-y-2 pt-2 border-t">
+                                                                            <div className="flex items-center justify-between">
+                                                                                <Label className="text-xs font-medium">Custom Headers</Label>
+                                                                                <Button
+                                                                                    type="button"
+                                                                                    variant="outline"
+                                                                                    size="sm"
+                                                                                    onClick={() => addCustomHeader(rule.id)}
+                                                                                    className="h-6 text-xs"
+                                                                                >
+                                                                                    <Plus className="h-3 w-3 mr-1" /> Add Header
+                                                                                </Button>
+                                                                            </div>
+                                                                            {rule.proxySettings.customHeaders && rule.proxySettings.customHeaders.length > 0 && (
+                                                                                <div className="space-y-2">
+                                                                                    {rule.proxySettings.customHeaders.map((header) => (
+                                                                                        <div key={header.id} className="flex items-center gap-2">
+                                                                                            <Input
+                                                                                                placeholder="Header Name"
+                                                                                                value={header.key}
+                                                                                                onChange={(e) => updateCustomHeader(rule.id, header.id, 'key', e.target.value)}
+                                                                                                className="h-8 text-xs"
+                                                                                            />
+                                                                                            <Input
+                                                                                                placeholder="Value"
+                                                                                                value={header.value}
+                                                                                                onChange={(e) => updateCustomHeader(rule.id, header.id, 'value', e.target.value)}
+                                                                                                className="h-8 text-xs"
+                                                                                            />
+                                                                                            <Button
+                                                                                                type="button"
+                                                                                                variant="ghost"
+                                                                                                size="icon"
+                                                                                                className="h-8 w-8"
+                                                                                                onClick={() => removeCustomHeader(rule.id, header.id)}
+                                                                                            >
+                                                                                                <X className="h-3 w-3" />
+                                                                                            </Button>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </>
+                                                    )}
+
+                                                    <div className="bg-muted/50 p-3 rounded-md text-sm mt-4">
+                                                        <p className="text-muted-foreground">
+                                                            <strong>Route:</strong> {ruleUrl} → {
+                                                                rule.action === 'return-404'
+                                                                    ? '404 Not Found'
+                                                                    : (
+                                                                        rule.proxyTarget === 'local-port'
+                                                                            ? `localhost:${rule.localPort}`
+                                                                            : `${rule.serverIp || 'N/A'}:${rule.port || '3000'}`
+                                                                    )
+                                                            }
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
+                                        </div>
+                                    );
+                                })}
 
-                                    <div className="pt-4 flex justify-center">
-                                        <Button onClick={() => addPathRule()} variant="outline" className="w-full border-dashed">
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            Add Path Rule
-                                        </Button>
-                                    </div>
+                                <div className="pt-4 flex justify-center">
+                                    <Button onClick={() => addPathRule()} variant="outline" className="w-full border-dashed">
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Add Path Rule
+                                    </Button>
                                 </div>
-                            );
-                        })()}
-                    </CardContent>
-                </Card>
+                            </div>
+                        );
+                    })()}
+                </div>
             )}
 
             {/* Step 5: Generate Configuration - Always show */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+            <div className="space-y-4">
+                <div className="px-1">
+                    <h3 className="text-xl font-semibold flex items-center gap-2">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
                             5
                         </div>
                         Generate Configuration
-                    </CardTitle>
-                    <CardDescription>
+                    </h3>
+                    <p className="text-sm text-muted-foreground ml-10">
                         Preview the Nginx configuration file
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                    </p>
+                </div>
+                <div className="space-y-4 ml-10">
                     <Button
                         onClick={handleGeneratePreview}
                         disabled={generating}
@@ -1220,24 +1210,24 @@ export default function NginxConfigPage() {
                             />
                         </div>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
             {/* Step 6: Deploy - Only show if config is generated and server is selected */}
             {selectedServerId && showPreview && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+                <div className="space-y-4">
+                    <div className="px-1">
+                        <h3 className="text-xl font-semibold flex items-center gap-2">
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
                                 6
                             </div>
                             Deploy Configuration
-                        </CardTitle>
-                        <CardDescription>
+                        </h3>
+                        <p className="text-sm text-muted-foreground ml-10">
                             Deploy the configuration to your Nginx server
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                        </p>
+                    </div>
+                    <div className="space-y-4 ml-10">
                         <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md p-4">
                             <p className="text-sm text-amber-800 dark:text-amber-200">
                                 <strong>Warning:</strong> This will overwrite your current Nginx configuration and reload the server.
@@ -1282,8 +1272,8 @@ export default function NginxConfigPage() {
                                 )}
                             </Button>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
             )}
         </div>
     );
