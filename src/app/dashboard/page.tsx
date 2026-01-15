@@ -36,14 +36,8 @@ import { getStatus } from "@/app/status/actions";
 import Cookies from 'universal-cookie';
 import { format } from 'date-fns';
 
-const bandwidthData = [
-  { name: "Jan", egress: 200, ingress: 150 },
-  { name: "Feb", egress: 250, ingress: 180 },
-  { name: "Mar", egress: 300, ingress: 220 },
-  { name: "Apr", egress: 280, ingress: 250 },
-  { name: "May", egress: 350, ingress: 280 },
-  { name: "Jun", egress: 400, ingress: 300 },
-];
+// bandwidthData removed
+
 
 const CustomTooltip = ({ active, payload, label, unit }: any) => {
   if (active && payload && payload.length) {
@@ -78,13 +72,13 @@ const BandwidthTooltip = ({ active, payload, label }: any) => {
             <span className="text-[0.70rem] uppercase text-muted-foreground">
               Egress
             </span>
-            <span className="font-bold" style={{ color: payload[0].fill }}>{payload[0].value} GB</span>
+            <span className="font-bold" style={{ color: payload[0].fill }}>{payload[0].value} MB</span>
           </div>
           <div className="flex flex-col">
             <span className="text-[0.70rem] uppercase text-muted-foreground">
               Ingress
             </span>
-            <span className="font-bold" style={{ color: payload[1].fill }}>{payload[1].value} GB</span>
+            <span className="font-bold" style={{ color: payload[1].fill }}>{payload[1].value} MB</span>
           </div>
         </div>
       </div>
@@ -98,6 +92,7 @@ export default function DashboardPage() {
 
   const [cpuData, setCpuData] = useState<{ time: string; usage: number }[]>([]);
   const [ramData, setRamData] = useState<{ time: string; usage: number }[]>([]);
+  const [networkData, setNetworkData] = useState<{ time: string; ingress: number; egress: number }[]>([]);
   const [avgCpu, setAvgCpu] = useState(0);
   const [avgRam, setAvgRam] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -143,6 +138,16 @@ export default function DashboardPage() {
           // Calculate Average RAM
           const totalRamUsage = processedRam.reduce((acc, curr) => acc + curr.usage, 0);
           setAvgRam(totalRamUsage / processedRam.length);
+        }
+
+        // Process Network Data
+        if (data.networkHistory && data.networkHistory.length > 0) {
+          const processedNet = data.networkHistory.map(item => ({
+            time: format(new Date(item.timestamp), "HH:mm"),
+            ingress: item.incoming,
+            egress: item.outgoing
+          }));
+          setNetworkData(processedNet);
         }
       }
     } catch (err) {
@@ -272,29 +277,45 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Bandwidth Usage</CardTitle>
-            <CardDescription>Monthly ingress and egress traffic.</CardDescription>
+            <CardDescription>Real-time ingress and egress traffic (last hour).</CardDescription>
           </CardHeader>
           <CardContent className="pb-4">
             <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={bandwidthData} margin={{ top: 5, right: 20, left: -20, bottom: 0, }}>
-                  <defs>
-                    <linearGradient id="colorEgress" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorIngress" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <Tooltip content={<BandwidthTooltip />} />
-                  <Area type="monotone" dataKey="egress" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorEgress)" />
-                  <Area type="monotone" dataKey="ingress" stroke="hsl(var(--accent))" fillOpacity={1} fill="url(#colorIngress)" />
-                  <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value} GB`} />
-                </AreaChart>
-              </ResponsiveContainer>
+              {loading ? (
+                <div className="flex justify-center items-center h-full">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : serverId ? (
+                networkData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={networkData} margin={{ top: 5, right: 20, left: -20, bottom: 0, }}>
+                      <defs>
+                        <linearGradient id="colorEgress" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorIngress" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Tooltip content={<BandwidthTooltip />} />
+                      <Area type="monotone" dataKey="egress" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorEgress)" />
+                      <Area type="monotone" dataKey="ingress" stroke="hsl(var(--accent))" fillOpacity={1} fill="url(#colorIngress)" />
+                      <XAxis dataKey="time" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value} MB`} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex justify-center items-center h-full text-muted-foreground">
+                    <p>No Data Available.</p>
+                  </div>
+                )
+              ) : (
+                <div className="flex justify-center items-center h-full text-muted-foreground">
+                    <p>No Server Selected</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
