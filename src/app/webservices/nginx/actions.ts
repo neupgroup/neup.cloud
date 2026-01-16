@@ -283,6 +283,9 @@ export async function generateNginxConfigFromContext(config: NginxConfiguration)
         // Use domain name if available, otherwise use IP
         const serverName = config.domainName || config.serverIp || 'your-server-ip';
 
+        // Check if root path is already defined in rules
+        const hasRootRule = sortedRules.some(rule => rule.path === '/');
+
         // Default location behavior
         let defaultLocation = '';
         if (sortedRules.length === 0) {
@@ -293,8 +296,8 @@ export async function generateNginxConfigFromContext(config: NginxConfiguration)
         try_files $uri $uri/ =404;
     }
 `;
-        } else {
-            // If paths are defined, return 404 for undefined paths
+        } else if (!hasRootRule) {
+            // If paths are defined but root is not, return 404 for undefined paths
             defaultLocation = `
     # Default location - return 404 for undefined paths
     location / {
@@ -346,16 +349,20 @@ export async function generateNginxConfigFile(serverId: string) {
 /**
  * Deploy the generated Nginx configuration to the server
  */
-export async function deployNginxConfig(serverId: string) {
+export async function deployNginxConfig(serverId: string, configContent?: string, configName?: string) {
     try {
-        // Generate the config
-        const configResult = await generateNginxConfigFile(serverId);
+        let finalConfig = configContent;
 
-        if (!configResult.success || !configResult.config) {
-            return {
-                success: false,
-                error: configResult.error || 'Failed to generate config'
-            };
+        // If no config content provided, try to generate it from the saved state (backward compatibility)
+        if (!finalConfig) {
+            const configResult = await generateNginxConfigFile(serverId);
+            if (!configResult.success || !configResult.config) {
+                return {
+                    success: false,
+                    error: configResult.error || 'Failed to generate config'
+                };
+            }
+            finalConfig = configResult.config;
         }
 
         // Get server details
@@ -375,19 +382,28 @@ export async function deployNginxConfig(serverId: string) {
             };
         }
 
-        // Create a temporary file with the config
-        const configFileName = `/tmp/nginx-${serverId}.conf`;
-        const configContent = configResult.config;
+        // Determine file name (default to 'default' if not provided)
+        const siteName = configName || 'default';
+        const configFileName = `/tmp/nginx-${serverId}-${siteName}.conf`;
 
         // Escape the config content for shell
-        const escapedConfig = configContent.replace(/'/g, "'\\''");
+        const escapedConfig = finalConfig.replace(/'/g, "'\\''");
 
         // Deploy the config
+        // 1. Remove previous config files if they exist (from both sites-enabled and sites-available)
+        // 2. Write new config to temp file
+        // 3. Move to sites-available with the specific name
+        // 4. Create symlink to sites-enabled
+        // 5. Test config with nginx -t
+        // 6. Restart nginx to apply changes
         const deployCommand = `
+            sudo rm -f /etc/nginx/sites-enabled/${siteName} && \
+            sudo rm -f /etc/nginx/sites-available/${siteName} && \
             echo '${escapedConfig}' > ${configFileName} && \
-            sudo cp ${configFileName} /etc/nginx/sites-available/default && \
+            sudo cp ${configFileName} /etc/nginx/sites-available/${siteName} && \
+            sudo ln -sf /etc/nginx/sites-available/${siteName} /etc/nginx/sites-enabled/${siteName} && \
             sudo nginx -t && \
-            sudo systemctl reload nginx
+            sudo systemctl restart nginx
         `;
 
         const result = await runCommandOnServer(
@@ -409,7 +425,7 @@ export async function deployNginxConfig(serverId: string) {
 
         return {
             success: true,
-            message: 'Nginx configuration deployed successfully',
+            message: `Nginx configuration '${siteName}' deployed and reloaded successfully`,
             output: result.stdout
         };
     } catch (error: any) {
