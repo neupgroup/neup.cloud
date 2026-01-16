@@ -49,6 +49,7 @@ import { FirebaseClientProvider } from '@/firebase';
 import { ProgressBar } from '@/components/progress-bar';
 import NProgress from 'nprogress';
 import Cookies from 'universal-cookie';
+import { getServer } from '@/app/servers/actions';
 
 // Helper function to find the longest matching path
 function findLongestMatch(currentPath: string, allPaths: string[]): string | null {
@@ -108,7 +109,7 @@ function NavLink({
 }
 
 
-function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { currentPath: string, onLinkClick?: () => void, isServerSelected: boolean }) {
+function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData }: { currentPath: string, onLinkClick?: () => void, isServerSelected: boolean, serverData: any }) {
   const navLinks = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
     { href: "/recommendations", label: "Recommendations", icon: Lightbulb },
@@ -130,13 +131,15 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
   const serverLinks = [
     { href: "/status", label: "Status", icon: HeartPulse },
     { href: "/applications", label: "Applications", icon: AppWindow },
-    { href: "/storage", label: "Storage", icon: HardDrive },
     { href: "/processes", label: "Processes", icon: FileCode },
     { href: "/network", label: "Network", icon: Network },
-    { href: "/webservices", label: "Web Services", icon: Globe },
     { href: "/database", label: "Databases", icon: Database },
     { href: "/commands", label: "Commands", icon: Terminal },
     { href: "/history", label: "History", icon: History },
+  ]
+
+  const maintenanceLinks = [
+    { href: "/storage", label: "Storage", icon: HardDrive },
     { href: "/files", label: "File Manager", icon: FolderKanban },
     { href: "/packages", label: "Packages", icon: Package },
     { href: "/updates", label: "Updates", icon: ArrowUpCircle },
@@ -147,12 +150,30 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
     { href: "/errors", label: "Errors", icon: ShieldAlert },
   ]
 
+  // Build webservices links dynamically
+  const webservicesLinks = [];
+  webservicesLinks.push({ href: "/webservices", label: "Home", icon: Globe });
+
+  if (serverData?.proxyHandler && serverData.proxyHandler !== 'None') {
+    const proxyPath = serverData.proxyHandler === 'Nginx' ? '/webservices/nginx' : '/webservices/proxy';
+    webservicesLinks.push({ href: proxyPath, label: `Manage Proxy`, icon: Network });
+  }
+
+  if (serverData?.loadBalancer && serverData.loadBalancer !== 'None') {
+    const balancerPath = '/webservices/balancer';
+    webservicesLinks.push({ href: balancerPath, label: `Manage Balancer`, icon: Network });
+  }
+
+  webservicesLinks.push({ href: "/webservices/configure", label: "Configure", icon: Settings });
+
   // Collect all paths for longest match calculation
   const allPaths = [
     ...navLinks.map(l => l.href),
     ...domainLinks.map(l => l.href),
     ...accountLinks.map(l => l.href),
     ...(isServerSelected ? serverLinks.map(l => l.href) : []),
+    ...(isServerSelected ? maintenanceLinks.map(l => l.href) : []),
+    ...(isServerSelected ? webservicesLinks.map(l => l.href) : []),
     ...rootLinks.map(l => l.href),
   ];
 
@@ -185,6 +206,34 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected }: { curren
             Server
           </div>
           {serverLinks.map(({ href, label, icon: Icon }) => (
+            <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </div>
+      )}
+
+      {isServerSelected && (
+        <div className="space-y-2">
+          <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
+            Maintenance
+          </div>
+          {maintenanceLinks.map(({ href, label, icon: Icon }) => (
+            <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </div>
+      )}
+
+      {isServerSelected && (
+        <div className="space-y-2">
+          <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
+            Webservices
+          </div>
+          {webservicesLinks.map(({ href, label, icon: Icon }) => (
             <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
               <Icon className="h-4 w-4" />
               <span>{label}</span>
@@ -263,18 +312,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isServerSelected, setIsServerSelected] = useState(false);
+  const [serverData, setServerData] = useState<any>(null);
 
   useEffect(() => {
     const cookies = new Cookies(null, { path: '/' });
-    const checkCookie = () => {
+    const checkCookie = async () => {
       const serverCookie = cookies.get('selected_server');
       setIsServerSelected(!!serverCookie);
+
+      if (serverCookie) {
+        try {
+          const data = await getServer(serverCookie);
+          setServerData(data);
+        } catch (error) {
+          console.error('Failed to fetch server data:', error);
+        }
+      } else {
+        setServerData(null);
+      }
     };
     checkCookie();
-
-    // It's a bit of a hack, but since we can't easily listen to cookie changes
-    // across server actions, we'll just poll on navigation changes.
-    // A more robust solution might involve a global state management library.
   }, [pathname]);
 
   useEffect(() => {
@@ -311,7 +368,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             )}>
               <ScrollArea className="h-full">
                 <div className="p-4 sm:p-6">
-                  <MainNavContent currentPath={pathname} onLinkClick={closeMobileMenu} isServerSelected={isServerSelected} />
+                  <MainNavContent currentPath={pathname} onLinkClick={closeMobileMenu} isServerSelected={isServerSelected} serverData={serverData} />
                 </div>
               </ScrollArea>
             </div>
@@ -321,7 +378,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <aside className="hidden h-[calc(100vh-4rem)] flex-col border-r bg-card lg:sticky lg:top-16 lg:flex">
                 <ScrollArea className="flex-1">
                   <div className="p-6 md:p-8">
-                    <MainNavContent currentPath={pathname} isServerSelected={isServerSelected} />
+                    <MainNavContent currentPath={pathname} isServerSelected={isServerSelected} serverData={serverData} />
                   </div>
                 </ScrollArea>
               </aside>
