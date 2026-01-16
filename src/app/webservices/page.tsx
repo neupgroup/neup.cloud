@@ -74,7 +74,7 @@ export default function WebServicesPage() {
     if (!server) {
         return (
             <div className="flex flex-col items-center justify-center h-[50vh] gap-4">
-                <h2 className="text-xl font-semibold">Server not found</h2>
+                <h2 className="text-xl font-medium">Server not found</h2>
                 <Button asChild><Link href="/servers">Go to Servers</Link></Button>
             </div>
         )
@@ -90,143 +90,121 @@ export default function WebServicesPage() {
             {/* Configure Server Card */}
             <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
                 <Link href="/webservices/configure">
-                    <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                            <Settings className="h-6 w-6 text-primary" />
+                    <div className="p-4 flex items-center gap-4">
+                        <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                            <Settings className="h-5 w-5 text-primary" />
                         </div>
-                        <div className="flex-1">
-                            <CardTitle className="text-lg">Server Configuration</CardTitle>
-                            <CardDescription>
-                                Configure proxy handler, load balancer, and network settings.
-                            </CardDescription>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium mb-0.5">Server Configuration</p>
+                            <p className="text-xs text-muted-foreground">
+                                Configure proxy handler, load balancer, and network settings
+                            </p>
                         </div>
-                        <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                    </CardHeader>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </div>
                 </Link>
             </Card>
 
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-semibold font-headline tracking-tight">Proxy Management</h2>
-                    {server.proxyHandler && <Badge variant="secondary">{server.proxyHandler}</Badge>}
+                <div>
+                    <h2 className="text-2xl font-medium font-headline tracking-tight">Proxy Management</h2>
+                    <p className="text-muted-foreground">Configure reverse proxy and routing rules</p>
                 </div>
 
                 {server.proxyHandler === 'Nginx' ? (
-                    <div className="grid gap-6">
-                        <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
-                            <div className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 border-b border-border">
-                                <div className="flex items-center justify-between">
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-medium text-foreground font-mono leading-tight mb-1">
-                                            Path Routing Configuration
-                                        </p>
+                    <div className="grid gap-4">
+                        <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+                            <Link href="/webservices/nginx">
+                                <div className="p-4 flex items-center gap-4">
+                                    <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                                        <Globe className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium mb-0.5">Path Routing Configuration</p>
                                         <p className="text-xs text-muted-foreground">
                                             Configure Nginx locations, proxy passes, and custom headers
                                         </p>
                                     </div>
-                                    <Button asChild variant="default" size="sm" className="ml-4 shrink-0">
-                                        <Link href="/webservices/nginx">
-                                            Configure
-                                        </Link>
-                                    </Button>
+                                    <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
                                 </div>
-                            </div>
-                            <div className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50">
-                                <div className="flex items-center justify-between">
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-medium text-foreground font-mono leading-tight mb-1">
-                                            Terminal Access
-                                        </p>
+                            </Link>
+                        </Card>
+                        <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+                            <Link href="/commands">
+                                <div className="p-4 flex items-center gap-4">
+                                    <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                                        <Server className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium mb-0.5">Terminal Access</p>
                                         <p className="text-xs text-muted-foreground">
                                             Directly manage Nginx via command line interface
                                         </p>
                                     </div>
-                                    <Button asChild variant="outline" size="sm" className="ml-4 shrink-0">
-                                        <Link href="/commands">
-                                            Open Terminal
-                                        </Link>
-                                    </Button>
+                                    <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
                                 </div>
-                            </div>
+                            </Link>
                         </Card>
                     </div>
-                ) : server.proxyHandler && server.proxyHandler !== 'None' ? (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>{server.proxyHandler} Management</CardTitle>
-                            <CardDescription>Configuration tools for {server.proxyHandler} are coming soon.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <p>Currently, automated configuration generation is available for Nginx. You can manually configure your {server.proxyHandler} instance via the terminal.</p>
-                            <Button className="mt-4" variant="outline" asChild>
-                                <Link href="/commands">Open Terminal</Link>
-                            </Button>
-                        </CardContent>
-                    </Card>
                 ) : (
-                    <Card className="border-dashed">
-                        <CardHeader className="text-center">
-                            <CardTitle>No Proxy Handler Selected</CardTitle>
-                            <CardDescription>Please select a proxy handler above to access management tools.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex justify-center pb-6">
-                            {/* Visual placeholder or help text */}
-                            <Globe className="h-12 w-12 text-muted-foreground opacity-20" />
-                        </CardContent>
+                    <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+                        <Link href="/commands">
+                            <div className="p-4 flex items-center gap-4">
+                                <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                                    <Server className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium mb-0.5">Terminal Access</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Manage your proxy configuration via command line interface
+                                    </p>
+                                </div>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                            </div>
+                        </Link>
                     </Card>
                 )}
             </div>
 
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-semibold font-headline tracking-tight">Load Balancer Management</h2>
-                    {server.loadBalancer && <Badge variant="secondary">{server.loadBalancer}</Badge>}
+                <div>
+                    <h2 className="text-2xl font-medium font-headline tracking-tight">Load Balancer Management</h2>
+                    <p className="text-muted-foreground">Distribute traffic across multiple servers</p>
                 </div>
 
                 {server.loadBalancer === 'Nginx' ? (
-                    <div className="grid gap-6">
-                        <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
-                            <div className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50">
-                                <div className="flex items-center justify-between">
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-medium text-foreground font-mono leading-tight mb-1">
-                                            Load Balancer Config
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            Manage upstream servers and balancing rules
-                                        </p>
-                                    </div>
-                                    <Button asChild variant="outline" size="sm" className="ml-4 shrink-0">
-                                        <Link href="/commands">
-                                            Open Terminal
-                                        </Link>
-                                    </Button>
+                    <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+                        <Link href="/commands">
+                            <div className="p-4 flex items-center gap-4">
+                                <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                                    <Wind className="h-5 w-5 text-primary" />
                                 </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium mb-0.5">Load Balancer Configuration</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Manage upstream servers and balancing rules
+                                    </p>
+                                </div>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
                             </div>
-                        </Card>
-                    </div>
-                ) : server.loadBalancer && server.loadBalancer !== 'None' ? (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>{server.loadBalancer} Management</CardTitle>
-                            <CardDescription>Configuration tools for {server.loadBalancer} are coming soon.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <p>You can manually configure your {server.loadBalancer} instance via the terminal.</p>
-                            <Button className="mt-4" variant="outline" asChild>
-                                <Link href="/commands">Open Terminal</Link>
-                            </Button>
-                        </CardContent>
+                        </Link>
                     </Card>
                 ) : (
-                    <Card className="border-dashed">
-                        <CardHeader className="text-center">
-                            <CardTitle>No Load Balancer Selected</CardTitle>
-                            <CardDescription>Please select a load balancer in the configuration page.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex justify-center pb-6">
-                            <Wind className="h-12 w-12 text-muted-foreground opacity-20" />
-                        </CardContent>
+                    <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+                        <Link href="/commands">
+                            <div className="p-4 flex items-center gap-4">
+                                <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                                    <Server className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium mb-0.5">Terminal Access</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Manage your load balancer configuration via command line interface
+                                    </p>
+                                </div>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                            </div>
+                        </Link>
                     </Card>
                 )}
             </div>
