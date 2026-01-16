@@ -1,7 +1,3 @@
-
-"use client";
-
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -313,7 +309,7 @@ export default function DashboardPage() {
                 )
               ) : (
                 <div className="flex justify-center items-center h-full text-muted-foreground">
-                    <p>No Server Selected</p>
+                  <p>No Server Selected</p>
                 </div>
               )}
             </div>

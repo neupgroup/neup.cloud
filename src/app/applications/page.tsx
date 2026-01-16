@@ -68,13 +68,13 @@ export default function AppsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        <Link href="/applications/new">
+        <Link href="/applications/deploy">
           <Card
             className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed hover:border-primary hover:bg-muted/50 cursor-pointer transition-colors"
           >
             <PlusCircle className="h-10 w-10 text-muted-foreground mb-2" />
-            <h3 className="text-lg font-semibold">Register New Application</h3>
-            <p className="text-muted-foreground text-sm">Add a new application to your infrastructure.</p>
+            <h3 className="text-lg font-semibold">Deploy New Application</h3>
+            <p className="text-muted-foreground text-sm">Deploy a new application to your infrastructure.</p>
           </Card>
         </Link>
         {isLoading ? (
