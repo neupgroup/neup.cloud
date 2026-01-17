@@ -7,8 +7,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PageTitleBack } from '@/components/page-header';
 
-export default async function ApplicationDetailPage({ params }: { params: { id: string } }) {
-    const application = await getApplication(params.id) as any;
+export default async function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const application = await getApplication(id) as any;
 
     if (!application) {
         notFound();
