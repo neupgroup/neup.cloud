@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { PageTitleBack } from "@/components/page-header";
 import type { Metadata } from 'next';
 import { Badge } from "@/components/ui/badge";
-import { getDatabaseDetails } from "../actions";
+import { getDatabaseDetails } from "@/actions/database";
 import { notFound } from "next/navigation";
 import Link from 'next/link';
 
@@ -186,7 +186,7 @@ export default async function DatabaseDetailsPage({ params }: Props) {
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="font-bold text-base">Remote Connection</span>
-                                            <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-500 border-green-500/20">SSL Required</Badge>
+                                            <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-500 border-green-500/20">Secure</Badge>
                                         </div>
                                         <p className="text-xs text-muted-foreground">
                                             View connection details and code examples • Port: {details.engine === 'mariadb' ? '3306' : '5432'}

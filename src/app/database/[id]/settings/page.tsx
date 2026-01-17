@@ -12,11 +12,13 @@ import { Button } from "@/components/ui/button";
 import { PageTitleBack } from "@/components/page-header";
 import type { Metadata } from 'next';
 import { Badge } from "@/components/ui/badge";
-import { getDatabaseDetails } from "../../actions";
+import { getDatabaseDetails, getDatabaseSettings } from "@/actions/database";
 import { notFound } from "next/navigation";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { RemoteConnectionSettings } from "./remote-connection-settings";
+
 
 export const metadata: Metadata = {
     title: 'Database Settings | Neup.Cloud',
@@ -41,8 +43,12 @@ export default async function DatabaseSettingsPage({ params }: Props) {
     const dbName = parts.slice(1).join('-');
 
     let details = null;
+    let settings = null;
     try {
-        details = await getDatabaseDetails(serverId, engine, dbName);
+        [details, settings] = await Promise.all([
+            getDatabaseDetails(serverId, engine, dbName),
+            getDatabaseSettings(serverId, engine)
+        ]);
     } catch (error) {
         console.error(error);
         notFound();
@@ -69,63 +75,12 @@ export default async function DatabaseSettingsPage({ params }: Props) {
 
             <div className="space-y-6">
                 {/* Remote Connection Settings */}
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <Globe className="h-5 w-5 text-primary" />
-                            <CardTitle>Remote Connection</CardTitle>
-                        </div>
-                        <CardDescription>
-                            Control external access to this database instance
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
-                            <div className="space-y-0.5">
-                                <Label htmlFor="remote-access" className="text-base font-semibold">
-                                    Enable Remote Access
-                                </Label>
-                                <p className="text-sm text-muted-foreground">
-                                    Allow connections from external IP addresses
-                                </p>
-                            </div>
-                            <Switch id="remote-access" defaultChecked />
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="allowed-ips">Allowed IP Addresses</Label>
-                                <Input
-                                    id="allowed-ips"
-                                    placeholder="0.0.0.0/0 (All IPs)"
-                                    defaultValue="0.0.0.0/0"
-                                    className="font-mono text-sm"
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Comma-separated list of IP addresses or CIDR blocks. Use 0.0.0.0/0 for all IPs.
-                                </p>
-                            </div>
-
-                            <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
-                                <div className="space-y-0.5">
-                                    <Label htmlFor="ssl-required" className="text-base font-semibold">
-                                        Require SSL/TLS
-                                    </Label>
-                                    <p className="text-sm text-muted-foreground">
-                                        Force encrypted connections only
-                                    </p>
-                                </div>
-                                <Switch id="ssl-required" defaultChecked disabled />
-                            </div>
-                        </div>
-
-                        <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-lg">
-                            <p className="text-xs text-blue-900/70 dark:text-blue-500/70">
-                                <strong>Note:</strong> SSL/TLS is always required for security. Changes to remote access settings may take up to 60 seconds to apply.
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card>
+                <RemoteConnectionSettings
+                    serverId={serverId}
+                    engine={engine}
+                    dbName={dbName}
+                    initialSettings={settings}
+                />
 
                 {/* Quick Shell Settings */}
                 <Card>
@@ -262,15 +217,6 @@ export default async function DatabaseSettingsPage({ params }: Props) {
                     </CardContent>
                 </Card>
 
-                {/* Save Button */}
-                <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border">
-                    <p className="text-sm text-muted-foreground">
-                        Changes will be applied immediately and may require a brief service interruption.
-                    </p>
-                    <Button size="lg" className="px-8">
-                        Save Changes
-                    </Button>
-                </div>
 
                 {/* Danger Zone */}
                 <Card className="border-destructive/50">

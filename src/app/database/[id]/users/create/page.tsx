@@ -1,7 +1,7 @@
 
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { getDatabaseDetails } from "../../../actions";
+import { getDatabaseDetails } from "@/actions/database";
 import { UserCreateForm } from "../user-create-form";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, UserPlus } from "lucide-react";
@@ -26,7 +26,7 @@ export default async function CreateUserPage({ params }: { params: Promise<{ id:
     }
 
     return (
-        <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="space-y-1">
                 <Button variant="ghost" className="pl-0 hover:bg-transparent text-muted-foreground hover:text-foreground" asChild>
                     <Link href={`/database/${id}/users`}>
@@ -37,12 +37,13 @@ export default async function CreateUserPage({ params }: { params: Promise<{ id:
                 <p className="text-muted-foreground">Add a new authenticated account for <span className="font-medium text-foreground">{dbName}</span></p>
             </div>
 
-            <UserCreateForm
-                serverId={serverId}
-                engine={engine}
-                dbName={dbName}
-                onSuccess={() => { }} // Redirect handled by form or user can just go back
-            />
+            <div className="max-w-2xl">
+                <UserCreateForm
+                    serverId={serverId}
+                    engine={engine}
+                    dbName={dbName}
+                />
+            </div>
         </div>
     );
 }

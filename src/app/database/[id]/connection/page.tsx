@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { PageTitleBack } from "@/components/page-header";
 import type { Metadata } from 'next';
 import { Badge } from "@/components/ui/badge";
-import { getDatabaseDetails } from "../../actions";
+import { getDatabaseDetails } from "@/actions/database";
 import { notFound } from "next/navigation";
 
 export const metadata: Metadata = {
@@ -78,12 +78,12 @@ export default async function DatabaseConnectionPage({ params }: Props) {
                         <div className="flex-1">
                             <h3 className="font-semibold mb-1">Remote Access Enabled</h3>
                             <p className="text-sm text-muted-foreground mb-3">
-                                This database is configured to accept external connections with SSL encryption.
+                                This database is configured to accept external connections. SSL encryption can be configured in settings.
                             </p>
                             <div className="flex flex-wrap gap-2">
                                 <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
                                     <Shield className="h-3 w-3 mr-1" />
-                                    SSL Required
+                                    SSL Supported
                                 </Badge>
                                 <Badge variant="outline" className="bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20">
                                     <Server className="h-3 w-3 mr-1" />
@@ -160,7 +160,7 @@ export default async function DatabaseConnectionPage({ params }: Props) {
                         Connection Examples
                     </CardTitle>
                     <CardDescription>
-                        Code snippets for connecting from different environments
+                        Code snippets for connecting from different environments. SSL settings can be configured in Database Settings.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">

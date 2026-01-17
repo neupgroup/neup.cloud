@@ -144,6 +144,11 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     { href: "/updates", label: "Updates", icon: ArrowUpCircle },
   ]
 
+  const firewallLinks = [
+    { href: "/firewall", label: "Home", icon: ShieldAlert },
+    { href: "/firewall/network", label: "Network", icon: Network },
+  ]
+
   const rootLinks = [
     { href: "/root/servers", label: "Manage Servers", icon: Settings },
     { href: "/errors", label: "Errors", icon: ShieldAlert },
@@ -172,6 +177,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     ...accountLinks.map(l => l.href),
     ...(isServerSelected ? serverLinks.map(l => l.href) : []),
     ...(isServerSelected ? maintenanceLinks.map(l => l.href) : []),
+    ...(isServerSelected ? firewallLinks.map(l => l.href) : []),
     ...(isServerSelected ? webservicesLinks.map(l => l.href) : []),
     ...rootLinks.map(l => l.href),
   ];
@@ -219,6 +225,20 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
             Maintenance
           </div>
           {maintenanceLinks.map(({ href, label, icon: Icon }) => (
+            <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </div>
+      )}
+
+      {isServerSelected && (
+        <div className="space-y-2">
+          <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
+            Firewall
+          </div>
+          {firewallLinks.map(({ href, label, icon: Icon }) => (
             <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
               <Icon className="h-4 w-4" />
               <span>{label}</span>

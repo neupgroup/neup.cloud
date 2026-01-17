@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Database, ShieldCheck, Key, User, AlertTriangle, CheckCircle, ArrowRight, Server } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { type DatabaseInstallation, installDatabaseEngine, checkDatabaseInstallation, createDatabaseInstance } from '../actions';
+import { type DatabaseInstallation, installDatabaseEngine, checkDatabaseInstallation, createDatabaseInstance } from '@/actions/database';
 
 interface DatabaseCreateFormProps {
     serverId?: string;

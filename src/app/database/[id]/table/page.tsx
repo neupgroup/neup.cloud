@@ -10,7 +10,7 @@ import { Table as TableIcon, Database, HardDrive, Clock, FileText } from "lucide
 import { cookies } from "next/headers";
 import { PageTitleBack } from "@/components/page-header";
 import type { Metadata } from 'next';
-import { getDatabaseDetails, getDatabaseTables } from "../../actions";
+import { getDatabaseDetails, getDatabaseTables } from "@/actions/database";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 

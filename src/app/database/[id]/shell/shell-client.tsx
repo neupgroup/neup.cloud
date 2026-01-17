@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
-import { executeDatabaseQuery } from '../../actions';
+import { executeDatabaseQuery } from '@/actions/database';
 
 interface ShellClientProps {
     id: string;

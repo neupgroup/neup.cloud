@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { DatabaseCreateForm } from './database-create-form';
 import { PageTitleBack } from '@/components/page-header';
 import { Database } from 'lucide-react';
-import { checkDatabaseInstallation } from '../actions';
+import { checkDatabaseInstallation } from '@/actions/database';
 
 export default async function CreateDatabasePage() {
     const cookieStore = await cookies();

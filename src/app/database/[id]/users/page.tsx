@@ -1,48 +1,55 @@
-
 import { cookies } from "next/headers";
-import { notFound } from "next/navigation";
-import { listDatabaseUsers, getDatabaseDetails } from "../../actions";
-import { UsersClientPage } from "./users-client";
-import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
+import { PageTitle } from "@/components/page-header";
+import { Users } from "lucide-react";
+import DatabaseUsersClient from "./database-users-client";
+import { listDatabaseUsers } from "@/actions/database";
 
-export const metadata: Metadata = {
-    title: 'Manage Users | Neup.Cloud',
-};
-
-type Props = {
-    params: Promise<{ id: string }>
-}
-
-export default async function DatabaseUsersPage({ params }: Props) {
-    const { id } = await params;
+export default async function DatabaseUsersPage(props: { params: Promise<{ id: string }> }) {
+    const params = await props.params;
     const cookieStore = await cookies();
     const serverId = cookieStore.get('selected_server')?.value;
 
-    if (!serverId) notFound();
+    if (!serverId) {
+        redirect('/servers');
+    }
 
-    // Parse ID: Format is "engine-name"
-    const parts = id.split('-');
-    if (parts.length < 2) notFound();
+    const { id } = params;
 
-    const engine = parts[0] as 'mariadb' | 'postgres';
-    const dbName = parts.slice(1).join('-');
-
-    let users = [];
-    try {
-        // Verify existence first
-        await getDatabaseDetails(serverId, engine, dbName);
-        users = await listDatabaseUsers(serverId, engine, dbName);
-    } catch (error) {
-        console.error("Failed to fetch database users:", error);
+    // Parse engine and dbName from id (format: engine-dbName)
+    // Find first hyphen to split
+    const splitIndex = id.indexOf('-');
+    if (splitIndex === -1) {
         notFound();
     }
 
+    const engine = id.substring(0, splitIndex);
+    const dbName = id.substring(splitIndex + 1);
+
+    if (engine !== 'mariadb' && engine !== 'postgres') {
+        notFound();
+    }
+
+    // Fetch users
+    const users = await listDatabaseUsers(serverId, engine as 'mariadb' | 'postgres', dbName);
+
     return (
-        <UsersClientPage
-            serverId={serverId}
-            engine={engine}
-            dbName={dbName}
-            initialUsers={users}
-        />
+        <div className="grid gap-8 animate-in fade-in duration-500 pb-10">
+            <PageTitle
+                title={
+                    <span className="flex items-center gap-2">
+                        <Users className="w-8 h-8 text-primary" />
+                        Database Users: {dbName}
+                    </span>
+                }
+                description={
+                    <span>
+                        Manage users and access permissions for database <span className="font-mono font-semibold text-foreground">{dbName}</span> ({engine}).
+                    </span>
+                }
+            />
+
+            <DatabaseUsersClient users={users} dbId={id} />
+        </div>
     );
 }

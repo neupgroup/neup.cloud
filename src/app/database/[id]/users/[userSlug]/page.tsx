@@ -1,7 +1,7 @@
 
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { getDatabaseDetails } from "../../../actions";
+import { getDatabaseDetails } from "@/actions/database";
 import { UserManageClient } from "./user-manage-client";
 import type { Metadata } from "next";
 
@@ -23,7 +23,7 @@ export default async function ManageUserPage({ params }: Props) {
     // Parse DB ID: Format is "engine-name"
     const dbParts = id.split('-');
     if (dbParts.length < 2) notFound();
-    const engine = dbParts[0] as 'mysql' | 'postgres';
+    const engine = dbParts[0] as 'mariadb' | 'postgres';
     const dbName = dbParts.slice(1).join('-');
 
     // Parse User Slug: Format is "username-host"
