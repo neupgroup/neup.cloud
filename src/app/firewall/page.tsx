@@ -16,11 +16,10 @@ export default function FirewallPage() {
                         Firewall
                     </span>
                 }
-                subtitle="Manage your server's network security and access rules."
+                description="Manage your server's network security and access rules."
             />
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {/* Content will go here later */}
                 <div className="p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
                     <h3 className="text-lg font-semibold">Network Rules</h3>
                     <p className="text-sm text-muted-foreground mt-2">
@@ -28,6 +27,26 @@ export default function FirewallPage() {
                     </p>
                     <a href="/firewall/network" className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 mt-4">
                         Manage Network
+                    </a>
+                </div>
+
+                <div className="p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
+                    <h3 className="text-lg font-semibold">Instance Users</h3>
+                    <p className="text-sm text-muted-foreground mt-2">
+                        Manage system accounts and user access for this instance.
+                    </p>
+                    <a href="/firewall/users" className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 mt-4">
+                        Manage Users
+                    </a>
+                </div>
+
+                <div className="p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
+                    <h3 className="text-lg font-semibold">SSH Keys</h3>
+                    <p className="text-sm text-muted-foreground mt-2">
+                        Manage SSH keys for secure access to your instance.
+                    </p>
+                    <a href="/firewall/keys" className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 mt-4">
+                        Manage Keys
                     </a>
                 </div>
             </div>
