@@ -26,7 +26,9 @@ import {
   Layers,
   Database,
   ArrowUpCircle,
-  Package
+  Package,
+  Users,
+  Key
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -147,6 +149,8 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
   const firewallLinks = [
     { href: "/firewall", label: "Home", icon: ShieldAlert },
     { href: "/firewall/network", label: "Network", icon: Network },
+    { href: "/firewall/users", label: "Users", icon: Users },
+    { href: "/firewall/keys", label: "Keys", icon: Key },
   ]
 
   const rootLinks = [
