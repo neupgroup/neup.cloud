@@ -92,7 +92,7 @@ function KeysListItems({ keys, isLoading }: { keys: SshKey[], isLoading: boolean
     )
 }
 
-export default function KeysList({ serverId }: { serverId?: string }) {
+export default function KeysList({ serverId, isLoadingOverride }: { serverId?: string, isLoadingOverride?: boolean }) {
     const { toast } = useToast();
     const [keys, setKeys] = useState<SshKey[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -101,7 +101,14 @@ export default function KeysList({ serverId }: { serverId?: string }) {
     useEffect(() => {
         async function fetchKeys() {
             if (!serverId) {
-                setIsLoading(false);
+                // If strictly no serverId and no override, stop loading.
+                // But if override is true (from loading.tsx context? no loading.tsx unmounts when page mounts), 
+                // actually loading.tsx replaces page.
+                // This component is used inside page.tsx.
+                // AND used inside loading.tsx.
+                // If inside loading.tsx, serverId is undefined.
+                // We want to show skeleton.
+                if (!isLoadingOverride) setIsLoading(false);
                 return;
             }
 
@@ -123,7 +130,11 @@ export default function KeysList({ serverId }: { serverId?: string }) {
             }
         }
         fetchKeys();
-    }, [serverId, toast]);
+    }, [serverId, toast, isLoadingOverride]);
+
+    if (isLoadingOverride) {
+        return <KeysListItems keys={[]} isLoading={true} />;
+    }
 
     if (!serverId) {
         return (
