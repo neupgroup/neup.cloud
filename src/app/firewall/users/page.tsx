@@ -1,17 +1,40 @@
 import { PageTitle } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserPlus, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { Metadata } from "next";
+import { cookies } from 'next/headers';
+import { getSystemUsers } from "./actions";
+import UsersList from "./users-list";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
     title: 'Users | Firewall | Neup.Cloud',
 };
 
-export default function UsersPage() {
+export default async function UsersPage() {
+    const cookieStore = await cookies();
+    const serverId = cookieStore.get('selected_server')?.value;
+
+    if (!serverId) {
+        return (
+            <div className="space-y-6">
+                <PageTitle title="Instance Users" description="Manage system accounts." />
+                <Card className="text-center p-8">
+                    <CardHeader>
+                        <CardTitle>No Server Selected</CardTitle>
+                    </CardHeader>
+                    <p className="text-muted-foreground mb-4">Please select a server to manage users.</p>
+                    <Button asChild>
+                        <Link href="/servers">Go to Servers</Link>
+                    </Button>
+                </Card>
+            </div>
+        );
+    }
+
+    const { users, error } = await getSystemUsers(serverId);
+
     return (
         <div className="space-y-6">
             <PageTitle
@@ -24,74 +47,13 @@ export default function UsersPage() {
                 description="Manage system accounts and user access for this instance."
             />
 
-            <div className="grid gap-6 md:grid-cols-12">
-                <div className="md:col-span-4 lg:col-span-3 space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Create Account</CardTitle>
-                            <CardDescription>Add a new user to the system.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="username">Username</Label>
-                                <Input id="username" placeholder="jdoe" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="password">Password</Label>
-                                <Input id="password" type="password" placeholder="••••••••" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="groups">Groups (optional)</Label>
-                                <Input id="groups" placeholder="sudo, docker" />
-                            </div>
-                            <Button className="w-full">
-                                <UserPlus className="mr-2 h-4 w-4" />
-                                Create User
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <div className="md:col-span-8 lg:col-span-9">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Existing Users</CardTitle>
-                            <CardDescription>List of all users currently configured on this instance.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Username</TableHead>
-                                        <TableHead>Groups</TableHead>
-                                        <TableHead>Shell</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    <TableRow>
-                                        <TableCell className="font-medium">root</TableCell>
-                                        <TableCell>root</TableCell>
-                                        <TableCell>/bin/bash</TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" disabled>System</Button>
-                                        </TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell className="font-medium">neup_admin</TableCell>
-                                        <TableCell>sudo, docker</TableCell>
-                                        <TableCell>/bin/bash</TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="destructive" size="sm">Remove</Button>
-                                        </TableCell>
-                                    </TableRow>
-                                    {/* Mock data for now */}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+            {error ? (
+                <Card className="p-8 text-center text-destructive border-destructive/50">
+                    <p>Error loading users: {error}</p>
+                </Card>
+            ) : (
+                <UsersList users={users || []} isLoading={false} />
+            )}
         </div>
     );
 }
