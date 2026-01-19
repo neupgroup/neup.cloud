@@ -3,10 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getNginxConfigurations, type WebServiceConfig } from '@/app/webservices/actions';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FileCode, Calendar, User, Server, Hash, RefreshCw } from 'lucide-react';
+import { Plus, FileCode, Calendar, User, Server, Hash, RefreshCw, Shield } from 'lucide-react';
 import { PageTitleBack } from '@/components/page-header';
 import { cn } from '@/lib/utils';
 import { restartNginxService } from './restart-action';
@@ -109,7 +108,7 @@ export default function NginxConfigurationsPage() {
                 <Link href="/webservices/nginx/new" className="block">
                     <div className={cn(
                         "p-4 min-w-0 w-full transition-colors hover:bg-muted/50 flex items-center gap-4 text-primary",
-                        configurations.length > 0 && "border-b border-border"
+                        "border-b border-border"
                     )}>
                         <div className="rounded-full bg-primary/10 p-2">
                             <Plus className="h-5 w-5" />
@@ -117,6 +116,22 @@ export default function NginxConfigurationsPage() {
                         <div>
                             <p className="font-semibold">Create New Configuration</p>
                             <p className="text-sm text-muted-foreground">Setup a new Nginx server block</p>
+                        </div>
+                    </div>
+                </Link>
+
+                {/* Default SSL Configuration */}
+                <Link href="/webservices/nginx/default" className="block">
+                    <div className={cn(
+                        "p-4 min-w-0 w-full transition-colors hover:bg-muted/50 flex items-center gap-4 text-orange-600 dark:text-orange-500",
+                        "border-b border-border"
+                    )}>
+                        <div className="rounded-full bg-orange-600/10 p-2">
+                            <Shield className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <p className="font-semibold">Default SSL Configuration</p>
+                            <p className="text-sm text-muted-foreground">Generate self-signed certificate and catch-all config</p>
                         </div>
                     </div>
                 </Link>
