@@ -7,9 +7,9 @@ import { getDomains, type ManagedDomain } from '@/app/domains/actions';
 import {
     getServerPublicIp,
     generateNginxConfigFromContext,
-    deployNginxConfig
+    deployNginxConfig,
 } from '@/app/webservices/nginx/actions';
-import { saveWebServiceConfig, getWebServiceConfig, updateWebServiceConfig, deleteWebServiceConfig } from '@/app/webservices/actions';
+import { saveWebServiceConfig, updateWebServiceConfig, deleteWebServiceConfig, getWebOrServerNginxConfig } from '@/app/webservices/actions';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -128,7 +128,7 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
 
                 // If editing, fetch config
                 if (!isNew && configId) {
-                    const config = await getWebServiceConfig(configId);
+                    const config = await getWebOrServerNginxConfig(configId);
                     if (config && config.type === 'nginx') {
                         if (config.name) setConfigName(config.name);
                         const val = config.value;
@@ -155,8 +155,27 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                 } else {
                     // Reset state for new configuration
                     setConfigName('');
-                    setSelectedServerId(null);
-                    setSelectedServerName('');
+
+                    // Pre-select current server from cookie
+                    const getCookie = (name: string) => {
+                        const value = `; ${document.cookie}`;
+                        const parts = value.split(`; ${name}=`);
+                        if (parts.length === 2) return parts.pop()?.split(';').shift();
+                    }
+                    const currentServerId = getCookie('selected_server');
+
+                    if (currentServerId) {
+                        setSelectedServerId(currentServerId);
+                        const s = serverOptions.find((o: any) => o.id === currentServerId);
+                        if (s) {
+                            setSelectedServerName(s.name);
+                            setSelectedServerIp(s.publicIp);
+                        }
+                    } else {
+                        setSelectedServerId(null);
+                        setSelectedServerName('');
+                        setSelectedServerIp('');
+                    }
                     setSelectedServerIp('');
                     setDomainMode('none');
                     setSelectedDomainId('');
@@ -449,8 +468,10 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                     configName || undefined
                 );
             } else {
+                // Strip @ from ID if present (drafts)
+                const cleanId = configId!.startsWith('@') ? configId!.substring(1) : configId!;
                 webserviceResult = await updateWebServiceConfig(
-                    configId!,
+                    cleanId,
                     configData,
                     configName || undefined
                 );
@@ -462,9 +483,9 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                     description: 'Nginx configuration saved successfully.',
                 });
 
-                // If it was a new config, update the URL to the new ID so we are in edit mode
+                // If it was a new config, update the URL to the new ID with @ prefix
                 if (isNew && (webserviceResult as any).id) {
-                    router.replace(`/webservices/nginx/${(webserviceResult as any).id}`);
+                    router.replace(`/webservices/nginx/@${(webserviceResult as any).id}`);
                 }
             } else {
                 toast({
@@ -532,7 +553,9 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
 
         setDeleting(true);
         try {
-            const result = await deleteWebServiceConfig(configId);
+            // Strip @ for deletion
+            const cleanId = configId.startsWith('@') ? configId.substring(1) : configId;
+            const result = await deleteWebServiceConfig(cleanId);
             if (result.success) {
                 toast({
                     title: 'Success',
@@ -631,6 +654,7 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                     <Select
                         value={selectedServerId || ''}
                         onValueChange={handleServerSelect}
+                        disabled={true} // Always disabled as per user request
                     >
                         <SelectTrigger id="server-select">
                             <SelectValue placeholder="Select a server" />

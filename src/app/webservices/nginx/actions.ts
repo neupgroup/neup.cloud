@@ -391,12 +391,20 @@ export async function deployNginxConfig(serverId: string, configContent?: string
 
         // Deploy the config
         // 1. Remove previous config files if they exist (from both sites-enabled and sites-available)
-        // 2. Write new config to temp file
-        // 3. Move to sites-available with the specific name
-        // 4. Create symlink to sites-enabled
-        // 5. Test config with nginx -t
-        // 6. Restart nginx to apply changes
+        // 2. Also remove .conf variant if we are deploying a name without extension (to avoid dangling symlinks/conflicts)
+        // 3. Write new config to temp file
+        // 4. Move to sites-available with the specific name
+        // 5. Create symlink to sites-enabled
+        // 6. Test config with nginx -t
+        // 7. Restart nginx to apply changes
+
+        let cleanupExtra = '';
+        if (!siteName.endsWith('.conf')) {
+            cleanupExtra = `sudo rm -f /etc/nginx/sites-enabled/${siteName}.conf && sudo rm -f /etc/nginx/sites-available/${siteName}.conf && `;
+        }
+
         const deployCommand = `
+            ${cleanupExtra}
             sudo rm -f /etc/nginx/sites-enabled/${siteName} && \
             sudo rm -f /etc/nginx/sites-available/${siteName} && \
             echo '${escapedConfig}' > ${configFileName} && \
