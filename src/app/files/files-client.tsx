@@ -72,7 +72,9 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
   const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set());
   const [newItemState, setNewItemState] = useState<{ type: 'file' | 'folder', isCreating: boolean } | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [rootMode, setRootMode] = useState(false);
+
+
+  const rootMode = searchParams.get('rootMode') === 'true';
 
   // Selection & Clipboard
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
@@ -151,13 +153,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     }
   }, []);
 
-  // Load root mode preference from localStorage
-  useEffect(() => {
-    const savedRootMode = localStorage.getItem('fileRootMode');
-    if (savedRootMode === 'true') {
-      setRootMode(true);
-    }
-  }, []);
+
 
   // Reset upload type when dialog closes
   useEffect(() => {
@@ -216,7 +212,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       else if (videoExts.includes(ext)) type = 'video';
       else if (codeExts.includes(ext)) type = 'code';
 
-      router.push(`/viewer?path=${encodeURIComponent(fullPath)}&type=${type}`);
+      router.push(`/viewer?path=${encodeURIComponent(fullPath)}&type=${type}${rootMode ? '&rootMode=true' : ''}`);
     };
 
     if (item.type === 'directory') {
@@ -510,8 +506,10 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
 
   const handleRootModeToggle = () => {
     const newRootMode = !rootMode;
-    setRootMode(newRootMode);
-    localStorage.setItem('fileRootMode', newRootMode.toString());
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('rootMode', newRootMode.toString());
+    router.push(pathname + '?' + params.toString());
+
     toast({
       title: newRootMode ? 'Root Mode Enabled' : 'Root Mode Disabled',
       description: newRootMode ? 'All file operations will now use sudo.' : 'File operations will run with normal permissions.',

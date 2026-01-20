@@ -28,7 +28,8 @@ import {
   ArrowUpCircle,
   Package,
   Users,
-  Key
+  Key,
+  Command
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -114,6 +115,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
   const navLinks = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
     { href: "/recommendations", label: "Recommendations", icon: Lightbulb },
+    { href: "/commandset", label: "Command Sets", icon: Command },
   ];
 
   const domainLinks = [

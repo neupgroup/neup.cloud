@@ -228,3 +228,19 @@ export async function getStatus(
         return { error: `Failed to get status: ${e.message}` };
     }
 }
+
+export async function getServerUptime(serverId: string) {
+    const server = await getServerForRunner(serverId);
+    if (!server) return { error: 'Server not found.' };
+    if (!server.username || !server.privateKey) return { error: 'Server SSH configuration is missing.' };
+
+    try {
+        const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, 'uptime -p', undefined, undefined, true);
+        if (result.code !== 0) {
+            return { error: result.stderr || 'Failed to get uptime' };
+        }
+        return { uptime: result.stdout.replace('up ', '').trim() };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}

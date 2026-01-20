@@ -21,7 +21,8 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isBinary, setIsBinary] = useState(false);
-    const [rootMode, setRootMode] = useState(false);
+
+    const rootMode = searchParams.get('rootMode') === 'true';
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Auto-resize textarea
@@ -46,13 +47,7 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
         setIsBinary(checkBinary());
     }, [path, type]);
 
-    // Load root mode preference from localStorage
-    useEffect(() => {
-        const savedRootMode = localStorage.getItem('viewerRootMode');
-        if (savedRootMode === 'true') {
-            setRootMode(true);
-        }
-    }, []);
+
 
     useEffect(() => {
         if (!serverId || !path) return;
@@ -94,8 +89,9 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
 
     const handleRootModeToggle = () => {
         const newRootMode = !rootMode;
-        setRootMode(newRootMode);
-        localStorage.setItem('viewerRootMode', newRootMode.toString());
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('rootMode', newRootMode.toString());
+        router.push(window.location.pathname + '?' + params.toString());
         toast({
             title: newRootMode ? 'Root Mode Enabled' : 'Root Mode Disabled',
             description: newRootMode ? 'File operations will now use sudo.' : 'File operations will run with normal permissions.',
@@ -175,7 +171,7 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
     };
 
     const parentPath = path.substring(0, path.lastIndexOf('/')) || '/';
-    const backHref = `/files?path=${encodeURIComponent(parentPath)}`;
+    const backHref = `/files?path=${encodeURIComponent(parentPath)}${rootMode ? '&rootMode=true' : ''}`;
 
     return (
         <div className="container mx-auto p-4 py-6 max-w-6xl min-h-screen flex flex-col gap-6">
@@ -187,7 +183,7 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
                         <Button
                             variant="link"
                             className="p-0 h-auto text-muted-foreground font-normal hover:text-primary"
-                            onClick={() => router.push(`/files?path=/`)}
+                            onClick={() => router.push(`/files?path=/${rootMode ? '&rootMode=true' : ''}`)}
                         >
                             root
                         </Button>
@@ -204,7 +200,7 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
                                         <Button
                                             variant="link"
                                             className="p-0 h-auto text-muted-foreground font-normal hover:text-primary"
-                                            onClick={() => router.push(`/files?path=${encodeURIComponent(segmentPath)}`)}
+                                            onClick={() => router.push(`/files?path=${encodeURIComponent(segmentPath)}${rootMode ? '&rootMode=true' : ''}`)}
                                         >
                                             {segment}
                                         </Button>
