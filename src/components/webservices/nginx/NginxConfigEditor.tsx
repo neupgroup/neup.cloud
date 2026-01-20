@@ -36,6 +36,8 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { PageTitleBack } from '@/components/page-header';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card';
 
 interface ProxySettings {
     setHost?: boolean;
@@ -619,8 +621,92 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
 
     if (loading) {
         return (
-            <div className="flex h-[50vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="mr-auto w-full max-w-4xl space-y-12 animate-in fade-in duration-500 pb-20">
+                {/* Header Skeleton */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <Skeleton className="h-8 w-64 mb-2" />
+                        <Skeleton className="h-4 w-96" />
+                    </div>
+                </div>
+
+                {/* Step 1: Server Selection Skeleton */}
+                <div className="space-y-4">
+                    <div className="px-1">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <Skeleton className="h-6 w-32" />
+                        </div>
+                        <Skeleton className="h-4 w-64 ml-10" />
+                    </div>
+                    <div className="space-y-2 ml-10">
+                        <Skeleton className="h-4 w-16 mb-2" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-4 w-48" />
+                    </div>
+                </div>
+
+                {/* Step 2: Domain Configuration Skeleton */}
+                <div className="space-y-4">
+                    <div className="px-1">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <Skeleton className="h-6 w-48" />
+                        </div>
+                        <Skeleton className="h-4 w-72 ml-10" />
+                    </div>
+                    <div className="space-y-4 ml-10">
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-4 w-40" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Step 3: Path Routing Rules Skeleton */}
+                <div className="space-y-6 pt-6">
+                    <div className="px-1">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <Skeleton className="h-6 w-40" />
+                        </div>
+                        <Skeleton className="h-4 w-80 ml-10" />
+                    </div>
+                    <div className="space-y-6">
+                        {[1, 2].map((i) => (
+                            <Card key={i} className="rounded-lg border bg-card shadow-sm ml-10 overflow-hidden">
+                                <div className="p-4">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Skeleton className="h-5 w-24" />
+                                        <Skeleton className="h-5 w-16" />
+                                        <Skeleton className="h-4 w-20" />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <Skeleton className="h-4 w-16 mb-2" />
+                                            <Skeleton className="h-10 w-full" />
+                                        </div>
+                                        <div>
+                                            <Skeleton className="h-4 w-20 mb-2" />
+                                            <Skeleton className="h-10 w-full" />
+                                        </div>
+                                        <div>
+                                            <Skeleton className="h-4 w-24 mb-2" />
+                                            <Skeleton className="h-10 w-full" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Action Buttons Skeleton */}
+                <div className="flex gap-4">
+                    <Skeleton className="h-10 w-32" />
+                    <Skeleton className="h-10 w-40" />
+                    <Skeleton className="h-10 w-24" />
+                </div>
             </div>
         );
     }
