@@ -1,12 +1,12 @@
 'use server';
 
 import { executeCommand } from '@/app/commands/actions';
-import Cookies from 'universal-cookie';
+import { cookies } from 'next/headers';
 
 export async function testNginxConfiguration() {
     try {
-        const cookies = new Cookies(null, { path: '/' });
-        const serverId = cookies.get('selected_server');
+        const cookieStore = await cookies();
+        const serverId = cookieStore.get('selected_server')?.value;
 
         if (!serverId) {
             return {
@@ -15,16 +15,15 @@ export async function testNginxConfiguration() {
             };
         }
 
-        // Test nginx configuration
-        const result = await executeCommand(serverId, 'sudo nginx -t');
+        // Test nginx configuration - will be logged to database for debugging
+        // Note: skipSwap is now globally true, so no swap will be created
+        const result = await executeCommand(serverId, 'sudo nginx -t 2>&1', 'Test Nginx Configuration');
 
-        // executeCommand returns { output, error }
-        // nginx -t outputs to stderr even on success
+        // nginx -t outputs to stderr, but we're redirecting it to stdout with 2>&1
         const output = result.output || '';
         const hasError = result.error;
 
         // Check if the test was successful
-        // nginx -t outputs success messages to stderr, so we check the output content
         if (output.includes('syntax is ok') && output.includes('test is successful')) {
             return {
                 success: true,
@@ -37,16 +36,17 @@ export async function testNginxConfiguration() {
                 message: 'Configuration syntax is valid',
                 output: output
             };
-        } else if (hasError) {
+        } else if (output.includes('emerg') || output.includes('[error]') || hasError) {
+            // nginx configuration has errors
             return {
                 success: false,
-                error: hasError,
+                error: 'Configuration has errors',
                 output: output
             };
         } else {
             return {
                 success: false,
-                error: 'Configuration test failed',
+                error: 'Configuration test failed. Output: ' + output.substring(0, 200),
                 output: output
             };
         }

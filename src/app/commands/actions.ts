@@ -79,7 +79,7 @@ async function executeSingleCommand(
                 finalOutput += chunk;
                 updateDoc(logRef, { output: finalOutput });
             },
-            false, // skipSwap
+            true, // skipSwap - never create swap memory
             serverVariables
         );
 
@@ -112,6 +112,45 @@ export async function executeCommand(serverId: string, command: string, commandN
         // Otherwise use the actual command.
         const result = await executeSingleCommand(serverId, command, displayCommand || command, commandName);
         return { output: result.output, error: result.status === 'Error' ? result.output : undefined };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
+
+/**
+ * Execute a command without logging to database (for quick operations like nginx -t)
+ * Skips swap creation and doesn't create serverLogs entries
+ */
+export async function executeQuickCommand(serverId: string, command: string) {
+    if (!serverId) {
+        return { error: "Server not selected" };
+    }
+
+    try {
+        const server = await getServerForRunner(serverId);
+        if (!server) {
+            return { error: 'Server not found' };
+        }
+        if (!server.username || !server.privateKey) {
+            return { error: 'No username or private key configured for this server' };
+        }
+
+        const result = await runCommandOnServer(
+            server.publicIp,
+            server.username,
+            server.privateKey,
+            command,
+            undefined, // no stdout callback
+            undefined, // no stderr callback
+            true, // skipSwap - don't create swap for quick commands
+            {}
+        );
+
+        return {
+            output: result.stdout + (result.stderr ? '\n' + result.stderr : ''),
+            error: result.code !== 0 ? (result.stderr || `Command exited with code ${result.code}`) : undefined,
+            exitCode: result.code
+        };
     } catch (e: any) {
         return { error: e.message };
     }
