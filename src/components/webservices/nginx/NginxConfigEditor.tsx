@@ -8,6 +8,7 @@ import {
     getServerPublicIp,
     generateNginxConfigFromContext,
     deployNginxConfig,
+    deleteNginxConfig,
 } from '@/app/webservices/nginx/actions';
 import { saveWebServiceConfig, updateWebServiceConfig, deleteWebServiceConfig, getWebOrServerNginxConfig } from '@/app/webservices/actions';
 import { Button } from '@/components/ui/button';
@@ -555,21 +556,51 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
 
         setDeleting(true);
         try {
-            // Strip @ for deletion
-            const cleanId = configId.startsWith('@') ? configId.substring(1) : configId;
-            const result = await deleteWebServiceConfig(cleanId);
-            if (result.success) {
-                toast({
-                    title: 'Success',
-                    description: 'Configuration deleted successfully.',
-                });
-                router.push('/webservices/nginx');
+            // Check if this is a draft (database) config or server-side config
+            const isDraft = configId.startsWith('@');
+
+            if (isDraft) {
+                // Delete from database only
+                const cleanId = configId.substring(1);
+                const result = await deleteWebServiceConfig(cleanId);
+                if (result.success) {
+                    toast({
+                        title: 'Success',
+                        description: 'Configuration deleted successfully.',
+                    });
+                    router.push('/webservices/nginx');
+                } else {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Error',
+                        description: result.message || 'Failed to delete configuration.',
+                    });
+                }
             } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'Error',
-                    description: result.message || 'Failed to delete configuration.',
-                });
+                // Delete from server (sites-available and sites-enabled)
+                if (!selectedServerId) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Error',
+                        description: 'Server ID not found.',
+                    });
+                    return;
+                }
+
+                const result = await deleteNginxConfig(selectedServerId, configId);
+                if (result.success) {
+                    toast({
+                        title: 'Success',
+                        description: result.message || 'Configuration deleted from server successfully.',
+                    });
+                    router.push('/webservices/nginx');
+                } else {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Error',
+                        description: result.error || 'Failed to delete configuration from server.',
+                    });
+                }
             }
         } catch (error: any) {
             toast({

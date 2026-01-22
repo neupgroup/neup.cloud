@@ -357,46 +357,57 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
   // Upload handlers (keep existing)
   // Upload handlers
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (!selectedFile) return;
+    const selectedFiles = event.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
 
-    const queueItem = { name: selectedFile.name, size: selectedFile.size, progress: 0 };
-    setUploadQueue(prev => [...prev, queueItem]);
     setUploadDialogOpen(false);
 
-    // Simulate progress
-    const interval = setInterval(() => {
-      setUploadQueue(prev => prev.map(item =>
-        item.name === selectedFile.name ? { ...item, progress: Math.min(item.progress + 10, 90) } : item
-      ));
-    }, 300);
+    // Add all to queue
+    const newQueueItems = Array.from(selectedFiles).map(file => ({ name: file.name, size: file.size, progress: 0 }));
+    setUploadQueue(prev => [...prev, ...newQueueItems]);
 
-    const formData = new FormData();
-    formData.append('file', selectedFile);
+    let successCount = 0;
 
-    try {
-      const result = await uploadFile(serverId, currentPath, formData);
-      clearInterval(interval);
+    for (const file of Array.from(selectedFiles)) {
+      // Monitor progress
+      const interval = setInterval(() => {
+        setUploadQueue(prev => prev.map(item =>
+          item.name === file.name ? { ...item, progress: Math.min(item.progress + 10, 90) } : item
+        ));
+      }, 300);
 
-      if (result.error) {
-        toast({ variant: 'destructive', title: 'Upload Failed', description: result.error });
-        setUploadQueue(prev => prev.filter(item => item.name !== selectedFile.name));
-      } else {
-        setUploadQueue(prev => prev.map(item => item.name === selectedFile.name ? { ...item, progress: 100 } : item));
-        toast({ title: 'Upload Successful', description: `File "${selectedFile.name}" has been uploaded.` });
-        await fetchFiles(currentPath);
-        // Remove from queue after delay
-        setTimeout(() => {
-          setUploadQueue(prev => prev.filter(item => item.name !== selectedFile.name));
-        }, 1000);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const result = await uploadFile(serverId, currentPath, formData);
+        clearInterval(interval);
+
+        if (result.error) {
+          toast({ variant: 'destructive', title: 'Upload Failed', description: `${file.name}: ${result.error}` });
+          setUploadQueue(prev => prev.filter(item => item.name !== file.name));
+        } else {
+          successCount++;
+          setUploadQueue(prev => prev.map(item => item.name === file.name ? { ...item, progress: 100 } : item));
+
+          // Remove from queue after delay
+          setTimeout(() => {
+            setUploadQueue(prev => prev.filter(item => item.name !== file.name));
+          }, 1000);
+        }
+      } catch (e: any) {
+        clearInterval(interval);
+        setUploadQueue(prev => prev.filter(item => item.name !== file.name));
+        toast({ variant: 'destructive', title: 'Upload Error', description: `${file.name}: ${e.message}` });
       }
-    } catch (e: any) {
-      clearInterval(interval);
-      setUploadQueue(prev => prev.filter(item => item.name !== selectedFile.name));
-      toast({ variant: 'destructive', title: 'Upload Error', description: e.message });
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
+
+    if (successCount > 0) {
+      toast({ title: 'Upload Complete', description: `${successCount} files uploaded successfully.` });
+      await fetchFiles(currentPath);
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
   const handleFolderUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -954,9 +965,9 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
         </DialogContent>
       </Dialog>
 
-      <input type="file" ref={fileInputRef} onChange={(e) => { handleFileUpload(e); setUploadDialogOpen(false); }} className="hidden" />
+      <input type="file" ref={fileInputRef} onChange={(e) => { handleFileUpload(e); setUploadDialogOpen(false); }} className="hidden" multiple={true} />
       {/* @ts-ignore */}
-      <input type="file" ref={folderInputRef} onChange={(e) => { handleFolderUpload(e); setUploadDialogOpen(false); }} className="hidden" multiple webkitdirectory="" />
+      <input type="file" ref={folderInputRef} onChange={(e) => { handleFolderUpload(e); setUploadDialogOpen(false); }} className="hidden" multiple={true} webkitdirectory="" />
     </div>
   );
 }

@@ -347,6 +347,73 @@ export async function generateNginxConfigFile(serverId: string) {
 }
 
 /**
+ * Delete Nginx configuration from the server
+ * Removes from both sites-available and sites-enabled, then reloads nginx
+ */
+export async function deleteNginxConfig(serverId: string, configName: string) {
+    try {
+        // Get server details
+        const serverRef = doc(firestore, 'servers', serverId);
+        const serverDoc = await getDoc(serverRef);
+
+        if (!serverDoc.exists()) {
+            return { success: false, error: 'Server not found' };
+        }
+
+        const server = serverDoc.data();
+
+        if (!server.username || !server.privateKey) {
+            return {
+                success: false,
+                error: 'Server credentials not configured'
+            };
+        }
+
+        // Prevent deletion of default config
+        if (configName === 'default') {
+            return {
+                success: false,
+                error: 'Cannot delete default configuration'
+            };
+        }
+
+        // Delete config from both sites-enabled and sites-available, then reload nginx
+        const deleteCommand = `
+            sudo rm -f /etc/nginx/sites-enabled/${configName} && \
+            sudo rm -f /etc/nginx/sites-available/${configName} && \
+            sudo nginx -t && \
+            sudo systemctl reload nginx
+        `;
+
+        const result = await runCommandOnServer(
+            server.publicIp || server.privateIp,
+            server.username,
+            server.privateKey,
+            deleteCommand,
+            undefined,
+            undefined,
+            false
+        );
+
+        if (result.code !== 0) {
+            return {
+                success: false,
+                error: `Deletion failed: ${result.stderr}`
+            };
+        }
+
+        return {
+            success: true,
+            message: `Nginx configuration '${configName}' deleted and nginx reloaded successfully`,
+            output: result.stdout
+        };
+    } catch (error: any) {
+        console.error('Error deleting nginx config:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * Deploy the generated Nginx configuration to the server
  */
 export async function deployNginxConfig(serverId: string, configContent?: string, configName?: string) {

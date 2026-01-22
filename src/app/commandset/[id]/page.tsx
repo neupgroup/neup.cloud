@@ -7,7 +7,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { getCommandSet, CommandSet } from '../actions';
 import { executeCommand } from '@/app/commands/actions';
 import { getServers } from '@/app/servers/actions';
-import { Loader2, Play, CheckCircle2, XCircle, ChevronRight, Terminal as TerminalIcon, Edit, AlertCircle, RefreshCw, SkipForward } from 'lucide-react';
+import { Loader2, Play, CheckCircle2, XCircle, ChevronRight, Terminal as TerminalIcon, Edit, AlertCircle, RefreshCw, SkipForward, ChevronDown } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -89,6 +89,9 @@ export default function RunCommandSetPage() {
     const [stepStatuses, setStepStatuses] = useState<Record<number, StepStatus>>({});
     const [isRunning, setIsRunning] = useState(false);
 
+    // Accordion State
+    const [openStepId, setOpenStepId] = useState<string | null>(null);
+
     useEffect(() => {
         // TEMPORARY: Hardcoded user
         const tempUid = "tempaccount";
@@ -107,11 +110,23 @@ export default function RunCommandSetPage() {
                 setSelectedServerId(serverId);
             }
 
+            // Set initial open step
+            if (set && set.commands.length > 0) {
+                setOpenStepId(set.commands[0].id);
+            }
+
             setIsLoading(false);
         };
         fetchData();
 
     }, [id]);
+
+    // Auto-open current step when it changes
+    useEffect(() => {
+        if (commandSet && commandSet.commands[currentStepIndex]) {
+            setOpenStepId(commandSet.commands[currentStepIndex].id);
+        }
+    }, [currentStepIndex, commandSet]);
 
     const handleRunStep = async (index: number = currentStepIndex) => {
         if (!selectedServerId || !commandSet) {
@@ -122,6 +137,7 @@ export default function RunCommandSetPage() {
         if (index >= commandSet.commands.length) return;
 
         const cmd = commandSet.commands[index];
+        setOpenStepId(cmd.id); // Ensure open when running
         setIsRunning(true);
 
         setStepStatuses(prev => ({
@@ -187,6 +203,10 @@ export default function RunCommandSetPage() {
         }
     }
 
+    const toggleStep = (stepId: string) => {
+        setOpenStepId(current => current === stepId ? null : stepId);
+    };
+
     if (isLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
     }
@@ -226,6 +246,8 @@ export default function RunCommandSetPage() {
                     const isSkipped = status?.status === 'skipped';
                     const isRunningStep = status?.status === 'running';
 
+                    const isOpen = openStepId === cmd.id;
+
                     return (
                         <Card key={cmd.id} className={cn(
                             "transition-all border shadow-sm",
@@ -233,9 +255,12 @@ export default function RunCommandSetPage() {
                             isRunningStep && "border-primary/50 bg-muted/10",
                             isLocked && "opacity-60 grayscale bg-muted/20"
                         )}>
-                            <CardHeader className="py-4 px-6">
+                            <CardHeader
+                                className="py-4 px-6 cursor-pointer hover:bg-muted/5 transition-colors"
+                                onClick={() => toggleStep(cmd.id)}
+                            >
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-4 flex-1">
                                         {/* Status Icon */}
                                         <div className="shrink-0">
                                             {isRunningStep ? (
@@ -253,7 +278,7 @@ export default function RunCommandSetPage() {
                                             )}
                                         </div>
 
-                                        <div>
+                                        <div className="flex-1 min-w-0">
                                             <CardTitle className={cn("text-base font-semibold flex items-center gap-2", (isCompleted || isSkipped) && "text-muted-foreground")}>
                                                 {cmd.title || `Step ${index + 1}`}
                                                 {/* Optional badges */}
@@ -263,71 +288,109 @@ export default function RunCommandSetPage() {
 
                                             {/* Description Component */}
                                             {cmd.description ? (
-                                                <RichTextDescription text={cmd.description} />
+                                                <div className="line-clamp-1 text-sm text-muted-foreground">
+                                                    {/* We use line-clamp for closed state preview? No, let's keep it clean. */}
+                                                    {/* RichTextDescription is shown below if needed, or in expanded state? */}
+                                                    {/* Requirement was "collapsible cards". Usually description is always visible? 
+                                                        Let's keep description visible always if it's short, or truncated? 
+                                                        Let's keep the existing logic but inside the header area. 
+                                                        Actually, let's hide complexity unless open. 
+                                                        Let's show a truncated preview if closed, full if open? 
+                                                        Or just show it.*/}
+                                                    <span className="line-clamp-1">{cmd.description.replace(/<[^>]+>/g, '')}</span>
+                                                </div>
                                             ) : (
                                                 <CardDescription className="line-clamp-1">{cmd.command}</CardDescription>
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* Action Buttons Container */}
-                                    <div className="flex items-center gap-2">
+                                    {/* Actions & Chevron Container */}
+                                    <div className="flex items-center gap-4">
 
-                                        {!isLocked && !isRunningStep && (
-                                            <>
-                                                {/* Standard Run for Current Step */}
-                                                {isCurrent && !isCompleted && !isError && (
-                                                    <Button onClick={() => handleRunStep(index)} disabled={!selectedServerId}>
-                                                        <Play className="mr-2 h-4 w-4" /> Run Step
-                                                    </Button>
-                                                )}
+                                        {/* Action Buttons Container */}
+                                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                            {!isLocked && !isRunningStep && (
+                                                <>
+                                                    {/* Standard Run for Current Step */}
+                                                    {isCurrent && !isCompleted && !isError && (
+                                                        <Button size="sm" onClick={() => handleRunStep(index)} disabled={!selectedServerId}>
+                                                            <Play className="mr-2 h-4 w-4" /> Run
+                                                        </Button>
+                                                    )}
 
-                                                {/* Retry after Error */}
-                                                {isError && isCurrent && (
-                                                    <Button variant="outline" onClick={() => handleRunStep(index)} disabled={!selectedServerId}>
-                                                        <RefreshCw className="mr-2 h-4 w-4" /> Retry
-                                                    </Button>
-                                                )}
+                                                    {/* Retry after Error */}
+                                                    {isError && isCurrent && (
+                                                        <Button size="sm" variant="outline" onClick={() => handleRunStep(index)} disabled={!selectedServerId}>
+                                                            <RefreshCw className="mr-2 h-4 w-4" /> Retry
+                                                        </Button>
+                                                    )}
 
-                                                {/* Repeat Button (If done/skipped/error AND repeatable) */}
-                                                {(isCompleted || isSkipped || (isError && !isCurrent)) && cmd.isRepeatable && (
-                                                    <Button variant="ghost" size="sm" onClick={() => handleRunStep(index)} disabled={!selectedServerId} title="Run Again">
-                                                        <RefreshCw className="h-4 w-4" />
-                                                    </Button>
-                                                )}
+                                                    {/* Repeat Button (If done/skipped/error AND repeatable) */}
+                                                    {(isCompleted || isSkipped || (isError && !isCurrent)) && cmd.isRepeatable && (
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleRunStep(index)} disabled={!selectedServerId} title="Run Again">
+                                                            <RefreshCw className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
 
-                                                {/* Skip Button Logic */}
-                                                {/* Show if: (Current) AND (Skippable OR Error) */}
-                                                {(isCurrent) && (cmd.isSkippable || isError) && (
-                                                    <Button variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => handleSkipStep(index)}>
-                                                        Skip <ChevronRight className="ml-1 h-3 w-3" />
-                                                    </Button>
-                                                )}
-                                            </>
-                                        )}
+                                                    {/* Skip Button Logic */}
+                                                    {(isCurrent) && (cmd.isSkippable || isError) && (
+                                                        <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => handleSkipStep(index)}>
+                                                            Skip <ChevronRight className="ml-1 h-3 w-3" />
+                                                        </Button>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+
+                                        <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", isOpen && "transform rotate-180")} />
                                     </div>
                                 </div>
                             </CardHeader>
 
-                            {/* Expandable Content (Output) */}
-                            {status && !isSkipped && (
-                                <CardContent className="px-6 pb-4 pt-0">
-                                    <div className="mt-2 space-y-2">
-                                        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase">
-                                            <TerminalIcon className="h-3 w-3" />
-                                            {isError ? "Error Output" : "Output"}
-                                            {status.endTime && status.startTime && (
-                                                <span className="ml-auto font-normal normal-case">
-                                                    {((status.endTime - status.startTime) / 1000).toFixed(2)}s
-                                                </span>
+                            {/* Expandable Content */}
+                            {isOpen && (
+                                <CardContent className="px-6 pb-6 pt-0 border-t bg-muted/5 animate-in slide-in-from-top-2 duration-200">
+                                    <div className="pt-4 space-y-4">
+
+                                        {/* Full Description & Command Details (if open) */}
+                                        <div>
+                                            <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">Command</h4>
+                                            <div className="bg-muted p-2 rounded-md border font-mono text-sm overflow-x-auto">
+                                                {cmd.command}
+                                            </div>
+                                            {cmd.description && (
+                                                <div className="mt-2 text-sm text-foreground">
+                                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">Description</h4>
+                                                    <RichTextDescription text={cmd.description} />
+                                                </div>
                                             )}
                                         </div>
-                                        <div className={cn(
-                                            "bg-black p-3 rounded-md font-mono text-xs whitespace-pre-wrap overflow-x-auto max-h-[300px]",
-                                            isError ? "text-red-400" : "text-green-400"
-                                        )}>
-                                            {status.output || (isRunningStep ? 'Executing...' : 'No output')}
-                                        </div>
+
+                                        {/* Output Section */}
+                                        {(status || isRunningStep) && !isSkipped && (
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase">
+                                                    <TerminalIcon className="h-3 w-3" />
+                                                    {isError ? "Error Output" : "Output"}
+                                                    {status?.endTime && status?.startTime && (
+                                                        <span className="ml-auto font-normal normal-case">
+                                                            {((status.endTime - status.startTime) / 1000).toFixed(2)}s
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className={cn(
+                                                    "bg-black p-3 rounded-md font-mono text-xs whitespace-pre-wrap overflow-x-auto max-h-[300px]",
+                                                    isError ? "text-red-400" : "text-green-400"
+                                                )}>
+                                                    {status?.output || (isRunningStep ? 'Executing...' : 'No output')}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {isSkipped && (
+                                            <p className="text-sm text-muted-foreground italic">Step skipped by user.</p>
+                                        )}
                                     </div>
                                 </CardContent>
                             )}
