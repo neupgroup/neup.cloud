@@ -330,8 +330,15 @@ server {
 `;
             }
 
-            if (block.httpsRedirection && !block.sslEnabled) {
-                nginxConfig += `
+            if (block.sslEnabled) {
+                const sslKeyPath = `/etc/nginx/ssl/${config.configName}.key`;
+                const sslCertPath = `/etc/nginx/ssl/${config.configName}.pem`;
+
+                // 1. HTTP Block (Port 80)
+                // If HTTPS redirection is on, we redirect 80 -> 443
+                // Otherwise, we serve content on 80 as well
+                if (block.httpsRedirection) {
+                    nginxConfig += `
 server {
     listen 80;
     listen [::]:80;
@@ -339,18 +346,22 @@ server {
     return 301 https://$host$request_uri;
 }
 `;
-            } else if (block.sslEnabled) {
-                const sslKeyPath = `/etc/nginx/ssl/${config.configName}.key`;
-                const sslCertPath = `/etc/nginx/ssl/${config.configName}.pem`;
-
-                nginxConfig += `
+                } else {
+                    nginxConfig += `
 server {
     listen 80;
     listen [::]:80;
     server_name ${serverName};
-    return 301 https://$host$request_uri;
-}
 
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+${locationBlocks}${defaultLocation}}
+`;
+                }
+
+                // 2. HTTPS Block (Port 443)
+                nginxConfig += `
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
@@ -365,6 +376,9 @@ server {
 ${locationBlocks}${defaultLocation}}
 `;
             } else {
+                // SSL Disabled - Serve Standard HTTP
+                // Triggers if sslEnabled is false, regardless of httpsRedirection setting
+                // (Prevents generating a redirect to a non-existent HTTPS server)
                 nginxConfig += `
 server {
     listen 80;
