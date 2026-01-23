@@ -625,7 +625,7 @@ export async function deployNginxConfig(serverId: string, configContent?: string
 /**
  * Generate SSL certificate using Certbot
  */
-export async function generateSslCertificate(serverId: string, domain: string, configName: string) {
+export async function generateSslCertificate(serverId: string, domains: string[], configName: string) {
     try {
         // Get server details
         const serverRef = doc(firestore, 'servers', serverId);
@@ -649,6 +649,20 @@ export async function generateSslCertificate(serverId: string, domain: string, c
         const keyPath = `${sslDir}/${certName}.key`;
         const certPath = `${sslDir}/${certName}.pem`;
 
+        // Prepare domain flags
+        // If domains is not an array, wrap it (for backward compatibility if needed, though we typed it as string[])
+        const domainList = Array.isArray(domains) ? domains : [domains];
+
+        // Sanitize domains
+        const safeDomains = domainList.map(d => d.trim()).filter(d => d);
+
+        if (safeDomains.length === 0) {
+            return { success: false, error: 'No domains provided for certificate generation' };
+        }
+
+        const primaryDomain = safeDomains[0];
+        const domainFlags = safeDomains.map(d => `-d ${d}`).join(' ');
+
         // 1. Ensure SSL directory exists
         // 2. Ensure firewall allows HTTP/HTTPS
         // 3. Install certbot
@@ -659,11 +673,11 @@ export async function generateSslCertificate(serverId: string, domain: string, c
             sudo mkdir -p ${sslDir} && \
             sudo ufw allow 80/tcp && sudo ufw allow 443/tcp && \
             sudo apt-get update && sudo apt-get install -y certbot python3-certbot-nginx && \
-            ( [ -f ${certPath} ] || sudo openssl req -x509 -nodes -days 1 -newkey rsa:2048 -keyout ${keyPath} -out ${certPath} -subj "/CN=${domain}" ) && \
+            ( [ -f ${certPath} ] || sudo openssl req -x509 -nodes -days 1 -newkey rsa:2048 -keyout ${keyPath} -out ${certPath} -subj "/CN=${primaryDomain}" ) && \
             sudo systemctl start nginx || true && \
-            sudo certbot certonly --nginx -d ${domain} --cert-name ${domain} --non-interactive --agree-tos --register-unsafely-without-email --force-renewal && \
-            sudo cp -L /etc/letsencrypt/live/${domain}/privkey.pem ${keyPath} && \
-            sudo cp -L /etc/letsencrypt/live/${domain}/fullchain.pem ${certPath} && \
+            sudo certbot certonly --nginx ${domainFlags} --cert-name ${configName} --non-interactive --agree-tos -m encryption.public@neupgroup.com --force-renewal && \
+            sudo cp -L /etc/letsencrypt/live/${configName}/privkey.pem ${keyPath} && \
+            sudo cp -L /etc/letsencrypt/live/${configName}/fullchain.pem ${certPath} && \
             sudo chmod 600 ${keyPath} && \
             sudo chmod 644 ${certPath}
         `;
@@ -687,7 +701,7 @@ export async function generateSslCertificate(serverId: string, domain: string, c
 
         return {
             success: true,
-            message: `Certificate for ${domain} generated and saved as ${certName}.key/pem`,
+            message: `Certificate for ${safeDomains.join(', ')} generated and saved as ${certName}.key/pem`,
             output: result.stdout
         };
     } catch (error: any) {

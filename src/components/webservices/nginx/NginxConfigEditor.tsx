@@ -784,16 +784,27 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
             return;
         }
 
-        let fullDomain = block.domainName;
-        if (block.subdomain && block.subdomain !== '@') {
-            fullDomain = `${block.subdomain}.${block.domainName}`;
+        let domainsForCert: string[] = [];
+
+        if (block.subdomain === '@') {
+            // Root domain: include base and wildcard as per user preference
+            domainsForCert = [block.domainName, `*.${block.domainName}`];
+        } else if (block.subdomain === '#') {
+            // Catch-all wildcard
+            domainsForCert = [`*.${block.domainName}`];
+        } else if (block.subdomain) {
+            // Specific subdomain
+            domainsForCert = [`${block.subdomain}.${block.domainName}`];
+        } else {
+            // Fallback (should be root)
+            domainsForCert = [block.domainName];
         }
 
         setGeneratingCert(blockId);
         try {
             const result = await generateSslCertificate(
                 selectedServerId,
-                fullDomain,
+                domainsForCert,
                 configName
             );
 
