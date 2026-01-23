@@ -10,6 +10,8 @@ import {
     deployNginxConfig,
     deleteNginxConfig,
     generateSslCertificate,
+    getNginxConfiguration,
+    saveNginxConfiguration,
 } from '@/app/webservices/nginx/actions';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -215,6 +217,86 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
 
         fetchData();
     }, [toast, configId]);
+
+    // Load existing configuration when a server is selected
+    useEffect(() => {
+        const loadConfig = async () => {
+            if (!selectedServerId) return;
+
+            try {
+                const config = await getNginxConfiguration(selectedServerId);
+                if (config) {
+                    setConfigName(config.configName);
+
+                    const loadedBlocks: DomainBlock[] = (config.blocks || []).map((b: any) => ({
+                        id: b.id || `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        domainId: b.domainId || '',
+                        domainName: b.domainName || '',
+                        subdomain: b.subdomain || '',
+                        httpsRedirection: b.httpsRedirection ?? true,
+                        sslEnabled: b.sslEnabled ?? false,
+                        pathRules: (b.pathRules || []).map((r: any) => ({
+                            id: r.id || `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                            path: r.path || '',
+                            action: r.action || 'proxy',
+                            proxyTarget: r.proxyTarget || 'local-port',
+                            localPort: r.localPort || '',
+                            serverId: r.serverId || '',
+                            serverName: r.serverName || '',
+                            serverIp: r.serverIp || '',
+                            port: r.port || '',
+                            proxySettings: r.proxySettings || {
+                                setHost: true,
+                                setRealIp: true,
+                                setForwardedFor: true,
+                                setForwardedProto: true,
+                                upgradeWebSocket: true,
+                                customHeaders: []
+                            },
+                            redirectTarget: r.redirectTarget || '',
+                            passParameters: r.passParameters ?? false,
+                        })),
+                    }));
+                    setDomainBlocks(loadedBlocks);
+
+                    const loadedRedirects: DomainRedirect[] = (config.domainRedirects || []).map((r: any) => ({
+                        id: r.id || `redir-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        subdomain: r.subdomain || '',
+                        domainId: r.domainId || '',
+                        domainName: r.domainName || '',
+                        redirectTarget: r.redirectTarget || '',
+                    }));
+                    setDomainRedirects(loadedRedirects);
+
+                    // Infer domain mode: if any block has a domainId, we use domain mode, otherwise IP mode
+                    const firstDomainBlock = loadedBlocks.find(b => !!b.domainId);
+                    if (firstDomainBlock) {
+                        setDomainMode('domain');
+                        setSelectedDomainId(firstDomainBlock.domainId);
+                        setSelectedDomainName(firstDomainBlock.domainName);
+                    } else {
+                        setDomainMode('none');
+                        setSelectedDomainId(null);
+                        setSelectedDomainName('');
+                    }
+
+                    toast({
+                        title: 'Configuration Loaded',
+                        description: `Loaded configuration for server.`,
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load configuration:', error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: 'Failed to load existing configuration.',
+                });
+            }
+        };
+
+        loadConfig();
+    }, [selectedServerId, toast]);
 
     // Automatically create the initial '@' block when step 3 conditions are met
     useEffect(() => {
@@ -785,12 +867,21 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
 
         setDeploying(true);
         try {
+            // Save configuration to Firestore first
+            const configToSave: NginxConfiguration = {
+                serverIp: selectedServerIp,
+                configName: configName,
+                blocks: domainBlocks,
+                domainRedirects: domainRedirects,
+            };
+            await saveNginxConfiguration(selectedServerId, configToSave);
+
             const result = await deployNginxConfig(selectedServerId, generatedConfig, configName);
 
             if (result.success) {
                 toast({
                     title: 'Success',
-                    description: 'Nginx configuration deployed and reloaded successfully.',
+                    description: 'Nginx configuration saved, deployed, and reloaded successfully.',
                 });
             } else {
                 // Check for SSL certificate errors
@@ -1289,14 +1380,22 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                                                             className="h-9 font-mono bg-background"
                                                                         />
                                                                     ) : (
-                                                                        <Select value={rule.serverId} onValueChange={(v) => updatePathRule(block.id, rule.id, 'serverId', v)}>
-                                                                            <SelectTrigger className="h-9 bg-background">
-                                                                                <SelectValue placeholder="Select Server" />
-                                                                            </SelectTrigger>
-                                                                            <SelectContent>
-                                                                                {servers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                                                            </SelectContent>
-                                                                        </Select>
+                                                                        <div className="flex gap-2">
+                                                                            <Select value={rule.serverId} onValueChange={(v) => updatePathRule(block.id, rule.id, 'serverId', v)}>
+                                                                                <SelectTrigger className="h-9 bg-background flex-1">
+                                                                                    <SelectValue placeholder="Select Server" />
+                                                                                </SelectTrigger>
+                                                                                <SelectContent>
+                                                                                    {servers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                                                                </SelectContent>
+                                                                            </Select>
+                                                                            <Input
+                                                                                value={rule.port}
+                                                                                onChange={(e) => updatePathRule(block.id, rule.id, 'port', e.target.value)}
+                                                                                placeholder="Port (e.g. 8080)"
+                                                                                className="h-9 font-mono bg-background w-32"
+                                                                            />
+                                                                        </div>
                                                                     )}
                                                                 </div>
 
@@ -1411,17 +1510,30 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                                             </>
                                                         )}
 
-                                                        {/* Redirect Configuration */}
                                                         {rule.action.startsWith('redirect-') && (
-                                                            <div className="space-y-2">
-                                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Redirect Destination</Label>
-                                                                <Input
-                                                                    value={rule.redirectTarget}
-                                                                    onChange={(e) => updatePathRule(block.id, rule.id, 'redirectTarget', e.target.value)}
-                                                                    placeholder="https://example.com/target"
-                                                                    className="h-9 bg-background"
-                                                                />
-                                                            </div>
+                                                            <>
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Redirect Destination</Label>
+                                                                    <Input
+                                                                        value={rule.redirectTarget}
+                                                                        onChange={(e) => updatePathRule(block.id, rule.id, 'redirectTarget', e.target.value)}
+                                                                        placeholder="https://example.com/target"
+                                                                        className="h-9 bg-background"
+                                                                    />
+                                                                </div>
+                                                                <div className="flex items-center space-x-2 pt-1">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        id={`pass-params-${rule.id}`}
+                                                                        checked={rule.passParameters !== false}
+                                                                        onChange={(e) => updatePathRule(block.id, rule.id, 'passParameters', e.target.checked)}
+                                                                        className="h-4 w-4 rounded border-gray-300"
+                                                                    />
+                                                                    <label htmlFor={`pass-params-${rule.id}`} className="text-sm font-medium cursor-pointer text-muted-foreground">
+                                                                        Preserve Path & Query Parameters
+                                                                    </label>
+                                                                </div>
+                                                            </>
                                                         )}
                                                     </div>
 
