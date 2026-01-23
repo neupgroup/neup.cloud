@@ -52,7 +52,7 @@ interface ProxySettings {
 interface PathRule {
     id: string;
     path: string;
-    action: 'proxy' | 'return-404';
+    action: 'proxy' | 'return-404' | 'redirect-301' | 'redirect-302' | 'redirect-307' | 'redirect-308';
     proxyTarget?: 'remote-server' | 'local-port';
     serverId?: string;
     serverName?: string;
@@ -60,6 +60,8 @@ interface PathRule {
     port?: string;
     localPort?: string;
     proxySettings?: ProxySettings;
+    redirectTarget?: string;
+    passParameters?: boolean;
 }
 
 interface ServerOption {
@@ -443,6 +445,16 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                         variant: 'destructive',
                         title: 'Validation Error',
                         description: `Path "${rule.path}" with remote server proxy must have a server selected.`,
+                    });
+                    return;
+                }
+            }
+            if (rule.action.startsWith('redirect-')) {
+                if (!rule.redirectTarget) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Validation Error',
+                        description: `Path "${rule.path}" with redirect must have a target address.`,
                     });
                     return;
                 }
@@ -923,6 +935,18 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                                 {rule.action === 'return-404' && (
                                                     <Badge variant="secondary">404</Badge>
                                                 )}
+                                                {rule.action === 'redirect-301' && (
+                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">301 Moved</Badge>
+                                                )}
+                                                {rule.action === 'redirect-302' && (
+                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">302 Found</Badge>
+                                                )}
+                                                {rule.action === 'redirect-307' && (
+                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">307 Redirect</Badge>
+                                                )}
+                                                {rule.action === 'redirect-308' && (
+                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">308 Redirect</Badge>
+                                                )}
                                                 {rule.action === 'proxy' && (
                                                     <Badge variant="default">Proxy</Badge>
                                                 )}
@@ -973,7 +997,7 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                                     <Select
                                                         value={rule.action}
                                                         onValueChange={(value) =>
-                                                            updatePathRule(rule.id, 'action', value as 'proxy' | 'return-404')
+                                                            updatePathRule(rule.id, 'action', value as any)
                                                         }
                                                     >
                                                         <SelectTrigger id={`action-${rule.id}`}>
@@ -981,10 +1005,56 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             <SelectItem value="proxy">Proxy to Server</SelectItem>
+                                                            <SelectItem value="redirect-301">301 Permanent Redirect</SelectItem>
+                                                            <SelectItem value="redirect-302">302 Temporary Redirect</SelectItem>
+                                                            <SelectItem value="redirect-307">307 Temporary Redirect</SelectItem>
+                                                            <SelectItem value="redirect-308">308 Permanent Redirect</SelectItem>
                                                             <SelectItem value="return-404">Return 404</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
+
+                                                {(rule.action.startsWith('redirect-')) && (
+                                                    <div className="space-y-4 animate-in fade-in duration-300">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`redirect-target-${rule.id}`}>
+                                                                Redirect Target <span className="text-destructive">*</span>
+                                                            </Label>
+                                                            <Input
+                                                                id={`redirect-target-${rule.id}`}
+                                                                value={rule.redirectTarget || ''}
+                                                                onChange={(e) =>
+                                                                    updatePathRule(rule.id, 'redirectTarget', e.target.value)
+                                                                }
+                                                                placeholder="https://example.com/new-path"
+                                                            />
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Enter the full URL or path to redirect to.
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="flex items-center space-x-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                id={`passParams-${rule.id}`}
+                                                                checked={rule.passParameters || false}
+                                                                onChange={(e) => updatePathRule(rule.id, 'passParameters', e.target.checked)}
+                                                                className="h-4 w-4 rounded border-gray-300"
+                                                            />
+                                                            <div className="grid gap-1.5 leading-none">
+                                                                <Label
+                                                                    htmlFor={`passParams-${rule.id}`}
+                                                                    className="text-sm font-medium leading-none cursor-pointer"
+                                                                >
+                                                                    Pass Parameters (Preserve Path)
+                                                                </Label>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Append the original request path and query parameters to the target URL.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
 
                                                 {rule.action === 'proxy' && (
                                                     <>
@@ -1185,11 +1255,13 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                                         <strong>Route:</strong> {ruleUrl} → {
                                                             rule.action === 'return-404'
                                                                 ? '404 Not Found'
-                                                                : (
-                                                                    rule.proxyTarget === 'local-port'
-                                                                        ? `localhost:${rule.localPort}`
-                                                                        : `${rule.serverIp || 'N/A'}:${rule.port || '3000'}`
-                                                                )
+                                                                : rule.action.startsWith('redirect-')
+                                                                    ? `${rule.action.split('-')[1]} Redirect to ${rule.redirectTarget || '...'}${rule.passParameters ? '$request_uri' : ''}`
+                                                                    : (
+                                                                        rule.proxyTarget === 'local-port'
+                                                                            ? `localhost:${rule.localPort}`
+                                                                            : `${rule.serverIp || 'N/A'}:${rule.port || '3000'}`
+                                                                    )
                                                         }
                                                     </p>
                                                 </div>

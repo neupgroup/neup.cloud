@@ -25,7 +25,7 @@ interface ProxySettings {
 interface PathRule {
     id: string;
     path: string;
-    action: 'proxy' | 'return-404';
+    action: 'proxy' | 'return-404' | 'redirect-301' | 'redirect-302' | 'redirect-307' | 'redirect-308';
     proxyTarget?: 'remote-server' | 'local-port';
     serverId?: string;
     serverName?: string;
@@ -34,6 +34,8 @@ interface PathRule {
     localPort?: string;
     proxySettings?: ProxySettings;
     subPaths?: SubPath[];
+    redirectTarget?: string;
+    passParameters?: boolean;
 }
 
 interface NginxConfiguration {
@@ -182,6 +184,30 @@ export async function generateNginxConfigFromContext(config: NginxConfiguration)
                 locationBlocks += `
     location ${rule.path} {
         return 404;
+    }
+`;
+            } else if (rule.action === 'redirect-301' || rule.action === 'redirect-302' || rule.action === 'redirect-307' || rule.action === 'redirect-308') {
+                // Redirect for this path
+                let statusCode = '301';
+                if (rule.action === 'redirect-302') statusCode = '302';
+                else if (rule.action === 'redirect-307') statusCode = '307';
+                else if (rule.action === 'redirect-308') statusCode = '308';
+
+                let target = rule.redirectTarget || 'https://google.com';
+
+                // If passParameters is on, append $request_uri
+                // We need to be careful with trailing slashes in target
+                if (rule.passParameters) {
+                    // Remove trailing slash from target if it exists to avoid double slashes with $request_uri
+                    if (target.endsWith('/')) {
+                        target = target.slice(0, -1);
+                    }
+                    target = `${target}$request_uri`;
+                }
+
+                locationBlocks += `
+    location ${rule.path} {
+        return ${statusCode} ${target};
     }
 `;
             } else if (rule.action === 'proxy') {

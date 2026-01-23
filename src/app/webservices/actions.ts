@@ -524,6 +524,22 @@ async function parseNginxConfig(configContent: string, currentServerIp: string) 
         if (blockContent.includes('return 404;')) {
             rule.action = 'return-404';
         }
+        // Check for return 301/302/307/308
+        else if (blockContent.match(/return\s+(301|302|307|308)\s+([^;]+);/)) {
+            const redirectMatch = blockContent.match(/return\s+(301|302|307|308)\s+([^;]+);/);
+            if (redirectMatch) {
+                const code = redirectMatch[1];
+                rule.action = `redirect-${code}`;
+                let target = redirectMatch[2].trim();
+
+                if (target.includes('$request_uri')) {
+                    rule.passParameters = true;
+                    target = target.replace('$request_uri', '');
+                }
+
+                rule.redirectTarget = target;
+            }
+        }
         // Check for proxy_pass
         else {
             const proxyPassMatch = blockContent.match(/proxy_pass\s+([^;]+);/);
