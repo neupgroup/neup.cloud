@@ -10,9 +10,9 @@ import {
     deployNginxConfig,
     deleteNginxConfig,
     generateSslCertificate,
-    getNginxConfiguration,
     saveNginxConfiguration,
 } from '@/app/webservices/nginx/actions';
+import { getWebOrServerNginxConfig } from '@/app/webservices/actions';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -218,85 +218,96 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
         fetchData();
     }, [toast, configId]);
 
-    // Load existing configuration when a server is selected
+    // Load existing configuration
     useEffect(() => {
         const loadConfig = async () => {
-            if (!selectedServerId) return;
+            // Case 1: Editing a specific configuration (by ID)
+            if (configId && configId !== 'new') {
+                try {
+                    setLoading(true);
+                    const config = await getWebOrServerNginxConfig(configId);
 
-            try {
-                const config = await getNginxConfiguration(selectedServerId);
-                if (config) {
-                    setConfigName(config.configName);
+                    if (config) {
+                        // Set Server
+                        if (config.serverId) {
+                            setSelectedServerId(config.serverId);
+                            setSelectedServerName(config.serverName || '');
+                            // We don't have IP directly in config always, but we can try to find it in servers list if loaded
+                            const server = servers.find(s => s.id === config.serverId);
+                            if (server) setSelectedServerIp(server.publicIp);
+                        }
 
-                    const loadedBlocks: DomainBlock[] = (config.blocks || []).map((b: any) => ({
-                        id: b.id || `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                        domainId: b.domainId || '',
-                        domainName: b.domainName || '',
-                        subdomain: b.subdomain || '',
-                        httpsRedirection: b.httpsRedirection ?? true,
-                        sslEnabled: b.sslEnabled ?? false,
-                        pathRules: (b.pathRules || []).map((r: any) => ({
-                            id: r.id || `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                            path: r.path || '',
-                            action: r.action || 'proxy',
-                            proxyTarget: r.proxyTarget || 'local-port',
-                            localPort: r.localPort || '',
-                            serverId: r.serverId || '',
-                            serverName: r.serverName || '',
-                            serverIp: r.serverIp || '',
-                            port: r.port || '',
-                            proxySettings: r.proxySettings || {
-                                setHost: true,
-                                setRealIp: true,
-                                setForwardedFor: true,
-                                setForwardedProto: true,
-                                upgradeWebSocket: true,
-                                customHeaders: []
-                            },
-                            redirectTarget: r.redirectTarget || '',
-                            passParameters: r.passParameters ?? false,
-                        })),
-                    }));
-                    setDomainBlocks(loadedBlocks);
+                        // Set Basic Info
+                        setConfigName(config.name || configId);
 
-                    const loadedRedirects: DomainRedirect[] = (config.domainRedirects || []).map((r: any) => ({
-                        id: r.id || `redir-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                        subdomain: r.subdomain || '',
-                        domainId: r.domainId || '',
-                        domainName: r.domainName || '',
-                        redirectTarget: r.redirectTarget || '',
-                    }));
-                    setDomainRedirects(loadedRedirects);
+                        // Parse Value into Blocks
+                        // The generic config value has { domainName, subdomain, pathRules, ... }
+                        // We need to map this to our DomainBlock[] structure
+                        if (config.value) {
+                            const val = config.value;
 
-                    // Infer domain mode: if any block has a domainId, we use domain mode, otherwise IP mode
-                    const firstDomainBlock = loadedBlocks.find(b => !!b.domainId);
-                    if (firstDomainBlock) {
-                        setDomainMode('domain');
-                        setSelectedDomainId(firstDomainBlock.domainId);
-                        setSelectedDomainName(firstDomainBlock.domainName);
-                    } else {
-                        setDomainMode('none');
-                        setSelectedDomainId(null);
-                        setSelectedDomainName('');
+                            // Determine mode
+                            if (val.domainId === 'manual-domain' || !val.domainId) {
+                                setDomainMode('none');
+                                // But if it has a domain name, we treat it as 'none' (IP/Manual) but with that name
+                            } else {
+                                setDomainMode('domain');
+                                setSelectedDomainId(val.domainId);
+                                setSelectedDomainName(val.domainName || '');
+                            }
+
+                            const block: DomainBlock = {
+                                id: `block-${Date.now()}`,
+                                domainId: val.domainId || '',
+                                domainName: val.domainName || '',
+                                subdomain: val.subdomain || '@',
+                                httpsRedirection: true, // Default for imported
+                                sslEnabled: false, // Default for imported
+                                pathRules: (val.pathRules || []).map((r: any) => ({
+                                    ...r,
+                                    id: r.id || `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                                    proxySettings: r.proxySettings || {
+                                        setHost: true,
+                                        setRealIp: true,
+                                        setForwardedFor: true,
+                                        setForwardedProto: true,
+                                        upgradeWebSocket: true,
+                                        customHeaders: []
+                                    }
+                                }))
+                            };
+
+                            setDomainBlocks([block]);
+                        }
+
+                        toast({
+                            title: 'Configuration Loaded',
+                            description: `Loaded configuration: ${config.name || configId}`,
+                        });
                     }
-
+                } catch (error) {
+                    console.error('Failed to load configuration:', error);
                     toast({
-                        title: 'Configuration Loaded',
-                        description: `Loaded configuration for server.`,
+                        variant: 'destructive',
+                        title: 'Error',
+                        description: 'Failed to load configuration.',
                     });
+                } finally {
+                    setLoading(false);
                 }
-            } catch (error) {
-                console.error('Failed to load configuration:', error);
-                toast({
-                    variant: 'destructive',
-                    title: 'Error',
-                    description: 'Failed to load existing configuration.',
-                });
+                return;
             }
+
+            // Case 2: Creating new or Legacy loading (if server selected manually and no ID)
+            // We skip the legacy getNginxConfiguration(selectedServerId) here because 
+            // the new flow prefers explicit IDs. 
+            // However, if the user navigates to /create and selects a server, we start clean.
         };
 
-        loadConfig();
-    }, [selectedServerId, toast]);
+        if (servers.length > 0) {
+            loadConfig();
+        }
+    }, [configId, servers, toast]);
 
     // Automatically create the initial '@' block when step 3 conditions are met
     useEffect(() => {
