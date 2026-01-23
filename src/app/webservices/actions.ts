@@ -493,11 +493,21 @@ async function parseNginxConfig(configContent: string, currentServerIp: string) 
     const serverNameMatch = configContent.match(/server_name\s+([^;]+);/);
     if (serverNameMatch) {
         const domains = serverNameMatch[1].trim().split(/\s+/);
-        value.domainName = domains[0]; // Take primary
+        const fullServerName = domains[0]; // Take primary
+
         // If it's effectively an IP or localhost, we might treat it as "no domain" mode
-        if (value.domainName === '_' || value.domainName === 'localhost' || value.domainName === currentServerIp) {
-            // handle as no-domain mode if needed
+        if (fullServerName === '_' || fullServerName === 'localhost' || fullServerName === currentServerIp) {
+            value.domainName = fullServerName;
         } else {
+            // Attempt to split subdomain
+            // This is naive, ideally we'd match against known domains
+            const parts = fullServerName.split('.');
+            if (parts.length > 2) {
+                value.domainName = parts.slice(-2).join('.');
+                value.subdomain = parts.slice(0, -2).join('.');
+            } else {
+                value.domainName = fullServerName;
+            }
             value.domainId = 'manual-domain';
         }
     }

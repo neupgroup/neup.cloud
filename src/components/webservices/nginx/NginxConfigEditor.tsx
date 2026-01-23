@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getServers } from '@/app/servers/actions';
 import { getDomains, type ManagedDomain } from '@/app/domains/actions';
 import {
@@ -9,19 +9,24 @@ import {
     generateNginxConfigFromContext,
     deployNginxConfig,
     deleteNginxConfig,
+    generateSslCertificate,
 } from '@/app/webservices/nginx/actions';
-import { saveWebServiceConfig, updateWebServiceConfig, deleteWebServiceConfig, getWebOrServerNginxConfig } from '@/app/webservices/actions';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
     Loader2,
     Plus,
     Trash2,
-    Save,
     FileCode,
     Rocket,
     X,
-    ChevronDown
+    ChevronDown,
+    Lock,
+    Shield,
+    ShieldAlert,
+    RefreshCw,
+    Globe,
+    ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -38,6 +43,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { PageTitleBack } from '@/components/page-header';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { Card } from '@/components/ui/card';
 
 interface ProxySettings {
@@ -64,6 +70,31 @@ interface PathRule {
     passParameters?: boolean;
 }
 
+interface DomainRedirect {
+    id: string;
+    subdomain: string;
+    domainId: string;
+    domainName: string;
+    redirectTarget: string;
+}
+
+interface DomainBlock {
+    id: string;
+    domainId: string;
+    domainName: string;
+    subdomain: string;
+    httpsRedirection: boolean;
+    sslEnabled: boolean;
+    pathRules: PathRule[];
+}
+
+interface NginxConfiguration {
+    serverIp: string;
+    configName: string;
+    blocks: DomainBlock[];
+    domainRedirects: DomainRedirect[];
+}
+
 interface ServerOption {
     id: string;
     name: string;
@@ -84,9 +115,9 @@ interface NginxConfigEditorProps {
 
 export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
     const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
     const [selectedServerName, setSelectedServerName] = useState<string>('');
     const [selectedServerIp, setSelectedServerIp] = useState<string>('');
@@ -96,18 +127,18 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
 
     const [servers, setServers] = useState<ServerOption[]>([]);
     const [domains, setDomains] = useState<DomainOption[]>([]);
-    const [domainMode, setDomainMode] = useState<DomainMode>('none');
-    const [selectedDomainId, setSelectedDomainId] = useState<string>('');
+    const [selectedDomainId, setSelectedDomainId] = useState<string | null>(null);
     const [selectedDomainName, setSelectedDomainName] = useState<string>('');
-    const [domainPaths, setDomainPaths] = useState<string>('');
-    const [pathRules, setPathRules] = useState<PathRule[]>([]);
+    const [domainMode, setDomainMode] = useState<DomainMode>('domain');
+    const [domainBlocks, setDomainBlocks] = useState<DomainBlock[]>([]);
+    const [generatingCert, setGeneratingCert] = useState<string | null>(null); // Stores blockId being generated
+    const [domainRedirects, setDomainRedirects] = useState<DomainRedirect[]>([]);
     const [generatedConfig, setGeneratedConfig] = useState<string>('');
     const [showPreview, setShowPreview] = useState(false);
     const [generating, setGenerating] = useState(false);
     const [deploying, setDeploying] = useState(false);
     const [expandedRuleId, setExpandedRuleId] = useState<string | null>(null);
-
-    const isNew = !configId || configId === 'new';
+    const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
 
     // Fetch available servers and domains, and config if editing
     useEffect(() => {
@@ -131,86 +162,45 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                 }));
                 setDomains(domainOptions);
 
-                // If editing, fetch config
-                if (!isNew && configId) {
-                    const config = await getWebOrServerNginxConfig(configId);
-                    if (config && config.type === 'nginx') {
-                        if (config.name) setConfigName(config.name);
-                        const val = config.value;
-                        if (val.serverIp) setSelectedServerIp(val.serverIp);
-                        if (config.serverId) {
-                            setSelectedServerId(config.serverId);
-                            // Find server name from options if possible, or use saved one
-                            const s = serverOptions.find((o: any) => o.id === config.serverId);
-                            setSelectedServerName(s ? s.name : (config.serverName || ''));
-                        }
+                // Pre-select server logic
+                let targetServerId = searchParams.get('serverId');
 
-                        if (val.domainId) {
-                            setDomainMode('domain');
-                            setSelectedDomainId(val.domainId);
-                            if (val.domainName) setSelectedDomainName(val.domainName);
-                        } else {
-                            setDomainMode('none');
-                        }
-
-                        if (val.pathRules) {
-                            setPathRules(val.pathRules);
-                        }
-                    }
-                } else {
-                    // Reset state for new configuration
-                    setConfigName('');
-
-                    // Pre-select current server from cookie
+                if (!targetServerId) {
+                    // Check cookie if not in URL
                     const getCookie = (name: string) => {
                         const value = `; ${document.cookie}`;
                         const parts = value.split(`; ${name}=`);
                         if (parts.length === 2) return parts.pop()?.split(';').shift();
-                    }
-                    const currentServerId = getCookie('selected_server');
-
-                    if (currentServerId) {
-                        setSelectedServerId(currentServerId);
-                        const s = serverOptions.find((o: any) => o.id === currentServerId);
-                        if (s) {
-                            setSelectedServerName(s.name);
-                            setSelectedServerIp(s.publicIp);
-                        }
-                    } else {
-                        setSelectedServerId(null);
-                        setSelectedServerName('');
-                        setSelectedServerIp('');
-                    }
-                    setSelectedServerIp('');
-                    setDomainMode('none');
-                    setSelectedDomainId('');
-                    setSelectedDomainName('');
-
-                    // Create default rule for root path
-                    const defaultRuleId = `rule-${Date.now()}`;
-                    setPathRules([{
-                        id: defaultRuleId,
-                        path: '/',
-                        action: 'proxy',
-                        proxyTarget: 'local-port',
-                        serverId: '',
-                        serverName: '',
-                        serverIp: '',
-                        port: '3000',
-                        localPort: '3000',
-                        proxySettings: {
-                            setHost: true,
-                            setRealIp: true,
-                            setForwardedFor: true,
-                            setForwardedProto: true,
-                            upgradeWebSocket: true,
-                            customHeaders: [],
-                        },
-                    }]);
-                    setGeneratedConfig('');
-                    setShowPreview(false);
-                    setExpandedRuleId(defaultRuleId);
+                    };
+                    targetServerId = getCookie('selected_server') || null;
                 }
+
+                if (!targetServerId && serverOptions.length === 1) {
+                    // Auto-select if only one server exists
+                    targetServerId = serverOptions[0].id;
+                }
+
+                if (targetServerId) {
+                    const targetServer = serverOptions.find((s: any) => s.id === targetServerId);
+                    if (targetServer) {
+                        setSelectedServerId(targetServer.id);
+                        setSelectedServerName(targetServer.name);
+                        setSelectedServerIp(targetServer.publicIp);
+                    }
+                } else {
+                    setSelectedServerId(null);
+                    setSelectedServerName('');
+                    setSelectedServerIp('');
+                }
+
+                // Reset other states for new configuration
+                // Reset blocks for new configuration
+                setConfigName(configId || '');
+                setDomainBlocks([]);
+                setGeneratedConfig('');
+                setShowPreview(false);
+                setExpandedRuleId(null);
+                setDomainRedirects([]);
             } catch (error) {
                 console.error('Failed to fetch data:', error);
                 toast({
@@ -224,7 +214,41 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
         };
 
         fetchData();
-    }, [toast, isNew, configId]);
+    }, [toast, configId]);
+
+    // Automatically create the initial '@' block when step 3 conditions are met
+    useEffect(() => {
+        if (selectedServerId && configName && (domainMode === 'none' || selectedDomainId)) {
+            if (domainBlocks.length === 0) {
+                const rootBlock: DomainBlock = {
+                    id: `block-root-${Date.now()}`,
+                    domainId: selectedDomainId || '',
+                    domainName: selectedDomainName || '',
+                    subdomain: '@',
+                    httpsRedirection: true,
+                    sslEnabled: false,
+                    pathRules: [
+                        {
+                            id: `rule-root-default-${Date.now()}`,
+                            path: '/',
+                            action: 'proxy',
+                            proxyTarget: 'local-port',
+                            localPort: '3000',
+                            proxySettings: {
+                                setHost: true,
+                                setRealIp: true,
+                                setForwardedFor: true,
+                                setForwardedProto: true,
+                                upgradeWebSocket: true,
+                                customHeaders: []
+                            }
+                        }
+                    ],
+                };
+                setDomainBlocks([rootBlock]);
+            }
+        }
+    }, [selectedServerId, configName, selectedDomainId, domainMode, domainBlocks.length, selectedDomainName]);
 
     const handleServerSelect = async (serverId: string) => {
         const server = servers.find(s => s.id === serverId);
@@ -235,12 +259,68 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
         setSelectedServerIp(server.publicIp);
     };
 
+    const addDomainBlock = () => {
+        const newBlock: DomainBlock = {
+            id: `block-${Date.now()}`,
+            domainId: selectedDomainId || '',
+            domainName: selectedDomainName || '',
+            subdomain: '',
+            httpsRedirection: true,
+            sslEnabled: false,
+            pathRules: [
+                {
+                    id: `rule-default-${Date.now()}`,
+                    path: '/',
+                    action: 'proxy',
+                    proxyTarget: 'local-port',
+                    localPort: '3000',
+                    proxySettings: {
+                        setHost: true,
+                        setRealIp: true,
+                        setForwardedFor: true,
+                        setForwardedProto: true,
+                        upgradeWebSocket: true,
+                        customHeaders: []
+                    }
+                }
+            ],
+        };
+        setDomainBlocks([...domainBlocks, newBlock]);
+    };
+
+    const removeDomainBlock = (id: string) => {
+        const block = domainBlocks.find(b => b.id === id);
+        if (block?.subdomain === '@') return; // Don't allow deleting root block
+        setDomainBlocks(domainBlocks.filter(b => b.id !== id));
+    };
+
+    const updateDomainBlock = (id: string, field: keyof DomainBlock, value: any) => {
+        setDomainBlocks(domainBlocks.map(b => {
+            if (b.id === id) {
+                if (field === 'domainId') {
+                    const domain = domains.find(d => d.id === value);
+                    return { ...b, domainId: value, domainName: domain?.name || '' };
+                }
+                return { ...b, [field]: value };
+            }
+            return b;
+        }));
+    };
+
     const handleDomainSelect = (domainId: string) => {
         const domain = domains.find(d => d.id === domainId);
-        if (!domain) return;
+        if (domain) {
+            setSelectedDomainId(domainId);
+            setSelectedDomainName(domain.name);
+            setDomainMode('domain');
 
-        setSelectedDomainId(domainId);
-        setSelectedDomainName(domain.name);
+            // If we already have blocks, update their domain info
+            setDomainBlocks(domainBlocks.map(b => ({
+                ...b,
+                domainId: domainId,
+                domainName: domain.name
+            })));
+        }
     };
 
     const fetchPublicIp = async () => {
@@ -273,16 +353,12 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
         }
     };
 
-    const addPathRule = (initialPath: string | any = '') => {
+    const addPathRule = (blockId: string) => {
         const newRule: PathRule = {
             id: `rule-${Date.now()}`,
-            path: typeof initialPath === 'string' ? initialPath : '',
+            path: '',
             action: 'proxy',
             proxyTarget: 'local-port',
-            serverId: '',
-            serverName: '',
-            serverIp: '',
-            port: '3000',
             localPort: '3000',
             proxySettings: {
                 setHost: true,
@@ -290,128 +366,194 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                 setForwardedFor: true,
                 setForwardedProto: true,
                 upgradeWebSocket: true,
-                customHeaders: [],
-            },
+                customHeaders: []
+            }
         };
-        setPathRules([...pathRules, newRule]);
+
+        setDomainBlocks(domainBlocks.map(b =>
+            b.id === blockId ? { ...b, pathRules: [...b.pathRules, newRule] } : b
+        ));
         setExpandedRuleId(newRule.id);
     };
 
-    const removePathRule = (id: string) => {
-        // Prevent removing the first rule (default rule)
-        const ruleIndex = pathRules.findIndex(r => r.id === id);
-        if (ruleIndex === 0) return;
-
-        setPathRules(pathRules.filter(rule => rule.id !== id));
-    };
-
-    const updatePathRule = (id: string, field: keyof PathRule, value: any) => {
-        setPathRules(pathRules.map(rule => {
-            if (rule.id === id) {
-                const updated = { ...rule, [field]: value };
-
-                // If server is selected, auto-fill server details
-                if (field === 'serverId' && value) {
-                    const server = servers.find(s => s.id === value);
-                    if (server) {
-                        updated.serverName = server.name;
-                        updated.serverIp = server.publicIp;
-                    }
-                }
-
-                return updated;
+    const removePathRule = (blockId: string, ruleId: string) => {
+        setDomainBlocks(domainBlocks.map(b => {
+            if (b.id === blockId) {
+                const ruleIndex = b.pathRules.findIndex(r => r.id === ruleId);
+                if (ruleIndex === 0) return b; // Don't allow deleting the first path rule
+                return { ...b, pathRules: b.pathRules.filter(r => r.id !== ruleId) };
             }
-            return rule;
+            return b;
         }));
     };
 
-    const updateProxySetting = (ruleId: string, field: keyof ProxySettings, value: any) => {
-        setPathRules(pathRules.map(rule => {
-            if (rule.id === ruleId) {
-                const currentSettings = rule.proxySettings || {
-                    setHost: true,
-                    setRealIp: true,
-                    setForwardedFor: true,
-                    setForwardedProto: true,
-                    upgradeWebSocket: true,
-                    customHeaders: []
-                };
-                return {
-                    ...rule,
-                    proxySettings: {
-                        ...currentSettings,
-                        [field]: value
-                    }
-                };
-            }
-            return rule;
-        }));
-    };
-
-    const addCustomHeader = (ruleId: string) => {
-        setPathRules(pathRules.map(rule => {
-            if (rule.id === ruleId) {
-                const currentSettings = rule.proxySettings || {
-                    setHost: true,
-                    setRealIp: true,
-                    setForwardedFor: true,
-                    setForwardedProto: true,
-                    upgradeWebSocket: true,
-                    customHeaders: []
-                };
-                const newHeader = { id: `header-${Date.now()}`, key: '', value: '' };
-                return {
-                    ...rule,
-                    proxySettings: {
-                        ...currentSettings,
-                        customHeaders: [...(currentSettings.customHeaders || []), newHeader]
-                    }
-                };
-            }
-            return rule;
-        }));
-    };
-
-    const removeCustomHeader = (ruleId: string, headerId: string) => {
-        setPathRules(pathRules.map(rule => {
-            if (rule.id === ruleId) {
-                if (!rule.proxySettings) return rule;
-                const currentSettings = rule.proxySettings;
-                return {
-                    ...rule,
-                    proxySettings: {
-                        ...currentSettings,
-                        customHeaders: (currentSettings.customHeaders || []).filter(h => h.id !== headerId)
-                    }
-                };
-            }
-            return rule;
-        }));
-    };
-
-    const updateCustomHeader = (ruleId: string, headerId: string, field: 'key' | 'value', value: string) => {
-        setPathRules(pathRules.map(rule => {
-            if (rule.id === ruleId) {
-                if (!rule.proxySettings) return rule;
-                const currentSettings = rule.proxySettings;
-                return {
-                    ...rule,
-                    proxySettings: {
-                        ...currentSettings,
-                        customHeaders: (currentSettings.customHeaders || []).map(h => {
-                            if (h.id === headerId) {
-                                return { ...h, [field]: value };
+    const updatePathRule = (blockId: string, ruleId: string, field: keyof PathRule, value: any) => {
+        setDomainBlocks(domainBlocks.map(b => {
+            if (b.id === blockId) {
+                const updatedRules = b.pathRules.map(rule => {
+                    if (rule.id === ruleId) {
+                        const updated = { ...rule, [field]: value };
+                        if (field === 'serverId' && value) {
+                            const server = servers.find(s => s.id === value);
+                            if (server) {
+                                updated.serverName = server.name;
+                                updated.serverIp = server.publicIp;
                             }
-                            return h;
-                        })
+                        }
+                        return updated;
                     }
-                };
+                    return rule;
+                });
+                return { ...b, pathRules: updatedRules };
             }
-            return rule;
+            return b;
         }));
     };
 
-    const handleSave = async () => {
+    const updateProxySetting = (blockId: string, ruleId: string, field: keyof ProxySettings, value: any) => {
+        setDomainBlocks(domainBlocks.map(b => {
+            if (b.id === blockId) {
+                const updatedRules = b.pathRules.map(rule => {
+                    if (rule.id === ruleId) {
+                        const currentSettings = rule.proxySettings || {
+                            setHost: true,
+                            setRealIp: true,
+                            setForwardedFor: true,
+                            setForwardedProto: true,
+                            upgradeWebSocket: true,
+                            customHeaders: []
+                        };
+                        return {
+                            ...rule,
+                            proxySettings: {
+                                ...currentSettings,
+                                [field]: value
+                            }
+                        };
+                    }
+                    return rule;
+                });
+                return { ...b, pathRules: updatedRules };
+            }
+            return b;
+        }));
+    };
+
+    const addCustomHeader = (blockId: string, ruleId: string) => {
+        setDomainBlocks(domainBlocks.map(b => {
+            if (b.id === blockId) {
+                const updatedRules = b.pathRules.map(rule => {
+                    if (rule.id === ruleId) {
+                        const currentSettings = rule.proxySettings || {
+                            setHost: true,
+                            setRealIp: true,
+                            setForwardedFor: true,
+                            setForwardedProto: true,
+                            upgradeWebSocket: true,
+                            customHeaders: []
+                        };
+                        const newHeader = { id: `header-${Date.now()}`, key: '', value: '' };
+                        return {
+                            ...rule,
+                            proxySettings: {
+                                ...currentSettings,
+                                customHeaders: [...(currentSettings.customHeaders || []), newHeader]
+                            }
+                        };
+                    }
+                    return rule;
+                });
+                return { ...b, pathRules: updatedRules };
+            }
+            return b;
+        }));
+    };
+
+    const removeCustomHeader = (blockId: string, ruleId: string, headerId: string) => {
+        setDomainBlocks(domainBlocks.map(b => {
+            if (b.id === blockId) {
+                const updatedRules = b.pathRules.map(rule => {
+                    if (rule.id === ruleId) {
+                        if (!rule.proxySettings) return rule;
+                        const currentSettings = rule.proxySettings;
+                        return {
+                            ...rule,
+                            proxySettings: {
+                                ...currentSettings,
+                                customHeaders: (currentSettings.customHeaders || []).filter(h => h.id !== headerId)
+                            }
+                        };
+                    }
+                    return rule;
+                });
+                return { ...b, pathRules: updatedRules };
+            }
+            return b;
+        }));
+    };
+
+    const updateCustomHeader = (blockId: string, ruleId: string, headerId: string, field: 'key' | 'value', value: string) => {
+        setDomainBlocks(domainBlocks.map(b => {
+            if (b.id === blockId) {
+                const updatedRules = b.pathRules.map(rule => {
+                    if (rule.id === ruleId) {
+                        if (!rule.proxySettings) return rule;
+                        const currentSettings = rule.proxySettings;
+                        return {
+                            ...rule,
+                            proxySettings: {
+                                ...currentSettings,
+                                customHeaders: (currentSettings.customHeaders || []).map(h => {
+                                    if (h.id === headerId) {
+                                        return { ...h, [field]: value };
+                                    }
+                                    return h;
+                                })
+                            }
+                        };
+                    }
+                    return rule;
+                });
+                return { ...b, pathRules: updatedRules };
+            }
+            return b;
+        }));
+    };
+
+    const addDomainRedirect = (blockId?: string) => {
+        // Find a domain to use for the redirect, or use the first block's domain
+        const block = blockId ? domainBlocks.find(b => b.id === blockId) : domainBlocks[0];
+
+        if (!block || !block.domainId) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Please select a domain in at least one block first.',
+            });
+            return;
+        }
+
+        const newRedirect: DomainRedirect = {
+            id: `redir-${Date.now()}`,
+            subdomain: '',
+            domainId: block.domainId,
+            domainName: block.domainName,
+            redirectTarget: '',
+        };
+        setDomainRedirects([...domainRedirects, newRedirect]);
+    };
+
+    const removeDomainRedirect = (id: string) => {
+        setDomainRedirects(domainRedirects.filter(r => r.id !== id));
+    };
+
+    const updateDomainRedirect = (id: string, field: keyof DomainRedirect, value: string) => {
+        setDomainRedirects(domainRedirects.map(r =>
+            r.id === id ? { ...r, [field]: value } : r
+        ));
+    };
+
+    const handleGeneratePreview = async () => {
         if (!selectedServerId) {
             toast({
                 variant: 'destructive',
@@ -421,115 +563,85 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
             return;
         }
 
-        // Validate path rules
-        for (const rule of pathRules) {
-            if (!rule.path) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Validation Error',
-                    description: 'All path rules must have a path defined.',
-                });
-                return;
-            }
-            if (rule.action === 'proxy') {
-                if (rule.proxyTarget === 'local-port' && !rule.localPort) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Validation Error',
-                        description: `Path "${rule.path}" with local port proxy must have a port specified.`,
-                    });
-                    return;
-                }
-                if (rule.proxyTarget === 'remote-server' && !rule.serverId) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Validation Error',
-                        description: `Path "${rule.path}" with remote server proxy must have a server selected.`,
-                    });
-                    return;
-                }
-            }
-            if (rule.action.startsWith('redirect-')) {
-                if (!rule.redirectTarget) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Validation Error',
-                        description: `Path "${rule.path}" with redirect must have a target address.`,
-                    });
-                    return;
-                }
-            }
-        }
-
-        setSaving(true);
-        try {
-            const configData = {
-                serverIp: selectedServerIp,
-                domainId: domainMode === 'domain' ? selectedDomainId || undefined : undefined,
-                domainName: domainMode === 'domain' ? selectedDomainName || undefined : undefined,
-                pathRules,
-            };
-
-            // Save/Update webservices collection
-            let webserviceResult;
-
-            if (isNew) {
-                webserviceResult = await saveWebServiceConfig(
-                    'nginx',
-                    configData,
-                    'current-user', // TODO: Get actual username from auth
-                    selectedServerId,
-                    selectedServerName,
-                    configName || undefined
-                );
-            } else {
-                // Strip @ from ID if present (drafts)
-                const cleanId = configId!.startsWith('@') ? configId!.substring(1) : configId!;
-                webserviceResult = await updateWebServiceConfig(
-                    cleanId,
-                    configData,
-                    configName || undefined
-                );
-            }
-
-            if (webserviceResult.success) {
-                toast({
-                    title: 'Success',
-                    description: 'Nginx configuration saved successfully.',
-                });
-
-                // If it was a new config, update the URL to the new ID with @ prefix
-                if (isNew && (webserviceResult as any).id) {
-                    router.replace(`/webservices/nginx/@${(webserviceResult as any).id}`);
-                }
-            } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'Error',
-                    description: 'Failed to save configuration.',
-                });
-            }
-        } catch (error) {
+        if (!configName) {
             toast({
                 variant: 'destructive',
                 title: 'Error',
-                description: 'Failed to save configuration.',
+                description: 'Please provide a configuration name in Step 1.',
             });
-        } finally {
-            setSaving(false);
+            return;
         }
-    };
 
-    const handleGeneratePreview = async () => {
-        // Generate config from current form state
+        if (domainBlocks.length === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Please add at least one domain block.',
+            });
+            return;
+        }
+
+        // Validate blocks
+        for (const block of domainBlocks) {
+            if (domainMode === 'domain' && !block.domainId) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Validation Error',
+                    description: 'Each block must have a domain selected.',
+                });
+                return;
+            }
+
+            for (const rule of block.pathRules) {
+                if (!rule.path) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Validation Error',
+                        description: `All path rules in block for ${block.domainName} must have a path defined.`,
+                    });
+                    return;
+                }
+                if (rule.action === 'proxy') {
+                    if (rule.proxyTarget === 'local-port' && !rule.localPort) {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Validation Error',
+                            description: `Path "${rule.path}" with local port proxy must have a port specified.`,
+                        });
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Validate domain redirects
+        for (const redirect of domainRedirects) {
+            if (!redirect.redirectTarget) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Validation Error',
+                    description: `Subdomain redirect for ${redirect.subdomain || 'root'}.${redirect.domainName} must have a target URL.`,
+                });
+                return;
+            }
+            if (!redirect.redirectTarget.startsWith('http://') && !redirect.redirectTarget.startsWith('https://')) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Validation Error',
+                    description: `Redirect target "${redirect.redirectTarget}" must include a protocol (http:// or https://).`,
+                });
+                return;
+            }
+        }
+
+        // Generate config
         setGenerating(true);
         try {
-            // Build config from current form state
             const currentConfig = {
                 serverIp: selectedServerIp,
-                domainId: domainMode === 'domain' ? selectedDomainId || undefined : undefined,
-                domainName: domainMode === 'domain' ? selectedDomainName || undefined : undefined,
-                pathRules: pathRules,
+                configName: configName,
+                blocks: domainBlocks,
+                domainRedirects: domainRedirects,
             };
 
             const result = await generateNginxConfigFromContext(currentConfig);
@@ -539,7 +651,7 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                 setShowPreview(true);
                 toast({
                     title: 'Configuration Generated',
-                    description: 'Nginx configuration generated from current settings.',
+                    description: 'Nginx configuration generated successfully.',
                 });
             } else {
                 toast({
@@ -559,6 +671,64 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
         }
     };
 
+    const handleGenerateCertificate = async (blockId: string) => {
+        const block = domainBlocks.find(b => b.id === blockId);
+        if (!selectedServerId || !block || !block.domainName) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Please select a server and domain first.',
+            });
+            return;
+        }
+
+        if (!configName) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Please enter a Configuration Name in Step 1 before generating a certificate.',
+            });
+            return;
+        }
+
+        let fullDomain = block.domainName;
+        if (block.subdomain && block.subdomain !== '@') {
+            fullDomain = `${block.subdomain}.${block.domainName}`;
+        }
+
+        setGeneratingCert(blockId);
+        try {
+            const result = await generateSslCertificate(
+                selectedServerId,
+                fullDomain,
+                configName
+            );
+
+            if (result.success) {
+                toast({
+                    title: 'Certificate Success',
+                    description: result.message,
+                });
+                updateDomainBlock(blockId, 'sslEnabled', true);
+                updateDomainBlock(blockId, 'httpsRedirection', true);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Certificate Error',
+                    description: result.error,
+                });
+            }
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: error.message || 'Failed to generate certificate.',
+            });
+        } finally {
+            setGeneratingCert(null);
+        }
+    };
+
     const handleDelete = async () => {
         if (!confirm('Are you sure you want to delete this configuration? This action cannot be undone.')) {
             return;
@@ -568,51 +738,29 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
 
         setDeleting(true);
         try {
-            // Check if this is a draft (database) config or server-side config
-            const isDraft = configId.startsWith('@');
+            // Delete from server (sites-available and sites-enabled)
+            if (!selectedServerId) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: 'Server ID not found.',
+                });
+                return;
+            }
 
-            if (isDraft) {
-                // Delete from database only
-                const cleanId = configId.substring(1);
-                const result = await deleteWebServiceConfig(cleanId);
-                if (result.success) {
-                    toast({
-                        title: 'Success',
-                        description: 'Configuration deleted successfully.',
-                    });
-                    router.push('/webservices/nginx');
-                } else {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Error',
-                        description: result.message || 'Failed to delete configuration.',
-                    });
-                }
+            const result = await deleteNginxConfig(selectedServerId, configName);
+            if (result.success) {
+                toast({
+                    title: 'Success',
+                    description: result.message || 'Configuration deleted from server successfully.',
+                });
+                router.push('/webservices/nginx');
             } else {
-                // Delete from server (sites-available and sites-enabled)
-                if (!selectedServerId) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Error',
-                        description: 'Server ID not found.',
-                    });
-                    return;
-                }
-
-                const result = await deleteNginxConfig(selectedServerId, configId);
-                if (result.success) {
-                    toast({
-                        title: 'Success',
-                        description: result.message || 'Configuration deleted from server successfully.',
-                    });
-                    router.push('/webservices/nginx');
-                } else {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Error',
-                        description: result.error || 'Failed to delete configuration from server.',
-                    });
-                }
+                toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: result.error || 'Failed to delete configuration from server.',
+                });
             }
         } catch (error: any) {
             toast({
@@ -645,10 +793,19 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                     description: 'Nginx configuration deployed and reloaded successfully.',
                 });
             } else {
+                // Check for SSL certificate errors
+                const isSslError = result.error && (
+                    result.error.includes('cannot load certificate') ||
+                    result.error.includes('No such file or directory') ||
+                    result.error.includes('BIO_new_file')
+                );
+
                 toast({
                     variant: 'destructive',
                     title: 'Deployment Failed',
-                    description: result.error || 'Failed to deploy configuration.',
+                    description: isSslError
+                        ? 'SSL Certificate missing! Please click the "Generate/Update SSL Certificate" button in Step 2 before deploying.'
+                        : (result.error || 'Failed to deploy configuration.'),
                 });
             }
         } catch (error) {
@@ -791,558 +948,580 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                         <SelectContent>
                             {servers.map(server => (
                                 <SelectItem key={server.id} value={server.id}>
-                                    {server.name}
+                                    {server.name} ({server.publicIp})
                                 </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
-                    {selectedServerIp && (
-                        <p className="text-sm text-muted-foreground">
-                            Public IP: <span className="font-mono font-medium text-foreground">{selectedServerIp}</span>
+
+                    <div className="space-y-2 mt-6">
+                        <Label htmlFor="config-name">Configuration Name <span className="text-destructive">*</span></Label>
+                        <Input
+                            id="config-name"
+                            value={configName}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                if (/^[a-z0-9.]*$/.test(value)) {
+                                    setConfigName(value);
+                                }
+                            }}
+                            placeholder="e.g., example.com"
+                            className="max-w-[400px]"
+                            disabled={!!configId}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Used as the filename on the server. Lowercase letters, numbers, and dots only.
                         </p>
-                    )}
+                    </div>
                 </div>
             </div>
 
-            {/* Step 2: Domain Configuration - Only show if server is selected */}
-            {selectedServerId && (
-                <div className="space-y-4">
+            {/* Step 2: Configuration Mode */}
+            {selectedServerId && configName && (
+                <div className="space-y-6 pt-6">
                     <div className="px-1">
                         <h3 className="text-xl font-semibold flex items-center gap-2">
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
                                 2
                             </div>
-                            Domain Configuration
+                            Configuration Mode
                         </h3>
                         <p className="text-sm text-muted-foreground ml-10">
-                            Configure domain or use IP address
+                            Choose how you want to route traffic to this server
                         </p>
                     </div>
-                    <div className="space-y-4 ml-10">
-                        <RadioGroup value={domainMode} onValueChange={(value) => setDomainMode(value as DomainMode)}>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="none" id="no-domain" />
-                                <Label htmlFor="no-domain" className="font-normal cursor-pointer">
-                                    No Domain (use IP address)
-                                </Label>
+
+                    <div className="ml-10 space-y-6">
+                        <RadioGroup
+                            value={domainMode}
+                            onValueChange={(v) => {
+                                setDomainMode(v as DomainMode);
+                                if (v === 'none') {
+                                    setSelectedDomainId(null);
+                                    setSelectedDomainName('');
+                                    // Update existing blocks to be IP-based
+                                    setDomainBlocks(domainBlocks.map(b => ({ ...b, domainId: '', domainName: '' })));
+                                }
+                            }}
+                            className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl"
+                        >
+                            <div
+                                className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all ${domainMode === 'domain' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:bg-muted'}`}
+                                onClick={() => setDomainMode('domain')}
+                            >
+                                <RadioGroupItem value="domain" id="mode-domain" className="mt-1" />
+                                <div className="space-y-1">
+                                    <Label htmlFor="mode-domain" className="font-bold cursor-pointer">Managed Domain</Label>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed">Map subdomains of a verified domain to your server.</p>
+                                </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="domain" id="use-domain" />
-                                <Label htmlFor="use-domain" className="font-normal cursor-pointer">
-                                    Use Domain
-                                </Label>
+
+                            <div
+                                className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all ${domainMode === 'none' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'hover:bg-muted'}`}
+                                onClick={() => {
+                                    setDomainMode('none');
+                                    setSelectedDomainId(null);
+                                    setSelectedDomainName('');
+                                    setDomainBlocks(domainBlocks.map(b => ({ ...b, domainId: '', domainName: '' })));
+                                }}
+                            >
+                                <RadioGroupItem value="none" id="mode-ip" className="mt-1" />
+                                <div className="space-y-1">
+                                    <Label htmlFor="mode-ip" className="font-bold cursor-pointer">IP Address Only</Label>
+                                    <p className="text-[11px] text-muted-foreground leading-relaxed">Direct IP routing without using a domain name.</p>
+                                </div>
                             </div>
                         </RadioGroup>
 
                         {domainMode === 'domain' && (
-                            <div className="space-y-4 pl-6 border-l-2 border-muted">
-                                <div className="space-y-2">
-                                    <Label htmlFor="domain-select">Select Domain</Label>
-                                    <Select
-                                        value={selectedDomainId}
-                                        onValueChange={handleDomainSelect}
-                                    >
-                                        <SelectTrigger id="domain-select">
-                                            <SelectValue placeholder="Select a domain" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {domains.length === 0 ? (
-                                                <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                                                    No domains found. <Link href="/domains/add" className="text-primary underline">Add a domain</Link>
-                                                </div>
-                                            ) : (
-                                                domains.map(domain => (
-                                                    <SelectItem key={domain.id} value={domain.id}>
-                                                        <div className="flex items-center gap-2">
-                                                            {domain.name}
-                                                            {domain.verified && (
-                                                                <Badge variant="secondary" className="text-xs">Verified</Badge>
-                                                            )}
-                                                        </div>
-                                                    </SelectItem>
-                                                ))
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {selectedDomainName && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="domain-paths">Domain Paths (Optional)</Label>
-                                        <Input
-                                            id="domain-paths"
-                                            value={domainPaths}
-                                            onChange={(e) => setDomainPaths(e.target.value)}
-                                            placeholder="e.g., /api, /admin (comma separated)"
-                                        />
-                                        <p className="text-xs text-muted-foreground">
-                                            Leave empty to use all paths, or specify specific paths for this domain
-                                        </p>
-                                    </div>
-                                )}
+                            <div className="space-y-2 animate-in slide-in-from-top-2 duration-300 max-w-[400px]">
+                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Select Base Domain</Label>
+                                <Select value={selectedDomainId || ''} onValueChange={handleDomainSelect}>
+                                    <SelectTrigger className="h-10">
+                                        <SelectValue placeholder="Choose a domain..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {domains.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         )}
                     </div>
                 </div>
             )}
 
-            {/* Step 3: Path Routing Rules - Show if Step 2 is complete */}
-            {selectedServerId && (domainMode === 'none' || (domainMode === 'domain' && selectedDomainId)) && (
+            {/* Step 3: Manage Subdomain Blocks */}
+            {selectedServerId && configName && (domainMode === 'none' || selectedDomainId) && (
                 <div className="space-y-6 pt-6">
-                    <div className="px-1">
-                        <h3 className="text-xl font-semibold flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                                3
-                            </div>
-                            Path Routing Rules
-                        </h3>
-                        <p className="text-sm text-muted-foreground ml-10">
-                            Define which paths point to which server and port
-                        </p>
+                    <div className="px-1 flex justify-between items-center">
+                        <div>
+                            <h3 className="text-xl font-semibold flex items-center gap-2">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
+                                    3
+                                </div>
+                                Domains & Paths Block
+                            </h3>
+                            <p className="text-sm text-muted-foreground ml-10">
+                                {domainMode === 'domain'
+                                    ? `Create individualized server blocks for subdomains of ${selectedDomainName}`
+                                    : "Create server blocks for this IP-based configuration"}
+                            </p>
+                        </div>
                     </div>
-                    <div className="space-y-6">
-                        {pathRules.length === 0 && (
-                            <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg bg-muted/20">
-                                <p className="text-sm font-medium mb-2">No Rules Defined</p>
-                                <p className="text-xs text-muted-foreground mb-4">Start by adding a default rule for the root path.</p>
-                                <Button onClick={() => addPathRule('/')} variant="default" size="sm">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Create Default Rule
+
+                    {domainMode === 'domain' && (
+                        <div className="ml-10 mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                <span className="font-bold">Subdomain patterns:</span> Use <code className="px-1.5 py-0.5 bg-blue-500/20 rounded font-mono">@</code> for root domain,
+                                <code className="px-1.5 py-0.5 bg-blue-500/20 rounded font-mono mx-1">yourname</code> for specific subdomain,
+                                or <code className="px-1.5 py-0.5 bg-blue-500/20 rounded font-mono">#</code> for catch-all wildcard (matches all other subdomains)
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="space-y-8 ml-10">
+                        {domainBlocks.length === 0 && (
+                            <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-xl bg-muted/10">
+                                <Plus className="h-10 w-10 text-muted-foreground mb-4 opacity-50" />
+                                <h4 className="text-base font-semibold mb-2">No Blocks Added</h4>
+                                <p className="text-sm text-muted-foreground mb-6">Start by adding your first {domainMode === 'domain' ? 'subdomain' : 'server'} block.</p>
+                                <Button onClick={() => addDomainBlock()} variant="secondary">
+                                    <Plus className="h-4 w-4 mr-2" /> Create First Block
                                 </Button>
                             </div>
                         )}
 
-                        {pathRules.map((rule, index) => {
-                            const isDefault = index === 0; // First card is always default
-                            const ruleNumber = index; // 0 for default, 1, 2, 3... for others
-
-                            const baseUrl = domainMode === 'domain' && selectedDomainName
-                                ? `http://${selectedDomainName}`
-                                : `http://${selectedServerIp || 'ip.ip.ip.ip'}`;
-                            const ruleUrl = `${baseUrl}${isDefault ? '/' : rule.path}`;
-
-                            return (
-                                <div key={rule.id} className="space-y-4">
-                                    <div className={`rounded-lg border bg-card text-card-foreground shadow-sm ml-10 overflow-hidden ${isDefault ? 'border-primary/30 bg-primary/5' : ''}`}>
-                                        <div
-                                            className="flex items-center justify-between p-4 cursor-pointer hover:bg-accent/50 transition-colors"
-                                            onClick={() => setExpandedRuleId(expandedRuleId === rule.id ? null : rule.id)}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant={isDefault ? "default" : "outline"}>
-                                                    {isDefault ? "Default Rule" : `Rule ${ruleNumber}`}
-                                                </Badge>
-                                                {rule.action === 'return-404' && (
-                                                    <Badge variant="secondary">404</Badge>
-                                                )}
-                                                {rule.action === 'redirect-301' && (
-                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">301 Moved</Badge>
-                                                )}
-                                                {rule.action === 'redirect-302' && (
-                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">302 Found</Badge>
-                                                )}
-                                                {rule.action === 'redirect-307' && (
-                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">307 Redirect</Badge>
-                                                )}
-                                                {rule.action === 'redirect-308' && (
-                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">308 Redirect</Badge>
-                                                )}
-                                                {rule.action === 'proxy' && (
-                                                    <Badge variant="default">Proxy</Badge>
-                                                )}
-                                                <span className="text-sm text-muted-foreground">
-                                                    {rule.path || '/'}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                {!isDefault && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            removePathRule(rule.id);
-                                                        }}
-                                                    >
-                                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                                    </Button>
-                                                )}
-                                                <ChevronDown className={`h-4 w-4 transition-transform ${expandedRuleId === rule.id ? 'rotate-180' : ''}`} />
-                                            </div>
+                        {domainBlocks.map((block, bIndex) => (
+                            <div key={block.id} className="space-y-1 mb-8">
+                                {/* Subdomain Header Bar */}
+                                <div className="flex items-center justify-between bg-zinc-200 dark:bg-zinc-800 rounded-lg px-4 py-3 shadow-sm border border-border/50">
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest bg-background/50 px-2 py-0.5 rounded shadow-inner">
+                                            #{bIndex + 1}
                                         </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-muted-foreground">
+                                                {domainMode === 'domain' ? 'subdomain:' : 'block identifier:'}
+                                            </span>
+                                            <Input
+                                                value={block.subdomain}
+                                                onChange={(e) => {
+                                                    const val = e.target.value.toLowerCase();
+                                                    updateDomainBlock(block.id, 'subdomain', val);
+                                                }}
+                                                disabled={block.subdomain === '@'}
+                                                placeholder={domainMode === 'domain' ? '@' : 'default'}
+                                                className="h-7 w-32 bg-transparent border-none shadow-none focus-visible:ring-0 p-0 font-bold text-sm"
+                                            />
+                                            {domainMode === 'domain' && (
+                                                <span className="text-xs text-muted-foreground font-medium opacity-70">
+                                                    {block.subdomain === '@' && `.${selectedDomainName}`}
+                                                    {block.subdomain !== '@' && block.subdomain !== '#' && `.${selectedDomainName}`}
+                                                    {block.subdomain === '#' && `.${selectedDomainName}`}
+                                                </span>
+                                            )}
+                                            {domainMode === 'domain' && block.subdomain === '#' && (
+                                                <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
+                                                    Catch-All Wildcard
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
 
-                                        {expandedRuleId === rule.id && (
-                                            <div className="space-y-4 p-4 pt-0 animate-in slide-in-from-top-2 duration-600">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor={`path-${rule.id}`}>
-                                                        Path <span className="text-destructive">*</span>
+                                    <div className="flex items-center gap-2">
+                                        {block.subdomain !== '@' && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 w-8 rounded-full hover:bg-red-500/10 hover:text-red-500"
+                                                onClick={() => removeDomainBlock(block.id)}
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 rounded-full bg-background/50 hover:bg-background"
+                                            onClick={() => setExpandedBlockId(expandedBlockId === block.id ? null : block.id)}
+                                        >
+                                            <ChevronDown className={`h-4 w-4 transition-transform ${expandedBlockId === block.id ? 'rotate-180' : ''}`} />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Shared SSL/Domain Settings (Collapsible) */}
+                                {expandedBlockId === block.id && (
+                                    <div className="mx-4 p-4 bg-muted/20 border-x border-b rounded-b-lg space-y-4 animate-in slide-in-from-top-2 duration-200">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-xs font-semibold flex items-center gap-2">
+                                                        <Lock className="h-3 w-3" /> SSL Support
                                                     </Label>
-                                                    <Input
-                                                        id={`path-${rule.id}`}
-                                                        value={rule.path}
-                                                        onChange={(e) =>
-                                                            updatePathRule(rule.id, 'path', e.target.value)
-                                                        }
-                                                        disabled={isDefault}
-                                                        placeholder="/app"
-                                                        className={isDefault ? "bg-muted font-mono" : "font-mono"}
+                                                    <Switch
+                                                        checked={block.sslEnabled}
+                                                        onCheckedChange={(v) => updateDomainBlock(block.id, 'sslEnabled', v)}
+                                                        disabled={domainMode === 'none'}
                                                     />
-                                                    {isDefault && <p className="text-xs text-muted-foreground">The root path is fixed for the default rule.</p>}
                                                 </div>
-
-                                                <div className="space-y-2">
-                                                    <Label htmlFor={`action-${rule.id}`}>
-                                                        Action <span className="text-destructive">*</span>
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-xs font-semibold flex items-center gap-2">
+                                                        <ArrowRight className="h-3 w-3" /> Force HTTPS
                                                     </Label>
-                                                    <Select
-                                                        value={rule.action}
-                                                        onValueChange={(value) =>
-                                                            updatePathRule(rule.id, 'action', value as any)
-                                                        }
-                                                    >
-                                                        <SelectTrigger id={`action-${rule.id}`}>
-                                                            <SelectValue placeholder="Select action" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="proxy">Proxy to Server</SelectItem>
-                                                            <SelectItem value="redirect-301">301 Permanent Redirect</SelectItem>
-                                                            <SelectItem value="redirect-302">302 Temporary Redirect</SelectItem>
-                                                            <SelectItem value="redirect-307">307 Temporary Redirect</SelectItem>
-                                                            <SelectItem value="redirect-308">308 Permanent Redirect</SelectItem>
-                                                            <SelectItem value="return-404">Return 404</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
+                                                    <Switch
+                                                        checked={block.httpsRedirection}
+                                                        onCheckedChange={(v) => updateDomainBlock(block.id, 'httpsRedirection', v)}
+                                                        disabled={!block.sslEnabled || domainMode === 'none'}
+                                                    />
                                                 </div>
-
-                                                {(rule.action.startsWith('redirect-')) && (
-                                                    <div className="space-y-4 animate-in fade-in duration-300">
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor={`redirect-target-${rule.id}`}>
-                                                                Redirect Target <span className="text-destructive">*</span>
-                                                            </Label>
-                                                            <Input
-                                                                id={`redirect-target-${rule.id}`}
-                                                                value={rule.redirectTarget || ''}
-                                                                onChange={(e) =>
-                                                                    updatePathRule(rule.id, 'redirectTarget', e.target.value)
-                                                                }
-                                                                placeholder="https://example.com/new-path"
-                                                            />
-                                                            <p className="text-xs text-muted-foreground">
-                                                                Enter the full URL or path to redirect to.
+                                                {domainMode === 'none' && (
+                                                    <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                                                        SSL generation requires a domain name.
+                                                    </p>
+                                                )}
+                                            </div>
+                                            {domainMode === 'domain' && (
+                                                <div className="flex items-end">
+                                                    {block.subdomain === '@' ? (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="secondary"
+                                                            className="w-full text-[11px] h-8 font-bold uppercase tracking-wider"
+                                                            disabled={!!generatingCert && generatingCert === block.id}
+                                                            onClick={() => handleGenerateCertificate(block.id)}
+                                                        >
+                                                            {generatingCert === block.id ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <RefreshCw className="h-3 w-3 mr-2" />}
+                                                            {generatingCert === block.id ? 'Working...' : 'Get Certificate'}
+                                                        </Button>
+                                                    ) : (
+                                                        <div className="w-full p-2 bg-blue-500/10 border border-blue-500/20 rounded text-center">
+                                                            <p className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                                                                Uses certificate from root domain
                                                             </p>
                                                         </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
 
-                                                        <div className="flex items-center space-x-2">
-                                                            <input
-                                                                type="checkbox"
-                                                                id={`passParams-${rule.id}`}
-                                                                checked={rule.passParameters || false}
-                                                                onChange={(e) => updatePathRule(rule.id, 'passParameters', e.target.checked)}
-                                                                className="h-4 w-4 rounded border-gray-300"
-                                                            />
-                                                            <div className="grid gap-1.5 leading-none">
-                                                                <Label
-                                                                    htmlFor={`passParams-${rule.id}`}
-                                                                    className="text-sm font-medium leading-none cursor-pointer"
-                                                                >
-                                                                    Pass Parameters (Preserve Path)
-                                                                </Label>
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    Append the original request path and query parameters to the target URL.
-                                                                </p>
-                                                            </div>
-                                                        </div>
+                                {/* Path Rule Bars */}
+                                <div className="space-y-2 mt-4 ml-6">
+                                    {block.pathRules.map((rule, rIdx) => (
+                                        <div key={rule.id} className="relative group">
+                                            <div
+                                                onClick={() => setExpandedRuleId(expandedRuleId === rule.id ? null : rule.id)}
+                                                className={`flex items-center justify-between bg-background border rounded-lg px-4 py-3 cursor-pointer transition-all hover:border-primary/50 ${expandedRuleId === rule.id ? 'border-primary shadow-sm' : 'border-border'}`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Path:</span>
+                                                        <span className="text-sm font-bold font-mono text-foreground">{rule.path || '/'}</span>
                                                     </div>
-                                                )}
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <Badge variant="secondary" className="text-[10px] font-mono h-6 px-2">
+                                                        {rule.action === 'proxy' ? (rule.proxyTarget === 'local-port' ? `→ :${rule.localPort}` : '→ Remote') : rule.action}
+                                                    </Badge>
+                                                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${expandedRuleId === rule.id ? 'rotate-180' : ''}`} />
+                                                </div>
+                                            </div>
 
-                                                {rule.action === 'proxy' && (
-                                                    <>
+                                            {/* Rule Content */}
+                                            {expandedRuleId === rule.id && (
+                                                <div className="mt-2 p-6 bg-muted/30 border rounded-lg animate-in slide-in-from-top-1 duration-200">
+                                                    <div className="space-y-4">
+                                                        {/* Location Path */}
                                                         <div className="space-y-2">
-                                                            <Label htmlFor={`proxy-target-${rule.id}`}>
-                                                                Proxy Target <span className="text-destructive">*</span>
-                                                            </Label>
-                                                            <Select
-                                                                value={rule.proxyTarget || 'local-port'}
-                                                                onValueChange={(value) =>
-                                                                    updatePathRule(rule.id, 'proxyTarget', value as 'local-port' | 'remote-server')
-                                                                }
-                                                            >
-                                                                <SelectTrigger id={`proxy-target-${rule.id}`}>
-                                                                    <SelectValue placeholder="Select proxy target" />
+                                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Location Path</Label>
+                                                            <Input
+                                                                value={rule.path}
+                                                                onChange={(e) => updatePathRule(block.id, rule.id, 'path', e.target.value)}
+                                                                disabled={rIdx === 0}
+                                                                placeholder="/"
+                                                                className="h-9 font-mono bg-background"
+                                                            />
+                                                        </div>
+
+                                                        {/* Primary Action */}
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Primary Action</Label>
+                                                            <Select value={rule.action} onValueChange={(v) => updatePathRule(block.id, rule.id, 'action', v as any)}>
+                                                                <SelectTrigger className="h-9 bg-background">
+                                                                    <SelectValue />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
-                                                                    <SelectItem value="local-port">Local Port (localhost)</SelectItem>
-                                                                    <SelectItem value="remote-server">Remote Server</SelectItem>
+                                                                    <SelectItem value="proxy">Proxy Request</SelectItem>
+                                                                    <SelectItem value="redirect-301">301 Permanent Redirect</SelectItem>
+                                                                    <SelectItem value="redirect-302">302 Temporary Redirect</SelectItem>
+                                                                    <SelectItem value="return-404">Return 404 Not Found</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
-                                                            <p className="text-xs text-muted-foreground">
-                                                                {rule.proxyTarget === 'local-port'
-                                                                    ? 'Proxy to an app running on this nginx server'
-                                                                    : 'Proxy to an app running on another server'}
-                                                            </p>
                                                         </div>
 
-                                                        {rule.proxyTarget === 'local-port' ? (
-                                                            <div className="space-y-2">
-                                                                <Label htmlFor={`local-port-${rule.id}`}>
-                                                                    Local Port <span className="text-destructive">*</span>
-                                                                </Label>
-                                                                <Input
-                                                                    id={`local-port-${rule.id}`}
-                                                                    value={rule.localPort || ''}
-                                                                    onChange={(e) =>
-                                                                        updatePathRule(rule.id, 'localPort', e.target.value)
-                                                                    }
-                                                                    placeholder="3000"
-                                                                />
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    Port where your app is running (e.g., Next.js on 3000)
-                                                                </p>
-                                                            </div>
-                                                        ) : (
+                                                        {/* Proxy Configuration */}
+                                                        {rule.action === 'proxy' && (
                                                             <>
                                                                 <div className="space-y-2">
-                                                                    <Label htmlFor={`server-${rule.id}`}>
-                                                                        Target Server <span className="text-destructive">*</span>
-                                                                    </Label>
-                                                                    <Select
-                                                                        value={rule.serverId || ''}
-                                                                        onValueChange={(value) =>
-                                                                            updatePathRule(rule.id, 'serverId', value)
-                                                                        }
-                                                                    >
-                                                                        <SelectTrigger id={`server-${rule.id}`}>
-                                                                            <SelectValue placeholder="Select target server" />
+                                                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Proxy Destination</Label>
+                                                                    <Select value={rule.proxyTarget} onValueChange={(v) => updatePathRule(block.id, rule.id, 'proxyTarget', v)}>
+                                                                        <SelectTrigger className="h-9 bg-background">
+                                                                            <SelectValue />
                                                                         </SelectTrigger>
                                                                         <SelectContent>
-                                                                            {servers.map(server => (
-                                                                                <SelectItem key={server.id} value={server.id}>
-                                                                                    {server.name}
-                                                                                </SelectItem>
-                                                                            ))}
+                                                                            <SelectItem value="local-port">Local Port (This Machine)</SelectItem>
+                                                                            <SelectItem value="remote-server">Remote Web Server</SelectItem>
                                                                         </SelectContent>
                                                                     </Select>
                                                                 </div>
 
                                                                 <div className="space-y-2">
-                                                                    <Label htmlFor={`port-${rule.id}`}>Port</Label>
-                                                                    <Input
-                                                                        id={`port-${rule.id}`}
-                                                                        value={rule.port || ''}
-                                                                        onChange={(e) =>
-                                                                            updatePathRule(rule.id, 'port', e.target.value)
-                                                                        }
-                                                                        placeholder="3000"
-                                                                    />
+                                                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                                                        {rule.proxyTarget === 'local-port' ? 'Service Port' : 'Target Server'}
+                                                                    </Label>
+                                                                    {rule.proxyTarget === 'local-port' ? (
+                                                                        <Input
+                                                                            value={rule.localPort}
+                                                                            onChange={(e) => updatePathRule(block.id, rule.id, 'localPort', e.target.value)}
+                                                                            placeholder="3000"
+                                                                            className="h-9 font-mono bg-background"
+                                                                        />
+                                                                    ) : (
+                                                                        <Select value={rule.serverId} onValueChange={(v) => updatePathRule(block.id, rule.id, 'serverId', v)}>
+                                                                            <SelectTrigger className="h-9 bg-background">
+                                                                                <SelectValue placeholder="Select Server" />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                {servers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Proxy Headers */}
+                                                                <div className="pt-4 space-y-3">
+                                                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Proxy Headers</Label>
+                                                                    <div className="flex flex-wrap gap-4">
+                                                                        <div className="flex items-center space-x-2">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                id={`set-host-${rule.id}`}
+                                                                                checked={rule.proxySettings?.setHost !== false}
+                                                                                onChange={(e) => updateProxySetting(block.id, rule.id, 'setHost', e.target.checked)}
+                                                                                className="h-4 w-4 rounded border-gray-300"
+                                                                            />
+                                                                            <label htmlFor={`set-host-${rule.id}`} className="text-sm font-medium cursor-pointer">
+                                                                                Set Host
+                                                                            </label>
+                                                                        </div>
+                                                                        <div className="flex items-center space-x-2">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                id={`websockets-${rule.id}`}
+                                                                                checked={rule.proxySettings?.upgradeWebSocket !== false}
+                                                                                onChange={(e) => updateProxySetting(block.id, rule.id, 'upgradeWebSocket', e.target.checked)}
+                                                                                className="h-4 w-4 rounded border-gray-300"
+                                                                            />
+                                                                            <label htmlFor={`websockets-${rule.id}`} className="text-sm font-medium cursor-pointer">
+                                                                                WebSockets
+                                                                            </label>
+                                                                        </div>
+                                                                        <div className="flex items-center space-x-2">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                id={`real-ip-${rule.id}`}
+                                                                                checked={rule.proxySettings?.setRealIp !== false}
+                                                                                onChange={(e) => updateProxySetting(block.id, rule.id, 'setRealIp', e.target.checked)}
+                                                                                className="h-4 w-4 rounded border-gray-300"
+                                                                            />
+                                                                            <label htmlFor={`real-ip-${rule.id}`} className="text-sm font-medium cursor-pointer">
+                                                                                Real IP
+                                                                            </label>
+                                                                        </div>
+                                                                        <div className="flex items-center space-x-2">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                id={`forwarded-for-${rule.id}`}
+                                                                                checked={rule.proxySettings?.setForwardedFor !== false}
+                                                                                onChange={(e) => updateProxySetting(block.id, rule.id, 'setForwardedFor', e.target.checked)}
+                                                                                className="h-4 w-4 rounded border-gray-300"
+                                                                            />
+                                                                            <label htmlFor={`forwarded-for-${rule.id}`} className="text-sm font-medium cursor-pointer">
+                                                                                Forwarded For
+                                                                            </label>
+                                                                        </div>
+                                                                        <div className="flex items-center space-x-2">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                id={`forwarded-proto-${rule.id}`}
+                                                                                checked={rule.proxySettings?.setForwardedProto !== false}
+                                                                                onChange={(e) => updateProxySetting(block.id, rule.id, 'setForwardedProto', e.target.checked)}
+                                                                                className="h-4 w-4 rounded border-gray-300"
+                                                                            />
+                                                                            <label htmlFor={`forwarded-proto-${rule.id}`} className="text-sm font-medium cursor-pointer">
+                                                                                Forwarded Proto
+                                                                            </label>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Custom Headers */}
+                                                                <div className="pt-4 space-y-3">
+                                                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Custom Headers</Label>
+
+                                                                    {rule.proxySettings?.customHeaders && rule.proxySettings.customHeaders.length > 0 && (
+                                                                        <div className="space-y-2">
+                                                                            {rule.proxySettings.customHeaders.map((header) => (
+                                                                                <div key={header.id} className="flex gap-2 items-start">
+                                                                                    <Input
+                                                                                        placeholder="Header Name"
+                                                                                        value={header.key}
+                                                                                        onChange={(e) => updateCustomHeader(block.id, rule.id, header.id, 'key', e.target.value)}
+                                                                                        className="h-9 bg-background flex-1"
+                                                                                    />
+                                                                                    <Input
+                                                                                        placeholder="Header Value"
+                                                                                        value={header.value}
+                                                                                        onChange={(e) => updateCustomHeader(block.id, rule.id, header.id, 'value', e.target.value)}
+                                                                                        className="h-9 bg-background flex-1"
+                                                                                    />
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        className="h-9 w-9 p-0 text-destructive hover:bg-destructive/10"
+                                                                                        onClick={() => removeCustomHeader(block.id, rule.id, header.id)}
+                                                                                    >
+                                                                                        <X className="h-4 w-4" />
+                                                                                    </Button>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => addCustomHeader(block.id, rule.id)}
+                                                                    >
+                                                                        <Plus className="h-3 w-3 mr-2" /> Add Header
+                                                                    </Button>
                                                                 </div>
                                                             </>
                                                         )}
 
+                                                        {/* Redirect Configuration */}
+                                                        {rule.action.startsWith('redirect-') && (
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Redirect Destination</Label>
+                                                                <Input
+                                                                    value={rule.redirectTarget}
+                                                                    onChange={(e) => updatePathRule(block.id, rule.id, 'redirectTarget', e.target.value)}
+                                                                    placeholder="https://example.com/target"
+                                                                    className="h-9 bg-background"
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
 
-                                                        {/* Advanced Proxy Settings */}
-                                                        <div className="space-y-3 pt-4">
-                                                            <Label className="text-sm font-medium">
-                                                                Advanced Proxy Settings
-                                                            </Label>
-
-                                                            {rule.proxySettings && (
-                                                                <div className="space-y-4 p-4 border rounded-md bg-muted/20">
-                                                                    <div className="grid grid-cols-2 gap-4">
-                                                                        <div className="flex items-center space-x-2">
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                id={`setHost-${rule.id}`}
-                                                                                checked={rule.proxySettings.setHost !== false}
-                                                                                onChange={(e) => updateProxySetting(rule.id, 'setHost', e.target.checked)}
-                                                                                className="h-4 w-4 rounded border-gray-300"
-                                                                            />
-                                                                            <Label htmlFor={`setHost-${rule.id}`} className="text-xs">Pass Host Header</Label>
-                                                                        </div>
-                                                                        <div className="flex items-center space-x-2">
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                id={`setRealIp-${rule.id}`}
-                                                                                checked={rule.proxySettings.setRealIp !== false}
-                                                                                onChange={(e) => updateProxySetting(rule.id, 'setRealIp', e.target.checked)}
-                                                                                className="h-4 w-4 rounded border-gray-300"
-                                                                            />
-                                                                            <Label htmlFor={`setRealIp-${rule.id}`} className="text-xs">Pass Real IP</Label>
-                                                                        </div>
-                                                                        <div className="flex items-center space-x-2">
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                id={`setForwardedFor-${rule.id}`}
-                                                                                checked={rule.proxySettings.setForwardedFor !== false}
-                                                                                onChange={(e) => updateProxySetting(rule.id, 'setForwardedFor', e.target.checked)}
-                                                                                className="h-4 w-4 rounded border-gray-300"
-                                                                            />
-                                                                            <Label htmlFor={`setForwardedFor-${rule.id}`} className="text-xs">Pass X-Forwarded-For</Label>
-                                                                        </div>
-                                                                        <div className="flex items-center space-x-2">
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                id={`setForwardedProto-${rule.id}`}
-                                                                                checked={rule.proxySettings.setForwardedProto !== false}
-                                                                                onChange={(e) => updateProxySetting(rule.id, 'setForwardedProto', e.target.checked)}
-                                                                                className="h-4 w-4 rounded border-gray-300"
-                                                                            />
-                                                                            <Label htmlFor={`setForwardedProto-${rule.id}`} className="text-xs">Pass X-Forwarded-Proto</Label>
-                                                                        </div>
-                                                                        <div className="flex items-center space-x-2">
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                id={`upgradeWebSocket-${rule.id}`}
-                                                                                checked={rule.proxySettings.upgradeWebSocket !== false}
-                                                                                onChange={(e) => updateProxySetting(rule.id, 'upgradeWebSocket', e.target.checked)}
-                                                                                className="h-4 w-4 rounded border-gray-300"
-                                                                            />
-                                                                            <Label htmlFor={`upgradeWebSocket-${rule.id}`} className="text-xs">Upgrade WebSocket</Label>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="space-y-2 pt-2 border-t">
-                                                                        <div className="flex items-center justify-between">
-                                                                            <Label className="text-xs font-medium">Custom Headers</Label>
-                                                                            <Button
-                                                                                type="button"
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                onClick={() => addCustomHeader(rule.id)}
-                                                                                className="h-6 text-xs"
-                                                                            >
-                                                                                <Plus className="h-3 w-3 mr-1" /> Add Header
-                                                                            </Button>
-                                                                        </div>
-                                                                        {rule.proxySettings.customHeaders && rule.proxySettings.customHeaders.length > 0 && (
-                                                                            <div className="space-y-2">
-                                                                                {rule.proxySettings.customHeaders.map((header) => (
-                                                                                    <div key={header.id} className="flex items-center gap-2">
-                                                                                        <Input
-                                                                                            placeholder="Header Name"
-                                                                                            value={header.key}
-                                                                                            onChange={(e) => updateCustomHeader(rule.id, header.id, 'key', e.target.value)}
-                                                                                            className="h-8 text-xs"
-                                                                                        />
-                                                                                        <Input
-                                                                                            placeholder="Value"
-                                                                                            value={header.value}
-                                                                                            onChange={(e) => updateCustomHeader(rule.id, header.id, 'value', e.target.value)}
-                                                                                            className="h-8 text-xs"
-                                                                                        />
-                                                                                        <Button
-                                                                                            type="button"
-                                                                                            variant="ghost"
-                                                                                            size="icon"
-                                                                                            className="h-8 w-8"
-                                                                                            onClick={() => removeCustomHeader(rule.id, header.id)}
-                                                                                        >
-                                                                                            <X className="h-3 w-3" />
-                                                                                        </Button>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            )}
+                                                    {rIdx !== 0 && (
+                                                        <div className="mt-6 flex justify-end">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="text-destructive hover:bg-destructive/10 h-8"
+                                                                onClick={() => removePathRule(block.id, rule.id)}
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete Path Rule
+                                                            </Button>
                                                         </div>
-                                                    </>
-                                                )}
-
-                                                <div className="bg-muted/50 p-3 rounded-md text-sm mt-4">
-                                                    <p className="text-muted-foreground">
-                                                        <strong>Route:</strong> {ruleUrl} → {
-                                                            rule.action === 'return-404'
-                                                                ? '404 Not Found'
-                                                                : rule.action.startsWith('redirect-')
-                                                                    ? `${rule.action.split('-')[1]} Redirect to ${rule.redirectTarget || '...'}${rule.passParameters ? '$request_uri' : ''}`
-                                                                    : (
-                                                                        rule.proxyTarget === 'local-port'
-                                                                            ? `localhost:${rule.localPort}`
-                                                                            : `${rule.serverIp || 'N/A'}:${rule.port || '3000'}`
-                                                                    )
-                                                        }
-                                                    </p>
+                                                    )}
                                                 </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                            )}
+                                        </div>
+                                    ))}
 
-
-                        {/* Add Path Rule Card */}
-                        <div
-                            onClick={() => addPathRule()}
-                            className="rounded-lg border-2 border-dashed bg-card text-card-foreground shadow-sm ml-10 p-6 cursor-pointer hover:border-primary/50 hover:bg-accent/50 transition-colors"
-                        >
-                            <div className="flex flex-col items-center justify-center gap-2">
-                                <div className="rounded-full bg-primary/10 p-3">
-                                    <Plus className="h-6 w-6 text-primary" />
+                                    <Button
+                                        onClick={() => addPathRule(block.id)}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="w-full mt-2 h-9 border border-dashed border-border/50 text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-all rounded-lg"
+                                    >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Add Path Rule
+                                    </Button>
                                 </div>
-                                <p className="text-sm font-medium">Add Path Rule</p>
-                                <p className="text-xs text-muted-foreground text-center">
-                                    Add a new routing rule for a specific path
-                                </p>
                             </div>
-                        </div>
+                        ))}
+
+                        <Button
+                            onClick={() => addDomainBlock()}
+                            variant="outline"
+                            size="default"
+                            className="w-full h-11 border-2 border-dashed border-border/50 text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-all rounded-lg font-semibold"
+                        >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add {domainMode === 'domain' ? 'Subdomain' : 'Server'} Block
+                        </Button>
+
                     </div>
                 </div>
             )
             }
 
-            {/* Step 4: Generate Configuration - Show if rules exist */}
-            {selectedServerId && (domainMode === 'none' || (domainMode === 'domain' && selectedDomainId)) && pathRules.length > 0 && (
-                <div className="space-y-4">
-                    <div className="px-1">
-                        <h3 className="text-xl font-semibold flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                                4
-                            </div>
-                            Generate Configuration
-                        </h3>
-                        <p className="text-sm text-muted-foreground ml-10">
-                            Preview the Nginx configuration file
-                        </p>
-                    </div>
-                    <div className="space-y-4 ml-10">
-                        <Button
-                            onClick={handleGeneratePreview}
-                            disabled={generating || saving}
-                            className="min-w-[240px]"
-                        >
-                            {generating || saving ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    {generating ? 'Generating...' : 'Saving...'}
-                                </>
-                            ) : (
-                                <>
-                                    <FileCode className="mr-2 h-4 w-4" />
-                                    Generate Configurations
-                                </>
-                            )}
-                        </Button>
+            {/* Step 4: Generate Configuration */}
+            {
+                selectedServerId && configName && (domainBlocks.length > 0) && (
+                    <div className="space-y-4">
+                        <div className="px-1">
+                            <h3 className="text-xl font-semibold flex items-center gap-2">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
+                                    4
+                                </div>
+                                Generate Configuration
+                            </h3>
+                            <p className="text-sm text-muted-foreground ml-10">
+                                Preview the Nginx configuration file
+                            </p>
+                        </div>
+                        <div className="space-y-4 ml-10">
+                            <Button
+                                onClick={handleGeneratePreview}
+                                disabled={generating}
+                                className="min-w-[240px]"
+                            >
+                                {generating ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Generating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <FileCode className="mr-2 h-4 w-4" />
+                                        Generate Configurations
+                                    </>
+                                )}
+                            </Button>
 
-                        {showPreview && generatedConfig && (
-                            <div className="space-y-2">
-                                <Label>Generated Configuration</Label>
-                                <Textarea
-                                    value={generatedConfig}
-                                    readOnly
-                                    className="font-mono text-xs h-64"
-                                />
-                            </div>
-                        )}
+                            {showPreview && generatedConfig && (
+                                <div className="space-y-2">
+                                    <Label>Generated Configuration</Label>
+                                    <Textarea
+                                        value={generatedConfig}
+                                        readOnly
+                                        className="font-mono text-xs h-64"
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Step 5: Deploy - Only show if config is generated */}
             {
-                selectedServerId && showPreview && generatedConfig && (
+                selectedServerId && configName && showPreview && generatedConfig && (
                     <div className="space-y-4">
                         <div className="px-1">
                             <h3 className="text-xl font-semibold flex items-center gap-2">
@@ -1362,110 +1541,50 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                 </p>
                             </div>
 
-                            <Button
-                                onClick={handleDeploy}
-                                disabled={deploying || saving || deleting}
-                                className="min-w-[240px]"
-                            >
-                                {deploying ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Deploying...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Rocket className="mr-2 h-4 w-4" />
-                                        Deploy Configuration
-                                    </>
+                            <div className="flex gap-4">
+                                <Button
+                                    onClick={handleDeploy}
+                                    disabled={deploying || deleting}
+                                    className="min-w-[240px]"
+                                >
+                                    {deploying ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Deploying...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Rocket className="mr-2 h-4 w-4" />
+                                            Deploy Configuration
+                                        </>
+                                    )}
+                                </Button>
+
+                                {configName && (
+                                    <Button
+                                        variant="destructive"
+                                        onClick={handleDelete}
+                                        disabled={deleting || deploying}
+                                        className="min-w-[240px]"
+                                    >
+                                        {deleting ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Deleting...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Delete from Server
+                                            </>
+                                        )}
+                                    </Button>
                                 )}
-                            </Button>
+                            </div>
                         </div>
                     </div>
                 )
             }
-
-            {/* Step 0: Configuration Management */}
-            <div className="space-y-4 pt-8">
-                <div className="px-1">
-                    <h3 className="text-xl font-semibold flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-secondary-foreground text-sm font-bold border">
-                            0
-                        </div>
-                        Save & Management
-                    </h3>
-                    <p className="text-sm text-muted-foreground ml-10">
-                        Save your configuration draft for later use
-                    </p>
-                </div>
-
-                <div className="space-y-2 ml-10 mb-4">
-                    <Label>Configuration Name {isNew && <span className="text-destructive">*</span>}</Label>
-                    {isNew ? (
-                        <>
-                            <Input
-                                id="config-name"
-                                value={configName}
-                                onChange={(e) => {
-                                    const value = e.target.value;
-                                    if (/^[a-z0-9]*$/.test(value)) {
-                                        setConfigName(value);
-                                    }
-                                }}
-                                placeholder="myconfig01"
-                                className="max-w-[400px]"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Only lowercase letters and numbers allowed (a-z, 0-9). No spaces or special characters.
-                            </p>
-                        </>
-                    ) : (
-                        <p className="font-mono text-sm font-medium">
-                            {configName}
-                        </p>
-                    )}
-                </div>
-
-                <div className="flex gap-3 ml-10">
-                    <Button
-                        onClick={handleSave}
-                        disabled={saving || deleting || deploying || !selectedServerId || !configName}
-                        className="min-w-[240px]"
-                    >
-                        {saving ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Saving...
-                            </>
-                        ) : (
-                            <>
-                                <Save className="mr-2 h-4 w-4" />
-                                Save Settings
-                            </>
-                        )}
-                    </Button>
-
-                    {!isNew && (
-                        <Button
-                            variant="destructive"
-                            onClick={handleDelete}
-                            disabled={deleting || saving || deploying}
-                            className="min-w-[240px]"
-                        >
-                            {deleting ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Deleting...
-                                </>
-                            ) : (
-                                <>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete Configuration
-                                </>
-                            )}
-                        </Button>
-                    )}
-                </div>
-            </div>
-        </div >
+        </div>
     );
 }

@@ -38,11 +38,30 @@ interface PathRule {
     passParameters?: boolean;
 }
 
+interface DomainRedirect {
+    id: string;
+    subdomain?: string;
+    domainId: string;
+    domainName: string;
+    redirectTarget: string;
+}
+
+interface DomainBlock {
+    id: string;
+    domainId: string;
+    domainName: string;
+    subdomain?: string;
+    domainPath?: string;
+    httpsRedirection: boolean;
+    sslEnabled: boolean;
+    pathRules: PathRule[];
+}
+
 interface NginxConfiguration {
     serverIp: string;
-    domainId?: string;
-    domainName?: string;
-    pathRules: PathRule[];
+    configName: string;
+    blocks: DomainBlock[];
+    domainRedirects?: DomainRedirect[];
     updatedAt?: any;
 }
 
@@ -170,180 +189,197 @@ export async function getServerPublicIp(serverId: string) {
  */
 export async function generateNginxConfigFromContext(config: NginxConfiguration) {
     try {
-        // Sort rules by path length (longest first) for proper Nginx matching
-        const sortedRules = config.pathRules && config.pathRules.length > 0
-            ? [...config.pathRules].sort((a, b) => b.path.length - a.path.length)
-            : [];
+        let nginxConfig = '';
 
-        let locationBlocks = '';
-
-        // Process all rules and their sub-paths
-        for (const rule of sortedRules) {
-            if (rule.action === 'return-404') {
-                // Return 404 for this path
-                locationBlocks += `
-    location ${rule.path} {
-        return 404;
-    }
-`;
-            } else if (rule.action === 'redirect-301' || rule.action === 'redirect-302' || rule.action === 'redirect-307' || rule.action === 'redirect-308') {
-                // Redirect for this path
-                let statusCode = '301';
-                if (rule.action === 'redirect-302') statusCode = '302';
-                else if (rule.action === 'redirect-307') statusCode = '307';
-                else if (rule.action === 'redirect-308') statusCode = '308';
-
-                let target = rule.redirectTarget || 'https://google.com';
-
-                // If passParameters is on, append $request_uri
-                // We need to be careful with trailing slashes in target
-                if (rule.passParameters) {
-                    // Remove trailing slash from target if it exists to avoid double slashes with $request_uri
-                    if (target.endsWith('/')) {
-                        target = target.slice(0, -1);
-                    }
-                    target = `${target}$request_uri`;
-                }
-
-                locationBlocks += `
-    location ${rule.path} {
-        return ${statusCode} ${target};
-    }
-`;
-            } else if (rule.action === 'proxy') {
-                // Determine proxy URL based on target type
-                let proxyUrl = '';
-
-                if (rule.proxyTarget === 'local-port' && rule.localPort) {
-                    // Proxy to localhost:port
-                    proxyUrl = `http://localhost:${rule.localPort}`;
-                } else if (rule.proxyTarget === 'remote-server' && rule.serverIp && rule.port) {
-                    // Proxy to remote server
-                    proxyUrl = `http://${rule.serverIp}:${rule.port}`;
-                } else {
-                    // Skip if proxy target is not properly configured
-                    continue;
-                }
-
-                // First, handle sub-paths (they need to come before the main path in nginx)
-                if (rule.subPaths && rule.subPaths.length > 0) {
-                    // Sort sub-paths by length (longest first)
-                    const sortedSubPaths = [...rule.subPaths].sort((a, b) => b.path.length - a.path.length);
-
-                    for (const subPath of sortedSubPaths) {
-                        const fullPath = `${rule.path}${subPath.path}`;
-
-                        if (subPath.action === 'serve-local') {
-                            // Serve locally - try files first, then return 404
-                            locationBlocks += `
-    location ${fullPath} {
-        try_files $uri $uri/ =404;
-    }
-`;
-                        } else if (subPath.action === 'return-404') {
-                            locationBlocks += `
-    location ${fullPath} {
-        return 404;
-    }
-`;
-                        }
-                    }
-                }
-
-                // Then handle the main path proxy
-                // Get proxy settings with defaults
-                const settings = rule.proxySettings || {};
-                const setHost = settings.setHost !== false; // default true
-                const setRealIp = settings.setRealIp !== false; // default true
-                const setForwardedFor = settings.setForwardedFor !== false; // default true
-                const setForwardedProto = settings.setForwardedProto !== false; // default true
-                const upgradeWebSocket = settings.upgradeWebSocket !== false; // default true
-
-                let proxyHeaders = '';
-
-                // WebSocket upgrade headers
-                if (upgradeWebSocket) {
-                    proxyHeaders += `
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_cache_bypass $http_upgrade;`;
-                }
-
-                // Standard proxy headers
-                if (setHost) {
-                    proxyHeaders += `
-        proxy_set_header Host $host;`;
-                }
-                if (setRealIp) {
-                    proxyHeaders += `
-        proxy_set_header X-Real-IP $remote_addr;`;
-                }
-                if (setForwardedFor) {
-                    proxyHeaders += `
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`;
-                }
-                if (setForwardedProto) {
-                    proxyHeaders += `
-        proxy_set_header X-Forwarded-Proto $scheme;`;
-                }
-
-                // Custom headers
-                if (settings.customHeaders && settings.customHeaders.length > 0) {
-                    for (const header of settings.customHeaders) {
-                        if (header.key && header.value) {
-                            proxyHeaders += `
-        proxy_set_header ${header.key} ${header.value};`;
-                        }
-                    }
-                }
-
-                locationBlocks += `
-    location ${rule.path} {
-        proxy_pass ${proxyUrl};${proxyHeaders}
-    }
+        // Process domain redirects (global)
+        if (config.domainRedirects && config.domainRedirects.length > 0) {
+            for (const redirect of config.domainRedirects) {
+                const redirectName = redirect.subdomain ? `${redirect.subdomain}.${redirect.domainName}` : redirect.domainName;
+                nginxConfig += `
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${redirectName};
+    return 301 ${redirect.redirectTarget};
+}
 `;
             }
         }
 
-        // Use domain name if available, otherwise use IP
-        const serverName = config.domainName || config.serverIp || 'your-server-ip';
+        // Process domain blocks
+        for (const block of config.blocks) {
+            // Sort rules by path length (longest first) for proper Nginx matching
+            const sortedRules = block.pathRules && block.pathRules.length > 0
+                ? [...block.pathRules].sort((a, b) => b.path.length - a.path.length)
+                : [];
 
-        // Check if root path is already defined in rules
-        const hasRootRule = sortedRules.some(rule => rule.path === '/');
+            let locationBlocks = '';
 
-        // Default location behavior
-        let defaultLocation = '';
-        if (sortedRules.length === 0) {
-            // If no paths are defined, serve everything locally
-            defaultLocation = `
-    # Default location - serve all paths
+            // Process all rules and their sub-paths
+            for (const rule of sortedRules) {
+                if (rule.action === 'return-404') {
+                    locationBlocks += `
+    location ${rule.path} {
+        return 404;
+    }
+`;
+                } else if (rule.action.startsWith('redirect-')) {
+                    let statusCode = rule.action.split('-')[1];
+                    let target = rule.redirectTarget || 'https://google.com';
+
+                    if (rule.passParameters) {
+                        if (target.endsWith('/')) target = target.slice(0, -1);
+                        target = `${target}$request_uri`;
+                    }
+
+                    locationBlocks += `
+    location ${rule.path} {
+        return ${statusCode} ${target};
+    }
+`;
+                } else if (rule.action === 'proxy') {
+                    let proxyUrl = '';
+                    if (rule.proxyTarget === 'local-port' && rule.localPort) {
+                        proxyUrl = `http://localhost:${rule.localPort}`;
+                    } else if (rule.proxyTarget === 'remote-server' && rule.serverIp && rule.port) {
+                        proxyUrl = `http://${rule.serverIp}:${rule.port}`;
+                    } else {
+                        continue;
+                    }
+
+                    if (rule.subPaths && rule.subPaths.length > 0) {
+                        const sortedSubPaths = [...rule.subPaths].sort((a, b) => b.path.length - a.path.length);
+                        for (const subPath of sortedSubPaths) {
+                            const fullPath = `${rule.path}${subPath.path}`;
+                            if (subPath.action === 'serve-local') {
+                                locationBlocks += `
+    location ${fullPath} {
+        try_files $uri $uri/ =404;
+    }
+`;
+                            } else if (subPath.action === 'return-404') {
+                                locationBlocks += `
+    location ${fullPath} {
+        return 404;
+    }
+`;
+                            }
+                        }
+                    }
+
+                    const settings = rule.proxySettings || {};
+                    const upgradeWebSocket = settings.upgradeWebSocket !== false;
+                    let proxyHeaders = '';
+
+                    if (upgradeWebSocket) {
+                        proxyHeaders += `
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_cache_bypass $http_upgrade;`;
+                    }
+
+                    if (settings.setHost !== false) proxyHeaders += `\n        proxy_set_header Host $host;`;
+                    if (settings.setRealIp !== false) proxyHeaders += `\n        proxy_set_header X-Real-IP $remote_addr;`;
+                    if (settings.setForwardedFor !== false) proxyHeaders += `\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`;
+                    if (settings.setForwardedProto !== false) proxyHeaders += `\n        proxy_set_header X-Forwarded-Proto $scheme;`;
+
+                    if (settings.customHeaders && settings.customHeaders.length > 0) {
+                        for (const header of settings.customHeaders) {
+                            if (header.key && header.value) {
+                                proxyHeaders += `\n        proxy_set_header ${header.key} ${header.value};`;
+                            }
+                        }
+                    }
+
+                    locationBlocks += `
+    location ${rule.path} {
+        proxy_pass ${proxyUrl};${proxyHeaders}
+    }
+`;
+                }
+            }
+
+            let serverName = block.domainName;
+            if (block.subdomain) {
+                if (block.subdomain === '@') {
+                    // Root domain only (no subdomain)
+                    serverName = block.domainName;
+                } else if (block.subdomain === '#') {
+                    // Catch-all wildcard for all other subdomains
+                    serverName = `*.${block.domainName}`;
+                } else {
+                    // Specific subdomain
+                    serverName = `${block.subdomain}.${block.domainName}`;
+                }
+            }
+
+            const hasRootRule = sortedRules.some(rule => rule.path === '/');
+            let defaultLocation = '';
+            if (sortedRules.length === 0) {
+                defaultLocation = `
     location / {
         try_files $uri $uri/ =404;
     }
 `;
-        } else if (!hasRootRule) {
-            // If paths are defined but root is not, return 404 for undefined paths
-            defaultLocation = `
-    # Default location - return 404 for undefined paths
+            } else if (!hasRootRule) {
+                defaultLocation = `
     location / {
         return 404;
     }
 `;
-        }
+            }
 
-        const nginxConfig = `server {
+            if (block.httpsRedirection && !block.sslEnabled) {
+                nginxConfig += `
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${serverName};
+    return 301 https://$host$request_uri;
+}
+`;
+            } else if (block.sslEnabled) {
+                const sslKeyPath = `/etc/nginx/ssl/${config.configName}.key`;
+                const sslCertPath = `/etc/nginx/ssl/${config.configName}.pem`;
+
+                nginxConfig += `
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${serverName};
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name ${serverName};
+
+    ssl_certificate ${sslCertPath};
+    ssl_certificate_key ${sslKeyPath};
+
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+${locationBlocks}${defaultLocation}}
+`;
+            } else {
+                nginxConfig += `
+server {
     listen 80;
     listen [::]:80;
     server_name ${serverName};
 
-    # Logging
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log;
+
 ${locationBlocks}${defaultLocation}}
 `;
+            }
+        }
 
-        return { success: true, config: nginxConfig };
+        return { success: true, config: nginxConfig.trim() };
     } catch (error: any) {
         console.error('Error generating nginx config from context:', error);
         return { success: false, error: error.message };
@@ -357,7 +393,7 @@ export async function generateNginxConfigFile(serverId: string) {
     try {
         const config = await getNginxConfiguration(serverId);
 
-        if (!config || !config.pathRules || config.pathRules.length === 0) {
+        if (!config || !config.blocks || config.blocks.length === 0) {
             return {
                 success: false,
                 error: 'No configuration found for this server'
@@ -531,6 +567,80 @@ export async function deployNginxConfig(serverId: string, configContent?: string
         };
     } catch (error: any) {
         console.error('Error deploying nginx config:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Generate SSL certificate using Certbot
+ */
+export async function generateSslCertificate(serverId: string, domain: string, configName: string) {
+    try {
+        // Get server details
+        const serverRef = doc(firestore, 'servers', serverId);
+        const serverDoc = await getDoc(serverRef);
+
+        if (!serverDoc.exists()) {
+            return { success: false, error: 'Server not found' };
+        }
+
+        const server = serverDoc.data();
+
+        if (!server.username || !server.privateKey) {
+            return {
+                success: false,
+                error: 'Server credentials not configured'
+            };
+        }
+
+        const sslDir = '/etc/nginx/ssl';
+        const certName = configName; // configName is required now
+        const keyPath = `${sslDir}/${certName}.key`;
+        const certPath = `${sslDir}/${certName}.pem`;
+
+        // 1. Ensure SSL directory exists
+        // 2. Ensure firewall allows HTTP/HTTPS
+        // 3. Install certbot
+        // 4. Create temporary self-signed certificate if missing (to fix Nginx "catch-22" where it won't start/test without the files)
+        // 5. Try to generate certificate
+        // 6. Copy with -L to follow symlinks to predictable paths
+        const command = `
+            sudo mkdir -p ${sslDir} && \
+            sudo ufw allow 80/tcp && sudo ufw allow 443/tcp && \
+            sudo apt-get update && sudo apt-get install -y certbot python3-certbot-nginx && \
+            ( [ -f ${certPath} ] || sudo openssl req -x509 -nodes -days 1 -newkey rsa:2048 -keyout ${keyPath} -out ${certPath} -subj "/CN=${domain}" ) && \
+            sudo systemctl start nginx || true && \
+            sudo certbot certonly --nginx -d ${domain} --cert-name ${domain} --non-interactive --agree-tos --register-unsafely-without-email --force-renewal && \
+            sudo cp -L /etc/letsencrypt/live/${domain}/privkey.pem ${keyPath} && \
+            sudo cp -L /etc/letsencrypt/live/${domain}/fullchain.pem ${certPath} && \
+            sudo chmod 600 ${keyPath} && \
+            sudo chmod 644 ${certPath}
+        `;
+
+        const result = await runCommandOnServer(
+            server.publicIp || server.privateIp,
+            server.username,
+            server.privateKey,
+            command,
+            undefined,
+            undefined,
+            false
+        );
+
+        if (result.code !== 0) {
+            return {
+                success: false,
+                error: `Certificate generation failed: ${result.stderr}`
+            };
+        }
+
+        return {
+            success: true,
+            message: `Certificate for ${domain} generated and saved as ${certName}.key/pem`,
+            output: result.stdout
+        };
+    } catch (error: any) {
+        console.error('Error generating SSL certificate:', error);
         return { success: false, error: error.message };
     }
 }
