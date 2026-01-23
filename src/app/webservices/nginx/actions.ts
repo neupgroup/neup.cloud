@@ -209,9 +209,36 @@ server {
         // Process domain blocks
         for (const block of config.blocks) {
             // Sort rules by path length (longest first) for proper Nginx matching
-            const sortedRules = block.pathRules && block.pathRules.length > 0
-                ? [...block.pathRules].sort((a, b) => b.path.length - a.path.length)
-                : [];
+            // And normalize paths (start with /, no trailing / unless root)
+            const normalizedRules = (block.pathRules || []).map(r => {
+                let p = r.path.trim();
+                // Ensure starts with /
+                if (!p.startsWith('/')) p = '/' + p;
+                // Remove trailing / if length > 1
+                if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+
+                // Normalize sub-paths
+                const subPaths = (r.subPaths || []).map(sp => {
+                    let spp = sp.path.trim();
+                    if (!spp.startsWith('/')) spp = '/' + spp;
+                    if (spp.length > 1 && spp.endsWith('/')) spp = spp.slice(0, -1);
+                    return { ...sp, path: spp };
+                });
+
+                // Normalize redirect target
+                let redirectTarget = r.redirectTarget;
+                if (redirectTarget) {
+                    redirectTarget = redirectTarget.trim();
+                    // If target is domain.com (no protocol, not relative), prepend https://
+                    if (!redirectTarget.startsWith('http://') && !redirectTarget.startsWith('https://') && !redirectTarget.startsWith('/')) {
+                        redirectTarget = `https://${redirectTarget}`;
+                    }
+                }
+
+                return { ...r, path: p, subPaths, redirectTarget };
+            });
+
+            const sortedRules = normalizedRules.sort((a, b) => b.path.length - a.path.length);
 
             let locationBlocks = '';
 
@@ -291,6 +318,16 @@ server {
                             }
                         }
                     }
+
+                    // For proxy pass, we must be careful with trailing slashes.
+                    // If we Normalized path to remove trailing slash (e.g. /api),
+                    // but proxyUrl is http://localhost:3000, 
+                    // Nginx: location /api { proxy_pass http://localhost:3000; }
+                    // Request: /api/foo -> http://localhost:3000/api/foo
+
+                    // If proper API proxy with slash stripping is needed, user needs rewrite usually or trailing slash on proxy_pass.
+                    // But standard proxy pass usually passes full path. 
+                    // We will keep standard behavior: path is just a matching prefix.
 
                     locationBlocks += `
     location ${rule.path} {
