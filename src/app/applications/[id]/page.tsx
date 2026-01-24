@@ -1,13 +1,27 @@
+
 import { notFound } from 'next/navigation';
 import { getApplication } from '../actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AppWindow, Code, FolderOpen, GitBranch, Network, User, Calendar } from 'lucide-react';
+import { AppWindow, Code, FolderOpen, GitBranch, Network, User, Calendar, Activity, PlayCircle, StopCircle, HardDrive } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-
 import { PageTitleBack } from '@/components/page-header';
-import { RepoControls } from '../repo-controls';
+import { ApplicationActions } from '../application-actions';
+import { GitHubSection } from './github-section';
+import { SystemSection } from './system-section';
+import { LifecycleSection } from './lifecycle-section';
+import { ActionsSection } from './actions-section';
+import { LogsSection } from './logs-section';
+import { StatusDashboard } from './status-dashboard';
+import { Separator } from '@/components/ui/separator';
+
+import * as NextJsStart from '@/core/next-js/start';
+import * as NextJsStop from '@/core/next-js/stop';
+import * as NodeJsStart from '@/core/node/start';
+import * as NodeJsStop from '@/core/node/stop';
+import * as PythonStart from '@/core/python/start';
+import * as PythonStop from '@/core/python/stop';
 
 export default async function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -17,147 +31,84 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
         notFound();
     }
 
+    // Determine Status (Simplified Mock for UI structure as per request)
+    // "a card for now static, a card to see if the site is active or not."
+    // In real app, we would ping the server/status file.
+    const appLanguage = application.language === 'next' ? 'Next.js' :
+        application.language === 'node' ? 'Node.js' :
+            application.language === 'python' ? 'Python' : 'Custom';
+
+    // Inject Default Commands if missing
+    if (!application.commands) {
+        application.commands = {};
+    }
+
+    const setIfMissing = (key: string, value: string) => {
+        if (!application.commands[key] && !application.commands[`lifecycle.${key}`]) {
+            application.commands[key] = value;
+        }
+    };
+
+    // Generic Restart (PM2)
+    setIfMissing('restart', `pm2 restart "${application.name}"`);
+
+    if (application.language === 'next') {
+        setIfMissing('start', NextJsStart.getStartCommand(application.name, application.location, application.networkAccess?.map(Number) || []));
+        setIfMissing('stop', NextJsStop.getStopCommand(application.name));
+    } else if (application.language === 'node') {
+        const entry = application.information?.entryFile || 'index.js';
+        setIfMissing('start', NodeJsStart.getStartCommand(application.name, application.location, entry, application.networkAccess?.map(Number) || []));
+        setIfMissing('stop', NodeJsStop.getStopCommand(application.name));
+    } else if (application.language === 'python') {
+        const entry = application.information?.entryFile || 'main.py';
+        setIfMissing('start', PythonStart.getStartCommand(application.name, application.location, entry, application.networkAccess?.map(Number) || []));
+        setIfMissing('stop', PythonStop.getStopCommand(application.name));
+    }
+
     return (
-        <div className="flex flex-col gap-6 max-w-5xl">
-            <PageTitleBack
-                title={
-                    <span className="flex items-center gap-3">
-                        <AppWindow className="h-8 w-8 text-muted-foreground" />
-                        {application.name}
-                    </span>
-                }
-                description="Application details and management"
-                backHref="/applications"
-            />
+        <div className="flex flex-col gap-8 max-w-5xl animate-in fade-in duration-500">
+            {/* Header Section */}
+            <div className="flex flex-col gap-2">
+                <PageTitleBack
+                    title={
+                        <span className="flex items-center gap-3">
+                            <AppWindow className="h-8 w-8 text-primary" />
+                            {application.name}
+                        </span>
+                    }
+                    description="Application details and management"
+                    backHref="/applications"
+                >
+                    <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="text-sm py-1 px-3 border-primary/20 bg-primary/5">
+                            {appLanguage}
+                        </Badge>
+                        <ApplicationActions applicationId={application.id} />
+                    </div>
+                </PageTitleBack>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Code className="h-5 w-5" />
-                            Basic Information
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div>
-                            <p className="text-sm text-muted-foreground">Language/Framework</p>
-                            <Badge variant="outline" className="mt-1">
-                                {application.language}
-                            </Badge>
-                        </div>
-                        <div>
-                            <p className="text-sm text-muted-foreground">Location</p>
-                            <p className="font-mono text-sm mt-1 bg-secondary px-2 py-1 rounded">
-                                {application.location}
-                            </p>
-                        </div>
-                        {application.repository && (
-                            <div>
-                                <p className="text-sm text-muted-foreground">Repository</p>
-                                <Link
-                                    href={application.repository}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-sm text-primary hover:underline mt-1 flex items-center gap-2"
-                                >
-                                    <GitBranch className="h-4 w-4" />
-                                    {application.repository}
-                                </Link>
+            {/* Status Dashboard */}
+            <StatusDashboard applicationId={application.id} />
+
+            {/* Lifecycle Section (Build, Start, Stop, Restart) - Moved up */}
+            <LifecycleSection application={application} />
+
+            {/* Actions Section (Custom Commands) - Moved up */}
+            <ActionsSection application={application} />
+
+            {/* GitHub / Repository Section */}
+            {application.repository && (
+                <GitHubSection application={application} />
+            )}
+
+            {/* Logs Section */}
+            <LogsSection application={application} />
+
+            {/* System Info Section */}
+            <SystemSection application={application} />
 
 
-                                {application.repository && application.repository.includes('github.com') && (
-                                    <div className="mt-3">
-                                        <p className="text-sm text-muted-foreground mb-1">Actions</p>
-                                        <RepoControls applicationId={application.id} />
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        <div>
-                            <p className="text-sm text-muted-foreground">Owner</p>
-                            <p className="text-sm mt-1 flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                {application.owner}
-                            </p>
-                        </div>
-                    </CardContent>
-                </Card >
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Network className="h-5 w-5" />
-                            Network Access
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {application.networkAccess && application.networkAccess.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                                {application.networkAccess.map((port: string) => (
-                                    <Badge key={port} variant="secondary">
-                                        {port}
-                                    </Badge>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">No network access configured</p>
-                        )}
-                    </CardContent>
-                </Card>
-            </div >
-
-            {
-                application.commands && Object.keys(application.commands).length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Commands</CardTitle>
-                            <CardDescription>Configured commands for this application</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2">
-                                {Object.entries(application.commands).map(([name, command]: [string, any]) => (
-                                    <div
-                                        key={name}
-                                        className="flex items-start justify-between bg-secondary p-3 rounded-md"
-                                    >
-                                        <div className="flex-1">
-                                            <p className="font-medium text-sm">{name}</p>
-                                            <p className="text-sm text-muted-foreground font-mono mt-1">
-                                                {command}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-                )
-            }
-
-
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Calendar className="h-5 w-5" />
-                        Timestamps
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    {application.createdAt && (
-                        <div>
-                            <p className="text-sm text-muted-foreground">Created</p>
-                            <p className="text-sm">{new Date(application.createdAt).toLocaleString()}</p>
-                        </div>
-                    )}
-                    {application.updatedAt && (
-                        <div>
-                            <p className="text-sm text-muted-foreground">Last Updated</p>
-                            <p className="text-sm">{new Date(application.updatedAt).toLocaleString()}</p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
         </div>
     );
 }

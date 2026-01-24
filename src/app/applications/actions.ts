@@ -427,13 +427,38 @@ export async function performGitOperation(
     const serverId = cookieStore.get('selected_server')?.value;
     if (!serverId) throw new Error("No server selected");
 
-    const repoUrl = app.repository;
+    let repoUrl = app.repository;
     if (!repoUrl) throw new Error("No repository configured");
 
     const location = app.location;
     const repoInfo = app.information?.repoInfo || {};
     const isPrivate = repoInfo.isPrivate;
     const privateKey = repoInfo.accessKey;
+
+    // Helper to convert HTTPS to SSH if needed
+    // git clone over SSH requires git@... URL, even if user provided https://...
+    if (isPrivate && privateKey && (repoUrl.startsWith('https://') || repoUrl.startsWith('http://'))) {
+        try {
+            // Check for common providers
+            if (repoUrl.includes('github.com')) {
+                // https://github.com/user/repo => git@github.com:user/repo.git
+                const url = new URL(repoUrl);
+                const pathName = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+                repoUrl = `git@github.com:${pathName}`;
+            } else if (repoUrl.includes('gitlab.com')) {
+                // https://gitlab.com/user/repo => git@gitlab.com:user/repo.git
+                const url = new URL(repoUrl);
+                const pathName = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+                repoUrl = `git@gitlab.com:${pathName}`;
+            }
+            // Ensure it ends with .git? usually not strictly required for github/gitlab SSH but good practice
+            if (!repoUrl.endsWith('.git')) {
+                repoUrl += '.git';
+            }
+        } catch (e) {
+            console.warn("Failed to convert HTTPS URL to SSH, proceeding with original:", e);
+        }
+    }
 
     let command = '';
     let description = '';

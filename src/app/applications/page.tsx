@@ -52,9 +52,7 @@ export default function AppsPage() {
     fetchApplications();
   }, []);
 
-  const handleApplicationDeleted = (id: string) => {
-    setApplications(prev => prev.filter(app => app.id !== id));
-  };
+
 
   return (
     <div className="flex flex-col gap-6">
@@ -86,7 +84,7 @@ export default function AppsPage() {
           <Card className="text-center p-6 text-destructive">Error loading applications: {error.message}</Card>
         ) : (
           applications.map((app) => (
-            <ApplicationCard key={app.id} application={app} onApplicationDeleted={handleApplicationDeleted} />
+            <ApplicationCard key={app.id} application={app} />
           ))
         )}
         {!isLoading && !error && applications.length === 0 && (
