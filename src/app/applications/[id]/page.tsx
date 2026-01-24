@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { AppWindow, Code, FolderOpen, GitBranch, Network, User, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+
 import { PageTitleBack } from '@/components/page-header';
+import { RepoControls } from '../repo-controls';
 
 export default async function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -61,6 +63,14 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
                                     <GitBranch className="h-4 w-4" />
                                     {application.repository}
                                 </Link>
+
+
+                                {application.repository && application.repository.includes('github.com') && (
+                                    <div className="mt-3">
+                                        <p className="text-sm text-muted-foreground mb-1">Actions</p>
+                                        <RepoControls applicationId={application.id} />
+                                    </div>
+                                )}
                             </div>
                         )}
                         <div>
@@ -71,7 +81,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
                             </p>
                         </div>
                     </CardContent>
-                </Card>
+                </Card >
 
                 <Card>
                     <CardHeader>
@@ -94,46 +104,37 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
                         )}
                     </CardContent>
                 </Card>
-            </div>
+            </div >
 
-            {application.commands && Object.keys(application.commands).length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Commands</CardTitle>
-                        <CardDescription>Configured commands for this application</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2">
-                            {Object.entries(application.commands).map(([name, command]: [string, any]) => (
-                                <div
-                                    key={name}
-                                    className="flex items-start justify-between bg-secondary p-3 rounded-md"
-                                >
-                                    <div className="flex-1">
-                                        <p className="font-medium text-sm">{name}</p>
-                                        <p className="text-sm text-muted-foreground font-mono mt-1">
-                                            {command}
-                                        </p>
+            {
+                application.commands && Object.keys(application.commands).length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Commands</CardTitle>
+                            <CardDescription>Configured commands for this application</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2">
+                                {Object.entries(application.commands).map(([name, command]: [string, any]) => (
+                                    <div
+                                        key={name}
+                                        className="flex items-start justify-between bg-secondary p-3 rounded-md"
+                                    >
+                                        <div className="flex-1">
+                                            <p className="font-medium text-sm">{name}</p>
+                                            <p className="text-sm text-muted-foreground font-mono mt-1">
+                                                {command}
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )
+            }
 
-            {application.information && Object.keys(application.information).length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Additional Information</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <pre className="bg-secondary p-4 rounded-md overflow-x-auto text-sm">
-                            {JSON.stringify(application.information, null, 2)}
-                        </pre>
-                    </CardContent>
-                </Card>
-            )}
+
 
             <Card>
                 <CardHeader>

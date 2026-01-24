@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -8,227 +7,429 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { PageTitleBack } from '@/components/page-header';
-import { createApplication } from '@/app/applications/actions';
+import { createApplication, generateRepositoryKeys } from '@/app/applications/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-
-import { Plus, Trash } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Plus, Trash, X, Copy, ExternalLink, Key } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+const FRAMEWORKS = [
+  {
+    id: 'next', name: 'Next.js', defaultCommands: [
+      { name: 'start', description: 'Start the application', value: 'npm start' },
+      { name: 'build', description: 'Build the application', value: 'npm run build' }
+    ]
+  },
+  {
+    id: 'node', name: 'Node.js', defaultCommands: [
+      { name: 'start', description: 'Start the application', value: 'node index.js' }
+    ]
+  },
+  {
+    id: 'python', name: 'Python', defaultCommands: [
+      { name: 'start', description: 'Start the application', value: 'python main.py' }
+    ]
+  },
+  { id: 'custom', name: 'Custom', defaultCommands: [] },
+];
+
+interface CommandItem {
+  name: string;
+  description: string;
+  value: string; // This will be the raw value in state, encoded on save
+}
 
 export default function CreateApplicationPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  const [name, setName] = useState('');
-  const [repo, setRepo] = useState('');
-  const [language, setLanguage] = useState('');
-  const [applicationLocation, setApplicationLocation] = useState('');
-  const [startCommand, setStartCommand] = useState('');
-  const [stopCommand, setStopCommand] = useState('');
-  const [restartCommand, setRestartCommand] = useState('');
-  const [allowNetwork, setAllowNetwork] = useState(false);
-  const [allowedPorts, setAllowedPorts] = useState('');
+  // Application Basics
+  const [appName, setAppName] = useState('');
+  const [appLocation, setAppLocation] = useState('');
 
-  // Custom Commands State
-  const [customCommands, setCustomCommands] = useState<{ name: string, command: string }[]>([]);
+  // Repository Info
+  const [repoLocation, setRepoLocation] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [accessKey, setAccessKey] = useState('');
+  const [username, setUsername] = useState('');
+  const [generatedPublicKey, setGeneratedPublicKey] = useState<string | null>(null);
+  const [isGeneratingKey, setIsGeneratingKey] = useState(false);
+
+  // Language/Framework
+  const [selectedFramework, setSelectedFramework] = useState('');
+
+  // Network Info
+  const [requiresNetwork, setRequiresNetwork] = useState(false);
+  const [preferredPorts, setPreferredPorts] = useState<number[]>([]);
+  const [portInput, setPortInput] = useState('');
+
+  // Commands
+  const [commands, setCommands] = useState<CommandItem[]>([]);
+
+  // Custom Command Input State
   const [newCmdName, setNewCmdName] = useState('');
-  const [newCmdContent, setNewCmdContent] = useState('');
+  const [newCmdDesc, setNewCmdDesc] = useState('');
+  const [newCmdValue, setNewCmdValue] = useState('');
+
+  const handleFrameworkChange = (val: string) => {
+    setSelectedFramework(val);
+    const fw = FRAMEWORKS.find(f => f.id === val);
+    if (fw) {
+      // Load default commands
+      setCommands([...fw.defaultCommands]);
+    } else {
+      setCommands([]);
+    }
+  };
+
+  const handlePortKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === ',' || e.key === 'Enter') {
+      e.preventDefault();
+      const port = parseInt(portInput.trim());
+      if (!isNaN(port) && port > 0 && port < 65536) {
+        if (!preferredPorts.includes(port)) {
+          setPreferredPorts([...preferredPorts, port]);
+        }
+      }
+      setPortInput('');
+    }
+  };
+
+  const removePort = (portToRemove: number) => {
+    setPreferredPorts(preferredPorts.filter(p => p !== portToRemove));
+  };
 
   const addCustomCommand = () => {
-    if (!newCmdName.trim() || !newCmdContent.trim()) {
-      toast({ title: "Validation Error", description: "Command Name and Command content are required.", variant: "destructive" });
+    if (!newCmdName.trim() || !newCmdValue.trim()) {
+      toast({ title: "Validation Error", description: "Name and Command content are required.", variant: "destructive" });
       return;
     }
-    setCustomCommands([...customCommands, { name: newCmdName, command: newCmdContent }]);
+    setCommands([...commands, { name: newCmdName, description: newCmdDesc, value: newCmdValue }]);
     setNewCmdName('');
-    setNewCmdContent('');
+    setNewCmdDesc('');
+    setNewCmdValue('');
   };
 
-  const removeCustomCommand = (index: number) => {
-    setCustomCommands(customCommands.filter((_, i) => i !== index));
+  const removeCommand = (index: number) => {
+    setCommands(commands.filter((_, i) => i !== index));
   };
 
-  const handleCreateApplication = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleGenerateKey = async () => {
+    setIsGeneratingKey(true);
+    try {
+      const keys = await generateRepositoryKeys();
+      setAccessKey(keys.privateKey);
+      setGeneratedPublicKey(keys.publicKey);
+      toast({ title: "Key Generated", description: "New access key pair generated." });
+    } catch (e) {
+      console.error(e);
+      toast({ variant: "destructive", title: "Error", description: "Failed to generate key." });
+    } finally {
+      setIsGeneratingKey(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ description: "Public key copied to clipboard." });
+  };
+
+  // Improved submit handler to use the returned ID
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
 
-    // Repo is now optional. Language is required.
-    if (!name || !applicationLocation || !language || !startCommand) {
-      toast({
-        variant: "destructive",
-        title: "Missing fields",
-        description: "Please fill out Name, Location, Language, and Start Command.",
-      });
+    if (!appName || !appLocation || !selectedFramework) {
+      toast({ variant: "destructive", title: "Missing fields", description: "Name, Location and Framework are required." });
       setIsLoading(false);
       return;
     }
 
-    const ports = allowedPorts.split(',').map(p => parseInt(p.trim())).filter(p => !isNaN(p));
-
-    const applicationData = {
-      name,
-      repo, // Optional
-      language,
-      status: 'Building',
-      applicationLocation,
-      commands: {
-        start: startCommand,
-        stop: stopCommand,
-        restart: restartCommand,
-      },
-      customCommands,
-      allowNetwork,
-      allowedPorts: ports,
-      url: ''
+    // Construct Reponse Objects
+    const repoInfo = {
+      location: repoLocation,
+      isPrivate,
+      accessKey: isPrivate ? accessKey : undefined,
+      username: isPrivate ? username : undefined,
     };
 
+    const networkInfo = {
+      required: requiresNetwork,
+      preferredPort: preferredPorts,
+    };
+
+    const formattedCommands = commands.map(cmd => {
+      let name = cmd.name;
+      if (selectedFramework === 'custom') {
+        if (['start', 'stop', 'restart', 'build'].includes(cmd.name.toLowerCase())) {
+          name = `lifecycle.${cmd.name.toLowerCase()}`;
+        }
+      }
+      return {
+        name: name,
+        description: cmd.description,
+        value: btoa(cmd.value), // client side base64
+      };
+    });
+
+    const simpleCommands: Record<string, string> = {};
+    commands.forEach(cmd => {
+      let key = cmd.name;
+      // Logic from prompt: "if the command is part of the lifecycle command, then we save with the name lifecycle.name"
+      // "but if the app is from framework or language defined and not custom, the lifecycle. will not work."
+      // So ONLY for custom app we prefix? 
+      // Or if the user overrides them? 
+      // I will follow: if custom framework, prefix lifecycle commands.
+      if (selectedFramework === 'custom') {
+        if (['start', 'stop', 'restart', 'build'].includes(cmd.name.toLowerCase())) {
+          key = `lifecycle.${cmd.name.toLowerCase()}`;
+        }
+      }
+      simpleCommands[key] = cmd.value;
+    });
+
     try {
-      await createApplication(applicationData);
-      toast({
-        title: 'Deployment Started',
-        description: 'Your application is being created.',
+      const appId = await createApplication({
+        name: appName,
+        location: appLocation,
+        language: selectedFramework,
+        repository: repoLocation,
+        networkAccess: preferredPorts.map(p => p.toString()),
+        commands: simpleCommands,
+        information: {
+          repoInfo,
+          networkInfo,
+          commandsList: formattedCommands,
+        },
+        owner: 'system',
       });
-      router.push('/applications');
-    } catch (e) {
-      console.error('Error adding document: ', e);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not execute deployment.',
-      });
+
+      router.push(`/applications/${appId}`);
+      toast({ title: "Application Created", description: "Redirecting to application details..." });
+    } catch (err) {
+      console.error(err);
+      toast({ variant: "destructive", title: "Error", description: "Could not create application." });
     } finally {
       setIsLoading(false);
     }
   };
 
+
   return (
-    <div className="w-full pb-10">
-      <PageTitleBack title="Deploy Application" backHref="/applications" />
+    <div className="container max-w-3xl py-8 space-y-8 animate-in fade-in duration-500">
+      <PageTitleBack title="Deploy New Application" backHref="/applications" />
 
-      <form onSubmit={handleCreateApplication} className="space-y-6 mt-6">
+      <form onSubmit={onSubmit} className="space-y-8">
 
-        {/* Initial Info */}
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="name">Application Name</Label>
-            <Input id="name" placeholder="my-app" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="location">App Location</Label>
-            <Input id="location" placeholder="/var/www/app" value={applicationLocation} onChange={(e) => setApplicationLocation(e.target.value)} />
-          </div>
-
-          <div className="grid gap-2">
-            <Label>Language / Framework</Label>
-            <div className="flex flex-wrap gap-2">
-              {['next', 'custom'].map((lang) => (
-                <Button
-                  key={lang}
-                  type="button"
-                  // If selected, use default (primary) variant. If not, use outline.
-                  variant={language === lang ? "default" : "outline"}
-                  onClick={() => setLanguage(lang)}
-                  className="capitalize min-w-[100px]"
-                >
-                  {lang === 'next' ? 'Next.js' : 'Custom'}
-                </Button>
-              ))}
+        {/* Application Basics */}
+        <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>Application Basics</CardTitle>
+            <CardDescription>Essential details about your application.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="appName">Application Name</Label>
+              <Input id="appName" placeholder="e.g. My Awesome App" value={appName} onChange={e => setAppName(e.target.value)} />
             </div>
-          </div>
-        </div>
+            <div className="grid gap-2">
+              <Label htmlFor="appLocation">Location in Server</Label>
+              <Input id="appLocation" placeholder="/var/www/my-app" value={appLocation} onChange={e => setAppLocation(e.target.value)} />
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Extended Options - Only shown if language is selected */}
-        {language && (
-          <div className="animate-in fade-in slide-in-from-top-4 duration-500 space-y-6">
-
-            <Separator className="my-6" />
-
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="repo">Repository URL (Optional)</Label>
-                <Input id="repo" placeholder="https://github.com/user/repo.git" value={repo} onChange={(e) => setRepo(e.target.value)} />
-              </div>
-
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center space-x-2">
-                  <Switch id="allow-network" checked={allowNetwork} onCheckedChange={setAllowNetwork} />
-                  <Label htmlFor="allow-network">Allow Network Access</Label>
-                </div>
-                {allowNetwork && (
-                  <Input
-                    id="allowed-ports"
-                    placeholder="Ports (e.g. 80, 443)"
-                    value={allowedPorts}
-                    onChange={e => setAllowedPorts(e.target.value)}
-                  />
-                )}
-              </div>
+        {/* Repository Information */}
+        <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>Repository Information</CardTitle>
+            <CardDescription>Connect to your source code.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="repoLocation">Repository URL (Optional)</Label>
+              <Input id="repoLocation" placeholder="https://github.com/user/repo" value={repoLocation} onChange={e => setRepoLocation(e.target.value)} />
             </div>
 
-            <Separator className="my-6" />
-
-            {/* Lifecycle Commands */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold uppercase text-muted-foreground">Lifecycle Commands</h3>
-
-              <div className="grid gap-2">
-                <Label htmlFor="start">Start Command</Label>
-                <Textarea id="start" placeholder="npm start" value={startCommand} onChange={e => setStartCommand(e.target.value)} rows={2} className="font-mono text-sm" />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="stop">Stop Command (Optional)</Label>
-                <Textarea id="stop" placeholder="npm stop" value={stopCommand} onChange={e => setStopCommand(e.target.value)} rows={2} className="font-mono text-sm" />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="restart">Restart Command (Optional)</Label>
-                <Textarea id="restart" placeholder="npm restart" value={restartCommand} onChange={e => setRestartCommand(e.target.value)} rows={2} className="font-mono text-sm" />
-              </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox id="isPrivate" checked={isPrivate} onCheckedChange={(c) => setIsPrivate(!!c)} />
+              <Label htmlFor="isPrivate">Private Repository</Label>
             </div>
 
-            <Separator className="my-6" />
-
-            {/* Custom Commands */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold uppercase text-muted-foreground">Custom Commands</h3>
-
-              <div className="space-y-3">
-                {customCommands.map((cmd, index) => (
-                  <div key={index} className="flex flex-col gap-1 p-3 border rounded-md bg-muted/20 relative">
-                    <div className="font-medium text-sm pr-8">{cmd.name}</div>
-                    <div className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">{cmd.command}</div>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => removeCustomCommand(index)} className="absolute top-2 right-2 h-6 w-6 text-destructive">
-                      <Trash className="h-3 w-3" />
+            {isPrivate && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="accessKey">
+                    Access Key / Private Key
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input id="accessKey" type="password" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" value={accessKey} onChange={e => setAccessKey(e.target.value)} />
+                    <Button type="button" variant="outline" size="icon" onClick={handleGenerateKey} disabled={isGeneratingKey} title="Generate new key pair">
+                      <Key className="h-4 w-4" />
                     </Button>
+                  </div>
+                  {generatedPublicKey && (
+                    <div className="mt-2 p-3 bg-muted rounded-md text-xs space-y-2 border border-primary/20 animate-in fade-in zoom-in-95">
+                      <div className="flex items-center justify-between font-medium">
+                        <span className="text-primary flex items-center gap-1.5">
+                          <Key className="h-3 w-3" /> Public Key (Deploy Key)
+                        </span>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyToClipboard(generatedPublicKey)}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <div className="font-mono break-all text-muted-foreground bg-background p-2 rounded border">
+                        {generatedPublicKey}
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <a href="https://github.com/settings/ssh/new" target="_blank" rel="noreferrer" className="text-blue-500 hover:underline flex items-center gap-1">
+                          GitHub SSH Settings <ExternalLink className="h-3 w-3" />
+                        </a>
+                        <span className="text-muted-foreground hidden sm:inline">or</span>
+                        <a href="https://gitlab.com/-/profile/keys" target="_blank" rel="noreferrer" className="text-orange-500 hover:underline flex items-center gap-1">
+                          GitLab Keys <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="username">Username (Optional)</Label>
+                  <Input id="username" placeholder="git-user" value={username} onChange={e => setUsername(e.target.value)} />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Language / Framework */}
+        <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>Framework & Runtime</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Select value={selectedFramework} onValueChange={handleFrameworkChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a framework" />
+              </SelectTrigger>
+              <SelectContent>
+                {FRAMEWORKS.map(fw => (
+                  <SelectItem key={fw.id} value={fw.id}>{fw.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        {/* Network Information */}
+        <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>Network Settings</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Switch id="requiresNetwork" checked={requiresNetwork} onCheckedChange={setRequiresNetwork} />
+              <Label htmlFor="requiresNetwork">Requires Network Access</Label>
+            </div>
+
+            {requiresNetwork && (
+              <div className="grid gap-2 animate-in slide-in-from-top-2">
+                <Label htmlFor="ports">Preferred Ports</Label>
+                <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-background focus-within:ring-2 focus-within:ring-ring">
+                  {preferredPorts.map(port => (
+                    <Badge key={port} variant="secondary" className="gap-1 pr-1">
+                      {port}
+                      <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => removePort(port)} />
+                    </Badge>
+                  ))}
+                  <input
+                    className="flex-1 bg-transparent border-none outline-none text-sm min-w-[50px]"
+                    placeholder={preferredPorts.length === 0 ? "Type port & press comma..." : ""}
+                    value={portInput}
+                    onChange={e => setPortInput(e.target.value)}
+                    onKeyDown={handlePortKeyDown}
+                  />
+                </div>
+                <p className="text-[0.8rem] text-muted-foreground">Press comma (,) or Enter to add a port.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Commands */}
+        <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle>Commands</CardTitle>
+            <CardDescription>Configure existing or add custom commands.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Existing/Default Commands List */}
+            {commands.length > 0 && (
+              <div className="space-y-3">
+                {commands.map((cmd, idx) => (
+                  <div key={idx} className="flex flex-col gap-2 p-3 rounded-lg border bg-muted/30 relative group hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <div className="font-semibold text-sm flex items-center gap-2">
+                          {cmd.name}
+                          {cmd.description && <span className="text-xs font-normal text-muted-foreground">- {cmd.description}</span>}
+                        </div>
+                        <div className="text-xs font-mono bg-background px-2 py-1 rounded border overflow-x-auto max-w-[300px] md:max-w-md lg:max-w-lg">
+                          {cmd.value}
+                        </div>
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeCommand(idx)}>
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
+            )}
 
-              <div className="space-y-3 pt-4">
+            <Separator />
+
+            {/* Add New Command */}
+            <div className="grid gap-4 p-4 border rounded-lg bg-background/50">
+              <h4 className="font-medium text-sm">Add Custom Command</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="cmdName" className="text-xs">New Command Name</Label>
-                  <Input id="cmdName" value={newCmdName} onChange={e => setNewCmdName(e.target.value)} placeholder="e.g. Build" className="bg-background" />
+                  <Label className="text-xs">Command Name</Label>
+                  <Input value={newCmdName} onChange={e => setNewCmdName(e.target.value.replace(/[^a-zA-Z0-9-]/g, '-'))} placeholder="e.g. migrate" className="h-9" />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="cmdContent" className="text-xs">Command Script</Label>
-                  <Textarea id="cmdContent" value={newCmdContent} onChange={e => setNewCmdContent(e.target.value)} placeholder="npm run build" className="font-mono text-sm bg-background" rows={3} />
+                  <Label className="text-xs">Description</Label>
+                  <Input value={newCmdDesc} onChange={e => setNewCmdDesc(e.target.value)} placeholder="Optional description" className="h-9" />
                 </div>
-                <Button type="button" onClick={addCustomCommand} variant="secondary" size="sm" className="w-auto self-start">
-                  <Plus className="h-4 w-4 mr-2" /> Add Command
-                </Button>
               </div>
-            </div>
-
-            <div className="pt-6">
-              <Button type="submit" disabled={isLoading} className="min-w-[150px]">
-                {isLoading ? 'Deploying...' : 'Deploy Application'}
+              <div className="grid gap-2">
+                <Label className="text-xs">Command Script</Label>
+                <Textarea value={newCmdValue} onChange={e => setNewCmdValue(e.target.value)} placeholder="npm run migrate" className="font-mono text-sm min-h-[80px]" />
+              </div>
+              <Button type="button" onClick={addCustomCommand} variant="secondary" size="sm" className="w-full md:w-auto self-end">
+                <Plus className="h-4 w-4 mr-2" /> Add Command
               </Button>
             </div>
-          </div>
-        )}
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end pt-4">
+          <Button type="submit" size="lg" disabled={isLoading} className="w-full md:w-auto min-w-[200px]">
+            {isLoading ? 'Deploying...' : 'Deploy Application'}
+          </Button>
+        </div>
+
       </form>
     </div>
   );

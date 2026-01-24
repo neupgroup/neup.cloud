@@ -1,3 +1,4 @@
+
 'use server';
 
 import { addDoc, collection, deleteDoc, doc, getDocs, getDoc, updateDoc } from 'firebase/firestore';
@@ -5,6 +6,19 @@ import { initializeFirebase } from '@/firebase';
 import { revalidatePath } from 'next/cache';
 import { executeCommand } from '../commands/actions';
 import { cookies } from 'next/headers';
+import * as NextJsStop from '@/core/next-js/stop';
+import * as NodeJsStop from '@/core/node/stop';
+import * as PythonStop from '@/core/python/stop';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { readFile, unlink } from 'fs/promises';
+import path from 'path';
+import * as GitClone from '@/core/github/clone';
+import * as GitPull from '@/core/github/pull';
+import * as GitPullForce from '@/core/github/pull-force';
+import * as GitReset from '@/core/github/reset';
+
+const execAsync = promisify(exec);
 
 const { firestore } = initializeFirebase();
 
@@ -34,8 +48,29 @@ export async function createApplication(appData: {
     information?: Record<string, any>; // Additional JSON information
     owner: string; // User ID of the owner
 }) {
+    // Sanitize command keys to ensure they only contain a-z, A-Z, 0-9, -
+    const sanitizeKey = (key: string) => key.replace(/[^a-zA-Z0-9-.]/g, '-');
+
+    const sanitizedCommands = appData.commands
+        ? Object.fromEntries(
+            Object.entries(appData.commands).map(([key, value]) => [sanitizeKey(key), value])
+        )
+        : undefined;
+
+    const sanitizedSyncedInfo = appData.information
+        ? {
+            ...appData.information,
+            commandsList: appData.information.commandsList?.map((cmd: any) => ({
+                ...cmd,
+                name: sanitizeKey(cmd.name)
+            }))
+        }
+        : undefined;
+
     const docRef = await addDoc(collection(firestore, 'applications'), {
         ...appData,
+        commands: sanitizedCommands,
+        information: sanitizedSyncedInfo,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
     });
@@ -44,6 +79,76 @@ export async function createApplication(appData: {
 }
 
 export async function deleteApplication(id: string) {
+    const app = await getApplication(id) as any;
+    if (app) {
+        try {
+            // Attempt to stop the application
+            let stopCommand = '';
+
+            // 1. Check for custom lifecycle command
+            // We look for 'lifecycle.stop' or just 'stop'
+            // The command value in app.commands is base64 encoded if created via new deploy page
+            // But here we need the shell command to run on server. 
+            // Actually, if we use the core modules, they return the shell command.
+            // If it's a custom command stored in DB, we need to decode and use it.
+
+            const commands = app.commands || {};
+            // Keys are sanitized, so 'lifecycle.stop' or 'stop'
+            const customStopKey = Object.keys(commands).find(k => k === 'lifecycle.stop' || k === 'stop');
+
+            if (customStopKey) {
+                const encodedCmd = commands[customStopKey];
+                // Try decoding, if fails assume it's plain text (legacy)
+                try {
+                    stopCommand = Buffer.from(encodedCmd, 'base64').toString('utf-8');
+                } catch {
+                    stopCommand = encodedCmd;
+                }
+            } else {
+                // 2. Use Core Modules based on language
+                switch (app.language) {
+                    case 'next':
+                        stopCommand = NextJsStop.getStopCommand(app.name);
+                        break;
+                    case 'node':
+                        stopCommand = NodeJsStop.getStopCommand(app.name);
+                        break;
+                    case 'python':
+                        stopCommand = PythonStop.getStopCommand(app.name);
+                        break;
+                    default:
+                        // Generic fallback if PM2 is used
+                        stopCommand = `pm2 stop "${app.name}"`;
+                        break;
+                }
+            }
+
+            if (stopCommand) {
+                const cookieStore = await cookies();
+                const serverId = cookieStore.get('selected_server')?.value;
+                if (serverId) {
+                    // We execute it but don't fail deletion if stop fails (e.g. app not running)
+                    // We use a "fire and forget" or tolerant approach, or we wrap in try/catch specific to execution
+                    try {
+                        // Format command to name it "Stopping {app.name}" for history
+                        const formattedName = `Stopping ${app.name}`;
+                        // We can use executeCommand directly. 
+                        // Note: executeApplicationCommand wraps this but also does .status file updates. 
+                        // For deletion, maybe we don't care about .status file since we are deleting the app?
+                        // Or maybe we do to show it stopped. 
+                        // Getting complex. Let's just run the command.
+                        await executeCommand(serverId, stopCommand, formattedName, stopCommand);
+                    } catch (cmdErr) {
+                        console.warn("Failed to stop application before deletion:", cmdErr);
+                    }
+                }
+            }
+
+        } catch (e) {
+            console.error("Error setting up stop command:", e);
+        }
+    }
+
     await deleteDoc(doc(firestore, "applications", id));
     revalidatePath('/applications');
 }
@@ -280,4 +385,138 @@ exit $COMMAND_EXIT_CODE
 
     // Execute the wrapped command, but log execute the original "command"
     return await executeCommand(serverId, updateStatusCommand, formattedCommandName, command);
+}
+
+export async function generateRepositoryKeys() {
+    const keyPath = `/tmp/key_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+    try {
+        // Generate Ed25519 key
+        // -t ed25519: Type
+        // -C "neup.cloud-deploy": Comment
+        // -f keyPath: Output file
+        // -N "": No passphrase
+        await execAsync(`ssh-keygen -t ed25519 -C "neup.cloud-deploy" -f "${keyPath}" -N ""`);
+
+        // Read keys
+        const privateKey = await readFile(keyPath, 'utf8');
+        const publicKey = await readFile(`${keyPath}.pub`, 'utf8');
+
+        // Clean up
+        await unlink(keyPath).catch(() => { });
+        await unlink(`${keyPath}.pub`).catch(() => { });
+
+        return { privateKey, publicKey };
+    } catch (error) {
+        console.error("Error generating keys:", error);
+        // Try cleaning up if failed
+        await unlink(keyPath).catch(() => { });
+        await unlink(`${keyPath}.pub`).catch(() => { });
+        throw new Error("Failed to generate repository keys");
+    }
+}
+
+export async function performGitOperation(
+    applicationId: string,
+    operation: 'clone' | 'pull' | 'pull-force' | 'reset-main'
+) {
+    const app = await getApplication(applicationId) as any;
+    if (!app) throw new Error("Application not found");
+
+    const cookieStore = await cookies();
+    const serverId = cookieStore.get('selected_server')?.value;
+    if (!serverId) throw new Error("No server selected");
+
+    const repoUrl = app.repository;
+    if (!repoUrl) throw new Error("No repository configured");
+
+    const location = app.location;
+    const repoInfo = app.information?.repoInfo || {};
+    const isPrivate = repoInfo.isPrivate;
+    const privateKey = repoInfo.accessKey;
+
+    let command = '';
+    let description = '';
+    let keyFilePath = '';
+
+    // If private and has key, we need to handle key placement strategy
+    // Since we run command via executeCommand (which runs on server), 
+    // we need to create the key file on the remote server temporarily.
+    // However, `executeCommand` takes a string. 
+    // We can embed the key creation in the script if it's small enough (PEM keys are ~1.5KB).
+
+    if (isPrivate && privateKey) {
+        // Generate a random path for the key on remote server
+        keyFilePath = `/tmp/git_key_${Math.random().toString(36).substring(7)}`;
+    }
+
+    // Helper to wrap command with key creation and cleanup
+    const wrapWithKey = (cmdGenerator: (keyPath: string) => string) => {
+        if (!keyFilePath || !privateKey) return cmdGenerator(''); // Should fail if private but no key, but maybe user set up agent
+
+        // Escape newlines in private key for echo
+        // Ensure we preserve newlines in the key file
+        const echoKey = `cat <<EOF > "${keyFilePath}"
+${privateKey}
+EOF
+chmod 600 "${keyFilePath}"
+`;
+
+        const coreCmd = cmdGenerator(keyFilePath);
+
+        return `
+${echoKey}
+
+${coreCmd}
+
+rm -f "${keyFilePath}"
+`;
+    };
+
+    switch (operation) {
+        case 'clone':
+            description = `Cloning Repository`;
+            if (isPrivate && privateKey) {
+                command = wrapWithKey((path) => GitClone.getPrivateCloneCommand(location, repoUrl, path));
+            } else {
+                command = GitClone.getPublicCloneCommand(location, repoUrl);
+            }
+            break;
+        case 'pull':
+            description = `Pulling Repository`;
+            if (isPrivate && privateKey) {
+                command = wrapWithKey((path) => GitPull.getPrivatePullCommand(location, path, 'main'));
+            } else {
+                command = GitPull.getPullCommand(location, 'main');
+            }
+            break;
+        case 'pull-force':
+            description = `Force Pulling Repository`;
+            if (isPrivate && privateKey) {
+                command = wrapWithKey((path) => GitPullForce.getPrivatePullForceCommand(location, path, 'main'));
+            } else {
+                command = GitPullForce.getPullForceCommand(location, 'main');
+            }
+            break;
+        case 'reset-main':
+            description = `Resetting to Main`;
+            if (isPrivate && privateKey) {
+                command = wrapWithKey((path) => GitReset.getPrivateResetCommand(location, path, 'origin/main'));
+            } else {
+                command = GitReset.getResetCommand(location, 'origin/main');
+            }
+            break;
+    }
+
+    if (!command) throw new Error("Could not generate command");
+
+    // We use executeApplicationCommand to get the proper wrapping logic (logging, status file etc)
+    // But executeApplicationCommand expects a direct command string or we can use executeCommand directly.
+    // Since this is a "maintenance" task, showing it in history is good. 
+    // We can use executeCommand directly to avoid 'custom command' logic wrapping if desired, 
+    // BUT executeApplicationCommand handles stage naming and .status file updates which might be useful?
+    // User didn't specify, but better to reuse executeCommand directly for cleaner logs 
+    // or wrap it so it shows up in history.
+
+    return await executeCommand(serverId, command, `${app.name}: ${description}`, command);
 }
