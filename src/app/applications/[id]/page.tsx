@@ -16,6 +16,7 @@ import { LogsSection } from './logs-section';
 import { StatusDashboard } from './status-dashboard';
 import { Separator } from '@/components/ui/separator';
 
+import * as NextJsDev from '@/core/next-js/dev';
 import * as NextJsStart from '@/core/next-js/start';
 import * as NextJsStop from '@/core/next-js/stop';
 import * as NodeJsStart from '@/core/node/start';
@@ -55,6 +56,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
     if (application.language === 'next') {
         setIfMissing('start', NextJsStart.getStartCommand(application.name, application.location, application.networkAccess?.map(Number) || []));
         setIfMissing('stop', NextJsStop.getStopCommand(application.name));
+        setIfMissing('dev', NextJsDev.getDevCommand(application.name, application.location, application.networkAccess?.map(Number) || []));
     } else if (application.language === 'node') {
         const entry = application.information?.entryFile || 'index.js';
         setIfMissing('start', NodeJsStart.getStartCommand(application.name, application.location, entry, application.networkAccess?.map(Number) || []));

@@ -18,7 +18,7 @@ export function LifecycleSection({ application }: LifecycleSectionProps) {
 
     if (!application.commands) return null;
 
-    const lifecycleNames = ['start', 'stop', 'restart', 'build', 'lifecycle.start', 'lifecycle.stop', 'lifecycle.restart', 'lifecycle.build'];
+    const lifecycleNames = ['start', 'stop', 'restart', 'build', 'dev', 'lifecycle.start', 'lifecycle.stop', 'lifecycle.restart', 'lifecycle.build', 'lifecycle.dev'];
 
     const lifecycleCommands = Object.entries(application.commands).filter(([name]) =>
         lifecycleNames.includes(name) || name.startsWith('lifecycle.')
@@ -32,6 +32,7 @@ export function LifecycleSection({ application }: LifecycleSectionProps) {
         if (lower.includes('stop')) return StopCircle;
         if (lower.includes('restart')) return RefreshCw;
         if (lower.includes('build')) return Hammer;
+        if (lower.includes('dev')) return Terminal;
         return Terminal;
     };
 

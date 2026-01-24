@@ -4,6 +4,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { revalidatePath } from 'next/cache';
 import { runCommandOnServer } from '@/services/ssh';
+import { executeCommand, executeQuickCommand } from '@/app/commands/actions';
 
 const { firestore } = initializeFirebase();
 
@@ -54,6 +55,7 @@ interface DomainBlock {
     domainPath?: string;
     httpsRedirection: boolean;
     sslEnabled: boolean;
+    sslCertificateFile?: string; // e.g. "example.com.pem", "my-cert.pem"
     pathRules: PathRule[];
 }
 
@@ -368,8 +370,13 @@ server {
             }
 
             if (block.sslEnabled) {
-                const sslKeyPath = `/etc/nginx/ssl/${config.configName}.key`;
-                const sslCertPath = `/etc/nginx/ssl/${config.configName}.pem`;
+                // Use selected certificate file or fallback to configName for legacy support
+                const certName = block.sslCertificateFile
+                    ? block.sslCertificateFile.replace('.pem', '')
+                    : config.configName;
+
+                const sslKeyPath = `/etc/nginx/ssl/${certName}.key`;
+                const sslCertPath = `/etc/nginx/ssl/${certName}.pem`;
 
                 // 1. HTTP Block (Port 80)
                 // If HTTPS redirection is on, we redirect 80 -> 443
@@ -625,7 +632,16 @@ export async function deployNginxConfig(serverId: string, configContent?: string
 /**
  * Generate SSL certificate using Certbot
  */
-export async function generateSslCertificate(serverId: string, domains: string[], configName: string) {
+/**
+ * Generate SSL certificate using Certbot
+ * Supports HTTP (default) and DNS (for wildcards) validation
+ */
+export async function generateSslCertificate(
+    serverId: string,
+    domains: string[],
+    configName: string,
+    step: 'init' | 'finalize-dns' = 'init'
+) {
     try {
         // Get server details
         const serverRef = doc(firestore, 'servers', serverId);
@@ -645,15 +661,12 @@ export async function generateSslCertificate(serverId: string, domains: string[]
         }
 
         const sslDir = '/etc/nginx/ssl';
-        const certName = configName; // configName is required now
+        const certName = configName;
         const keyPath = `${sslDir}/${certName}.key`;
         const certPath = `${sslDir}/${certName}.pem`;
 
         // Prepare domain flags
-        // If domains is not an array, wrap it (for backward compatibility if needed, though we typed it as string[])
         const domainList = Array.isArray(domains) ? domains : [domains];
-
-        // Sanitize domains
         const safeDomains = domainList.map(d => d.trim()).filter(d => d);
 
         if (safeDomains.length === 0) {
@@ -662,48 +675,243 @@ export async function generateSslCertificate(serverId: string, domains: string[]
 
         const primaryDomain = safeDomains[0];
         const domainFlags = safeDomains.map(d => `-d ${d}`).join(' ');
+        const isWildcard = safeDomains.some(d => d.includes('*'));
 
-        // 1. Ensure SSL directory exists
-        // 2. Ensure firewall allows HTTP/HTTPS
-        // 3. Install certbot
-        // 4. Create temporary self-signed certificate if missing (to fix Nginx "catch-22" where it won't start/test without the files)
-        // 5. Try to generate certificate
-        // 6. Copy with -L to follow symlinks to predictable paths
-        const command = `
-            sudo mkdir -p ${sslDir} && \
-            sudo ufw allow 80/tcp && sudo ufw allow 443/tcp && \
-            sudo apt-get update && sudo apt-get install -y certbot python3-certbot-nginx && \
-            ( [ -f ${certPath} ] || sudo openssl req -x509 -nodes -days 1 -newkey rsa:2048 -keyout ${keyPath} -out ${certPath} -subj "/CN=${primaryDomain}" ) && \
-            sudo systemctl start nginx || true && \
-            sudo certbot certonly --nginx ${domainFlags} --cert-name ${configName} --non-interactive --agree-tos -m encryption.public@neupgroup.com --force-renewal && \
-            sudo cp -L /etc/letsencrypt/live/${configName}/privkey.pem ${keyPath} && \
-            sudo cp -L /etc/letsencrypt/live/${configName}/fullchain.pem ${certPath} && \
-            sudo chmod 600 ${keyPath} && \
-            sudo chmod 644 ${certPath}
-        `;
+        // ==========================================
+        //  HTTP VALIDATION (Standard)
+        // ==========================================
+        if (!isWildcard) {
+            // Use --standalone to avoid dependency on existing (potentially broken) Nginx config
+            // 1. Ensure SSL directory exists
+            // 2. Ensure firewall allows HTTP/HTTPS
+            // 3. Install certbot
+            // 4. Stop Nginx to free port 80
+            // 5. Generate certificate via --standalone
+            // 6. Copy files
+            // 7. Restart Nginx
+            // 8. Cleanup locks
+            const command = `
+                # Cleanup potential locks
+                sudo rm -f /var/lib/letsencrypt/.certbot.lock
+                sudo rm -f /var/log/letsencrypt/.certbot.lock
+                
+                sudo mkdir -p ${sslDir} && \
+                sudo ufw allow 80/tcp && sudo ufw allow 443/tcp && \
+                sudo apt-get update && sudo apt-get install -y certbot && \
+                
+                # Stop Nginx to allow standalone certbot to bind to port 80
+                sudo systemctl stop nginx
+                
+                # Run Certbot (capture exit code to ensure we restart nginx regardless)
+                sudo certbot certonly --standalone ${domainFlags} --cert-name ${configName} --non-interactive --agree-tos -m encryption.public@neupgroup.com --force-renewal
+                CERTBOT_EXIT=$?
+                
+                if [ $CERTBOT_EXIT -eq 0 ]; then
+                    sudo cp -L /etc/letsencrypt/live/${configName}/privkey.pem ${keyPath} && \
+                    sudo cp -L /etc/letsencrypt/live/${configName}/fullchain.pem ${certPath} && \
+                    sudo chmod 600 ${keyPath} && \
+                    sudo chmod 644 ${certPath}
+                fi
+                
+                # Restart Nginx
+                sudo systemctl start nginx || true
+                
+                exit $CERTBOT_EXIT
+            `;
 
-        const result = await runCommandOnServer(
-            server.publicIp || server.privateIp,
-            server.username,
-            server.privateKey,
-            command,
-            undefined,
-            undefined,
-            false
-        );
+            const result = await executeCommand(
+                serverId,
+                command,
+                `SSL Generation (Standalone): ${configName}`,
+                command
+            );
 
-        if (result.code !== 0) {
+            if (result.error) {
+                return {
+                    success: false,
+                    error: `Certificate generation failed: ${result.error}`
+                };
+            }
+
             return {
-                success: false,
-                error: `Certificate generation failed: ${result.stderr}`
+                success: true,
+                message: `Certificate for ${safeDomains.join(', ')} generated and saved as ${certName}.key/pem`,
+                output: result.output || ''
             };
         }
 
-        return {
-            success: true,
-            message: `Certificate for ${safeDomains.join(', ')} generated and saved as ${certName}.key/pem`,
-            output: result.stdout
-        };
+        // ==========================================
+        //  DNS VALIDATION (Wildcard)
+        // ==========================================
+        const hookScriptPath = '/tmp/neup-cert-hook.sh';
+        const challengeFilePath = `/tmp/cert_challenge_${configName}`;
+        const signalFilePath = `/tmp/cert_signal_${configName}`;
+        const logFilePath = `/tmp/certbot_${configName}.log`;
+        const pidFilePath = `/tmp/certbot_${configName}.pid`;
+
+        if (step === 'init') {
+            // Cleanup previous runs and locks
+            const cleanupCmd = `
+                sudo rm -f ${challengeFilePath} ${signalFilePath} ${logFilePath} ${pidFilePath};
+                # Cleanup potential Certbot locks
+                sudo rm -f /var/lib/letsencrypt/.certbot.lock
+                sudo rm -f /var/log/letsencrypt/.certbot.lock
+                # Kill any existing certbot process for this config if plausible (risky generic kill, better to rely on pid file if exists)
+                if [ -f ${pidFilePath} ]; then
+                   sudo kill -9 $(cat ${pidFilePath}) || true
+                fi
+                # Also try to kill any certbot process to be safe if generic lock cleanup isn't enough
+                sudo killall certbot || true
+            `;
+
+            // Create Hook Script
+            // This script writes the validation token and waits for a signal file
+            const createHookCmd = `
+cat <<'EOF' > ${hookScriptPath}
+#!/bin/bash
+# Write validation to file
+echo "$CERTBOT_VALIDATION" > ${challengeFilePath}
+chmod 644 ${challengeFilePath}
+
+# Wait for signal file (max 10 minutes)
+COUNTER=0
+while [ ! -f ${signalFilePath} ]; do
+  if [ $COUNTER -gt 600 ]; then
+    exit 1
+  fi
+  sleep 1
+  let COUNTER=COUNTER+1
+done
+
+# Cleanup signal and proceed
+rm -f ${signalFilePath}
+EOF
+chmod +x ${hookScriptPath}
+`;
+
+            // Start Certbot in Background
+            // We use --manual --auth-hook
+            const startCertbotCmd = `
+                ${cleanupCmd}
+                ${createHookCmd}
+                sudo mkdir -p ${sslDir} && \
+                sudo apt-get update && sudo apt-get install -y certbot && \
+                nohup sudo certbot certonly --manual --preferred-challenges dns ${domainFlags} --cert-name ${configName} --manual-auth-hook ${hookScriptPath} --non-interactive --agree-tos -m encryption.public@neupgroup.com --force-renewal > ${logFilePath} 2>&1 & echo $! > ${pidFilePath}
+            `;
+
+            // Init step is background task, we don't need to log everything to history yet as it returns immediately.
+            // But we can logging "Init SSL" for transparency.
+            await executeCommand(
+                serverId,
+                startCertbotCmd,
+                `Init SSL Wildcard: ${configName}`,
+                startCertbotCmd
+            );
+
+            // Poll for Challenge File (up to 30 seconds)
+            let attempts = 0;
+            let challengeToken = '';
+
+            while (attempts < 15) {
+                // Wait 2 seconds
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                const checkCmd = `if [ -f ${challengeFilePath} ]; then cat ${challengeFilePath}; fi`;
+                const checkResult = await executeQuickCommand(serverId, checkCmd);
+
+                if (checkResult.output && checkResult.output.trim()) {
+                    challengeToken = checkResult.output.trim();
+                    break;
+                }
+                attempts++;
+            }
+
+            if (!challengeToken) {
+                // Read log to see why it failed
+                const logResult = await executeQuickCommand(serverId, `cat ${logFilePath}`);
+                return {
+                    success: false,
+                    error: `Timed out waiting for DNS challenge generation. Certbot log: ${(logResult.output || '').slice(-500)}`
+                };
+            }
+
+            // Return action required
+            return {
+                success: true,
+                actionRequired: 'dns-verification',
+                challenge: challengeToken,
+                dnsRecord: `_acme-challenge.${primaryDomain.replace('*.', '')}`,
+                message: 'Please add the TXT record to your DNS provider.'
+            };
+
+        } else if (step === 'finalize-dns') {
+            // Signal Certbot to continue
+            const signalCmd = `touch ${signalFilePath}`;
+            await executeQuickCommand(serverId, signalCmd);
+
+            // Wait for process to finish (poll PID file)
+            // It might take time for Let's Encrypt to verify
+            let attempts = 0;
+            let finished = false;
+
+            while (attempts < 45) { // Wait up to 90 seconds
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Check if PID is still running
+                const checkPidCmd = `if [ -f ${pidFilePath} ] && ps -p $(cat ${pidFilePath}) > /dev/null; then echo "running"; else echo "stopped"; fi`;
+                const checkResult = await executeQuickCommand(serverId, checkPidCmd);
+
+                if (checkResult.output && checkResult.output.includes('stopped')) {
+                    finished = true;
+                    break;
+                }
+                attempts++;
+            }
+
+            // Check Result
+            const copyAndCheckCmd = `
+                if [ -f /etc/letsencrypt/live/${configName}/fullchain.pem ]; then
+                   sudo cp -L /etc/letsencrypt/live/${configName}/privkey.pem ${keyPath} && \
+                   sudo cp -L /etc/letsencrypt/live/${configName}/fullchain.pem ${certPath} && \
+                   sudo chmod 600 ${keyPath} && \
+                   sudo chmod 644 ${certPath} && \
+                   echo "SUCCESS"
+                else
+                   echo "FAILURE"
+                fi
+            `;
+
+            // This is the important step to see in history!
+            const finalResult = await executeCommand(
+                serverId,
+                copyAndCheckCmd,
+                `Finalize SSL Wildcard: ${configName}`,
+                copyAndCheckCmd
+            );
+
+            // Archive the Certbot log to history for debugging/audit
+            await executeCommand(serverId, `cat ${logFilePath}`, `SSL Log: ${configName}`);
+
+            if (finalResult.output && finalResult.output.includes('SUCCESS')) {
+                return {
+                    success: true,
+                    message: `Wildcard certificate generated successfully.`
+                };
+            } else {
+                // Fetch log for immediate error display
+                const logResult = await executeQuickCommand(serverId, `cat ${logFilePath}`);
+                // Since executeQuickCommand also returns a result object with output/error
+                const logContent = logResult.output || logResult.error || 'No log content available';
+
+                return {
+                    success: false,
+                    error: `Verification failed. Certbot log: ${logContent.slice(-1000)}`
+                };
+            }
+        }
+
+        return { success: false, error: 'Invalid step' };
+
     } catch (error: any) {
         console.error('Error generating SSL certificate:', error);
         return { success: false, error: error.message };

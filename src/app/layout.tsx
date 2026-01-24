@@ -29,7 +29,8 @@ import {
   Package,
   Users,
   Key,
-  Command
+  Command,
+  FileKey
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -174,6 +175,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     webservicesLinks.push({ href: balancerPath, label: `Manage Balancer`, icon: Network });
   }
 
+  webservicesLinks.push({ href: "/webservices/certificates", label: "Certificates", icon: FileKey });
   webservicesLinks.push({ href: "/webservices/configure", label: "Configure", icon: Settings });
 
   // Collect all paths for longest match calculation

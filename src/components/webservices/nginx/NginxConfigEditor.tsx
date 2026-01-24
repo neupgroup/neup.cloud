@@ -12,6 +12,7 @@ import {
     generateSslCertificate,
     saveNginxConfiguration,
 } from '@/app/webservices/nginx/actions';
+import { getCertificates } from '@/app/webservices/certificates/actions';
 import { getWebOrServerNginxConfig } from '@/app/webservices/actions';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -28,7 +29,8 @@ import {
     ShieldAlert,
     RefreshCw,
     Globe,
-    ArrowRight
+    ArrowRight,
+    FileKey
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -87,6 +89,7 @@ interface DomainBlock {
     subdomain: string;
     httpsRedirection: boolean;
     sslEnabled: boolean;
+    sslCertificateFile?: string;
     pathRules: PathRule[];
 }
 
@@ -141,6 +144,94 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
     const [deploying, setDeploying] = useState(false);
     const [expandedRuleId, setExpandedRuleId] = useState<string | null>(null);
     const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
+    const [dnsValidations, setDnsValidations] = useState<Record<string, { challenge: string, dnsRecord: string }>>({});
+
+    // Certificate List State
+    const [availableCertificates, setAvailableCertificates] = useState<any[]>([]);
+    const [loadingCerts, setLoadingCerts] = useState(false);
+
+    // Auto-link certificates when available
+    useEffect(() => {
+        if (loadingCerts || availableCertificates.length === 0) return;
+
+        let changed = false;
+        const newBlocks = domainBlocks.map(block => {
+            // Only act if SSL enabled or if we want to pre-fill? Better only if enabled or if user turns it on.
+            if (!block.sslEnabled) return block;
+
+            // If already set and valid, skip
+            if (block.sslCertificateFile && availableCertificates.some(c => c.fileName === block.sslCertificateFile)) {
+                return block;
+            }
+
+            // Find matching cert:
+            // 1. Exact match on Common Name
+            // 2. Exact match on Filename (minus .pem)
+            // 3. Filename starts with domain
+            const cert = availableCertificates.find(c =>
+                c.commonName === block.domainName ||
+                c.fileName === `${block.domainName}.pem` ||
+                c.fileName === `${block.domainName}`
+            );
+
+            if (cert && block.sslCertificateFile !== cert.fileName) {
+                console.log(`Auto-linking cert ${cert.fileName} to block ${block.domainName}`);
+                changed = true;
+                return { ...block, sslCertificateFile: cert.fileName };
+            }
+
+            return block;
+        });
+
+        if (changed) {
+            setDomainBlocks(newBlocks);
+        }
+    }, [availableCertificates, domainBlocks, loadingCerts]);
+
+    // Fetch certificates when server changes
+    useEffect(() => {
+        const fetchCerts = async () => {
+            if (!selectedServerId) {
+                setAvailableCertificates([]);
+                return;
+            }
+            setLoadingCerts(true);
+            try {
+                // We need to fetch from server context, but this is client component.
+                // The action `getCertificates` reads cookie.
+                // Ensure cookie is set or passed. It's read from cookie 'selected_server' presumably set by server actions/middleware
+                // But wait, getCertificates relies on `cookieStore.get('selected_server')`.
+                // If we changed server in dropdown, we might need to update cookie or pass serverId to action.
+                // However, `getCertificates` implementation currently strictly reads cookie.
+                // Let's assume the user has "selected" this server in valid context.
+                // If not, we might fail.
+                // Ideally `getCertificates` should accept optional serverId.
+                // But for now, let's assume if we are editing config for a server, it IS selected.
+                // Actually, `handleServerSelect` doesn't set cookie client side unless we do it.
+                // Let's just try calling it. If it fails, empty list.
+                // To be robust, we might need a version that accepts ID.
+                // But let's try standard flow.
+
+                // NOTE: Since getCertificates is a Server Action that uses `cookies()`, and we might have just switched server in UI state,
+                // the `cookies()` on server might not match `selectedServerId` if we didn't update it.
+                // This is a potential issue. 
+                // BUT, typically `selected_server` cookie tracks the active work context.
+                // Let's rely on that for now, assuming the user "Selected" the server globally.
+                // If not, we might need to update the cookie on `handleServerSelect`.
+                // Update: `handleServerSelect` sets state. We should probably update cookie too if we want backend tools to work.
+                document.cookie = `selected_server=${selectedServerId}; path=/`;
+
+                const certs = await getCertificates();
+                setAvailableCertificates(certs);
+            } catch (e) {
+                console.error("Failed to fetch certs", e);
+                setAvailableCertificates([]);
+            } finally {
+                setLoadingCerts(false);
+            }
+        };
+        fetchCerts();
+    }, [selectedServerId]);
 
     // Fetch available servers and domains, and config if editing
     useEffect(() => {
@@ -246,38 +337,61 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                         if (config.value) {
                             const val = config.value;
 
-                            // Determine mode
-                            if (val.domainId === 'manual-domain' || !val.domainId) {
-                                setDomainMode('none');
-                                // But if it has a domain name, we treat it as 'none' (IP/Manual) but with that name
-                            } else {
-                                setDomainMode('domain');
-                                setSelectedDomainId(val.domainId);
-                                setSelectedDomainName(val.domainName || '');
-                            }
+                            // NEW Structure: val has 'blocks' array
+                            if (val.blocks && Array.isArray(val.blocks)) {
+                                setDomainBlocks(val.blocks);
 
-                            const block: DomainBlock = {
-                                id: `block-${Date.now()}`,
-                                domainId: val.domainId || '',
-                                domainName: val.domainName || '',
-                                subdomain: val.subdomain || '@',
-                                httpsRedirection: true, // Default for imported
-                                sslEnabled: false, // Default for imported
-                                pathRules: (val.pathRules || []).map((r: any) => ({
-                                    ...r,
-                                    id: r.id || `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                                    proxySettings: r.proxySettings || {
-                                        setHost: true,
-                                        setRealIp: true,
-                                        setForwardedFor: true,
-                                        setForwardedProto: true,
-                                        upgradeWebSocket: true,
-                                        customHeaders: []
+                                if (val.domainRedirects && Array.isArray(val.domainRedirects)) {
+                                    setDomainRedirects(val.domainRedirects);
+                                }
+
+                                // Set mode based on first block or default
+                                if (val.blocks.length > 0) {
+                                    const first = val.blocks[0];
+                                    if (first.domainId && first.domainId !== 'manual-domain') {
+                                        setDomainMode('domain');
+                                        setSelectedDomainId(first.domainId);
+                                        setSelectedDomainName(first.domainName);
+                                    } else {
+                                        setDomainMode('none');
                                     }
-                                }))
-                            };
+                                }
+                            } else {
+                                // LEGACY Structure: val is the block itself
 
-                            setDomainBlocks([block]);
+                                // Determine mode
+                                if (val.domainId === 'manual-domain' || !val.domainId) {
+                                    setDomainMode('none');
+                                } else {
+                                    setDomainMode('domain');
+                                    setSelectedDomainId(val.domainId);
+                                    setSelectedDomainName(val.domainName || '');
+                                }
+
+                                const block: DomainBlock = {
+                                    id: `block-${Date.now()}`,
+                                    domainId: val.domainId || '',
+                                    domainName: val.domainName || '',
+                                    subdomain: val.subdomain || '@',
+                                    httpsRedirection: !!val.httpsRedirection, // Use saved value
+                                    sslEnabled: !!val.sslEnabled, // Use saved value
+                                    sslCertificateFile: val.sslCertificateFile,
+                                    pathRules: (val.pathRules || []).map((r: any) => ({
+                                        ...r,
+                                        id: r.id || `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                                        proxySettings: r.proxySettings || {
+                                            setHost: true,
+                                            setRealIp: true,
+                                            setForwardedFor: true,
+                                            setForwardedProto: true,
+                                            upgradeWebSocket: true,
+                                            customHeaders: []
+                                        }
+                                    }))
+                                };
+
+                                setDomainBlocks([block]);
+                            }
                         }
 
                         toast({
@@ -382,8 +496,7 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
     };
 
     const removeDomainBlock = (id: string) => {
-        const block = domainBlocks.find(b => b.id === id);
-        if (block?.subdomain === '@') return; // Don't allow deleting root block
+        // Allow removing any block
         setDomainBlocks(domainBlocks.filter(b => b.id !== id));
     };
 
@@ -800,21 +913,53 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
             domainsForCert = [block.domainName];
         }
 
+        const pendingValidation = dnsValidations[blockId];
+        const step = pendingValidation ? 'finalize-dns' : 'init';
+
         setGeneratingCert(blockId);
         try {
+            // TypeScript workaround if generateSslCertificate signature update isn't picked up immediately by IDE context
+            // @ts-ignore
             const result = await generateSslCertificate(
                 selectedServerId,
                 domainsForCert,
-                configName
+                configName,
+                step
             );
 
             if (result.success) {
-                toast({
-                    title: 'Certificate Success',
-                    description: result.message,
-                });
-                updateDomainBlock(blockId, 'sslEnabled', true);
-                updateDomainBlock(blockId, 'httpsRedirection', true);
+                if (result.actionRequired === 'dns-verification') {
+                    // DNS Step 1 Successful
+                    setDnsValidations(prev => ({
+                        ...prev,
+                        [blockId]: {
+                            challenge: result.challenge,
+                            dnsRecord: result.dnsRecord
+                        }
+                    }));
+                    toast({
+                        title: 'DNS Verification Required',
+                        description: result.message,
+                    });
+                    setExpandedBlockId(blockId);
+                } else {
+                    // Final Success
+                    toast({
+                        title: 'Certificate Success',
+                        description: result.message,
+                    });
+                    updateDomainBlock(blockId, 'sslEnabled', true);
+                    updateDomainBlock(blockId, 'httpsRedirection', true);
+
+                    // Clear pending validation
+                    if (pendingValidation) {
+                        setDnsValidations(prev => {
+                            const next = { ...prev };
+                            delete next[blockId];
+                            return next;
+                        });
+                    }
+                }
             } else {
                 toast({
                     variant: 'destructive',
@@ -1222,9 +1367,8 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                                     const val = e.target.value.toLowerCase();
                                                     updateDomainBlock(block.id, 'subdomain', val);
                                                 }}
-                                                disabled={block.subdomain === '@'}
                                                 placeholder={domainMode === 'domain' ? '@' : 'default'}
-                                                className="h-7 w-32 bg-transparent border-none shadow-none focus-visible:ring-0 p-0 font-bold text-sm"
+                                                className="h-7 w-auto min-w-[32px] max-w-[200px] bg-transparent border-b border-dashed border-muted-foreground/50 rounded-none shadow-none focus-visible:ring-0 focus-visible:border-primary p-0 font-bold text-sm text-center"
                                             />
                                             {domainMode === 'domain' && (
                                                 <span className="text-xs text-muted-foreground font-medium opacity-70">
@@ -1242,16 +1386,16 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                     </div>
 
                                     <div className="flex items-center gap-2">
-                                        {block.subdomain !== '@' && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 w-8 rounded-full hover:bg-red-500/10 hover:text-red-500"
-                                                onClick={() => removeDomainBlock(block.id)}
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
-                                        )}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 rounded-full hover:bg-red-500/10 hover:text-red-500"
+                                            onClick={() => removeDomainBlock(block.id)}
+                                            disabled={domainBlocks.length === 1 && block.subdomain === ''}
+                                            title="Remove Block"
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
                                         <Button
                                             variant="outline"
                                             size="sm"
@@ -1266,56 +1410,76 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                 {/* Shared SSL/Domain Settings (Collapsible) */}
                                 {expandedBlockId === block.id && (
                                     <div className="mx-4 p-4 bg-muted/20 border-x border-b rounded-b-lg space-y-4 animate-in slide-in-from-top-2 duration-200">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <Label className="text-xs font-semibold flex items-center gap-2">
-                                                        <Lock className="h-3 w-3" /> SSL Support
-                                                    </Label>
+                                        <div className="grid grid-cols-1 gap-6">
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between p-3 bg-muted/40 rounded-lg border">
+                                                    <div className="space-y-0.5">
+                                                        <Label className="text-sm font-medium flex items-center gap-2">
+                                                            <Lock className="h-4 w-4 text-primary" /> SSL Encryption (HTTPS)
+                                                        </Label>
+                                                        <p className="text-[11px] text-muted-foreground">
+                                                            Secure connections to this domain
+                                                        </p>
+                                                    </div>
                                                     <Switch
                                                         checked={block.sslEnabled}
-                                                        onCheckedChange={(v) => updateDomainBlock(block.id, 'sslEnabled', v)}
-                                                        disabled={domainMode === 'none'}
+                                                        onCheckedChange={(checked) => updateDomainBlock(block.id, 'sslEnabled', checked)}
                                                     />
                                                 </div>
-                                                <div className="flex items-center justify-between">
-                                                    <Label className="text-xs font-semibold flex items-center gap-2">
-                                                        <ArrowRight className="h-3 w-3" /> Force HTTPS
-                                                    </Label>
+
+                                                <div className={`flex items-center justify-between p-3 bg-muted/40 rounded-lg border ${!block.sslEnabled ? 'opacity-50' : ''}`}>
+                                                    <div className="space-y-0.5">
+                                                        <Label htmlFor={`https-redirect-${block.id}`} className="text-sm font-medium cursor-pointer">
+                                                            Force HTTPS Redirection
+                                                        </Label>
+                                                        <p className="text-[10px] text-muted-foreground">
+                                                            Automatically redirect HTTP traffic to HTTPS
+                                                        </p>
+                                                    </div>
                                                     <Switch
+                                                        id={`https-redirect-${block.id}`}
                                                         checked={block.httpsRedirection}
-                                                        onCheckedChange={(v) => updateDomainBlock(block.id, 'httpsRedirection', v)}
-                                                        disabled={!block.sslEnabled || domainMode === 'none'}
+                                                        onCheckedChange={(checked) => updateDomainBlock(block.id, 'httpsRedirection', checked)}
+                                                        disabled={!block.sslEnabled}
                                                     />
                                                 </div>
-                                                {domainMode === 'none' && (
-                                                    <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                                                        SSL generation requires a domain name.
-                                                    </p>
+                                                {block.sslEnabled && (
+                                                    <div className="pl-1 pt-2 space-y-2 animate-in slide-in-from-top-2">
+                                                        <div className={`flex items-center justify-between p-3 bg-muted/40 rounded-lg border ${!block.sslCertificateFile ? 'border-amber-500/50 bg-amber-500/5' : ''}`}>
+                                                            <div className="space-y-0.5">
+                                                                <Label className="text-sm font-medium flex items-center gap-2">
+                                                                    {block.sslCertificateFile ? (
+                                                                        <FileKey className="h-4 w-4 text-primary" />
+                                                                    ) : (
+                                                                        <ShieldAlert className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                                                    )}
+                                                                    SSL Certificate
+                                                                </Label>
+                                                                <div className="text-[10px] text-muted-foreground">
+                                                                    {block.sslCertificateFile ? (
+                                                                        <span>
+                                                                            Selected <span className="font-semibold text-foreground">"{block.sslCertificateFile.replace('.pem', '')}"</span> from certificates
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="text-amber-600 dark:text-amber-400">
+                                                                            No matching certificate found for <strong>{block.domainName}</strong>
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <Link href="/webservices/certificates" target="_blank">
+                                                                <Button
+                                                                    variant={block.sslCertificateFile ? "outline" : "default"}
+                                                                    size="sm"
+                                                                    className={`h-7 text-xs ${!block.sslCertificateFile ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''}`}
+                                                                >
+                                                                    {block.sslCertificateFile ? "Change" : "Create One"}
+                                                                </Button>
+                                                            </Link>
+                                                        </div>
+                                                    </div>
                                                 )}
                                             </div>
-                                            {domainMode === 'domain' && (
-                                                <div className="flex items-end">
-                                                    {block.subdomain === '@' ? (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="secondary"
-                                                            className="w-full text-[11px] h-8 font-bold uppercase tracking-wider"
-                                                            disabled={!!generatingCert && generatingCert === block.id}
-                                                            onClick={() => handleGenerateCertificate(block.id)}
-                                                        >
-                                                            {generatingCert === block.id ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <RefreshCw className="h-3 w-3 mr-2" />}
-                                                            {generatingCert === block.id ? 'Working...' : 'Get Certificate'}
-                                                        </Button>
-                                                    ) : (
-                                                        <div className="w-full p-2 bg-blue-500/10 border border-blue-500/20 rounded text-center">
-                                                            <p className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">
-                                                                Uses certificate from root domain
-                                                            </p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -1576,6 +1740,8 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                         </div>
                                     ))}
 
+
+
                                     <Button
                                         onClick={() => addPathRule(block.id)}
                                         variant="ghost"
@@ -1586,7 +1752,7 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                         Add Path Rule
                                     </Button>
                                 </div>
-                            </div>
+                            </div >
                         ))}
 
                         <Button
@@ -1599,8 +1765,8 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                             Add {domainMode === 'domain' ? 'Subdomain' : 'Server'} Block
                         </Button>
 
-                    </div>
-                </div>
+                    </div >
+                </div >
             )
             }
 
@@ -1719,6 +1885,6 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                     </div>
                 )
             }
-        </div>
+        </div >
     );
 }

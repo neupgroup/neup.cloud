@@ -4,7 +4,7 @@
 import { addDoc, collection, deleteDoc, doc, getDocs, getDoc, updateDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { revalidatePath } from 'next/cache';
-import { executeCommand } from '../commands/actions';
+import { executeCommand, executeQuickCommand } from '../commands/actions';
 import { cookies } from 'next/headers';
 import * as NextJsStop from '@/core/next-js/stop';
 import * as NodeJsStop from '@/core/node/stop';
@@ -216,12 +216,12 @@ NEW_ENTRY="{\\"stage_name\\":\\"$STAGE_NAME\\",\\"status\\":\\"ongoing\\",\\"sta
 # Use jq to update or append the status (if jq is available)
 if command -v jq &> /dev/null; then
     # Check if stage exists and update it, otherwise append
-    echo "$EXISTING_STATUS" | jq \\\\
-        --arg stage "$STAGE_NAME" \\\\
-        --arg status "ongoing" \\\\
-        --arg time "$TIMESTAMP" \\\\
+    echo "$EXISTING_STATUS" | jq \\
+        --arg stage "$STAGE_NAME" \\
+        --arg status "ongoing" \\
+        --arg time "$TIMESTAMP" \\
         'map(if .stage_name == $stage then .status = $status | .started_on = $time else . end) | 
-         if any(.stage_name == $stage) then . else . + [{"stage_name": $stage, "status": $status, "started_on": $time}] end' \\\\
+         if any(.stage_name == $stage) then . else . + [{"stage_name": $stage, "status": $status, "started_on": $time}] end' \\
         > "$STATUS_FILE"
 else
     # Fallback: simple append (not ideal but works)
@@ -371,9 +371,9 @@ echo "-->>-->>swap_space_delete.ends<<--<<--"
 if [ $COMMAND_EXIT_CODE -eq 0 ]; then
     if command -v jq &> /dev/null; then
         TEMP_FILE=$(mktemp)
-        cat "$STATUS_FILE" | jq \\\\
-            --arg stage "$STAGE_NAME" \\\\
-            'map(if .stage_name == $stage then .status = "completed" else . end)' \\\\
+        cat "$STATUS_FILE" | jq \\
+            --arg stage "$STAGE_NAME" \\
+            'map(if .stage_name == $stage then .status = "completed" else . end)' \\
             > "$TEMP_FILE"
         mv "$TEMP_FILE" "$STATUS_FILE"
     fi
@@ -544,4 +544,24 @@ rm -f "${keyFilePath}"
     // or wrap it so it shows up in history.
 
     return await executeCommand(serverId, command, `${app.name}: ${description}`, command);
+}
+
+export async function getRunningProcesses() {
+    const cookieStore = await cookies();
+    const serverId = cookieStore.get('selected_server')?.value;
+    if (!serverId) throw new Error("No server selected");
+
+    const result = await executeQuickCommand(serverId, "pm2 jlist");
+
+    if (result.error) {
+        console.warn("Error fetching pm2 list:", result.error);
+        return [];
+    }
+
+    try {
+        return JSON.parse(result.output);
+    } catch (e) {
+        console.error("Failed to parse pm2 jlist output:", result.output);
+        return [];
+    }
 }

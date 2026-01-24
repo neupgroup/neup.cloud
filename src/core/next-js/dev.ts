@@ -1,4 +1,5 @@
-export const getStartCommand = (appName: string, appLocation: string, preferredPorts: number[] = []) => {
+
+export const getDevCommand = (appName: string, appLocation: string, preferredPorts: number[] = []) => {
     const portsStr = preferredPorts.join(' ');
 
     const portFinderScript = `
@@ -28,7 +29,6 @@ echo "Selected Port: $CHOSEN_PORT"
 ${portFinderScript}
 cd ${appLocation} && \
 npm install && \
-npm run build && \
-PORT=$CHOSEN_PORT pm2 start npm --name "${appName}" -- start -- -p $CHOSEN_PORT
+PORT=$CHOSEN_PORT pm2 start npm --name "${appName}" -- run dev -- -p $CHOSEN_PORT
 `;
 };
