@@ -19,8 +19,10 @@ import { Separator } from '@/components/ui/separator';
 import * as NextJsDev from '@/core/next-js/dev';
 import * as NextJsStart from '@/core/next-js/start';
 import * as NextJsStop from '@/core/next-js/stop';
+import * as NextJsBuild from '@/core/next-js/build';
 import * as NodeJsStart from '@/core/node/start';
 import * as NodeJsStop from '@/core/node/stop';
+import * as NodeJsBuild from '@/core/node/build';
 import * as PythonStart from '@/core/python/start';
 import * as PythonStop from '@/core/python/stop';
 
@@ -56,11 +58,13 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
     if (application.language === 'next') {
         setIfMissing('start', NextJsStart.getStartCommand(application.name, application.location, application.networkAccess?.map(Number) || []));
         setIfMissing('stop', NextJsStop.getStopCommand(application.name));
+        setIfMissing('build', NextJsBuild.getBuildCommand(application.location));
         setIfMissing('dev', NextJsDev.getDevCommand(application.name, application.location, application.networkAccess?.map(Number) || []));
     } else if (application.language === 'node') {
         const entry = application.information?.entryFile || 'index.js';
         setIfMissing('start', NodeJsStart.getStartCommand(application.name, application.location, entry, application.networkAccess?.map(Number) || []));
         setIfMissing('stop', NodeJsStop.getStopCommand(application.name));
+        setIfMissing('build', NodeJsBuild.getBuildCommand(application.location));
     } else if (application.language === 'python') {
         const entry = application.information?.entryFile || 'main.py';
         setIfMissing('start', PythonStart.getStartCommand(application.name, application.location, entry, application.networkAccess?.map(Number) || []));

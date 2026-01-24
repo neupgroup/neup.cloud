@@ -27,7 +27,6 @@ echo "Selected Port: $CHOSEN_PORT"
     return `
 ${portFinderScript}
 cd ${appLocation} && \
-npm install && \
 PORT=$CHOSEN_PORT pm2 start ${entryFile} --name "${appName}"
 `;
 };
