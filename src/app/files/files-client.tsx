@@ -55,6 +55,35 @@ function formatBytes(bytes: number, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
+function useLocalStorage<T>(key: string, initialValue: T) {
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    if (typeof window === "undefined") {
+      return initialValue;
+    }
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.log(error);
+      return initialValue;
+    }
+  });
+
+  const setValue = (value: T | ((val: T) => T)) => {
+    try {
+      const valueToStore =
+        value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(key, JSON.stringify(valueToStore));
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  return [storedValue, setValue] as const;
+}
+
 function ServerFilesBrowser({ serverId }: { serverId: string }) {
   const { toast } = useToast();
   const router = useRouter();
@@ -104,13 +133,28 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     [searchParams]
   )
 
-  const fetchFiles = useCallback(async (path: string) => {
+  // Cache
+  const [fileCache, setFileCache] = useLocalStorage<Record<string, FileOrFolder[]>>(`neup-file-cache-${serverId}`, {});
+
+  const fetchFiles = useCallback(async (path: string, force = false) => {
+    const listKey = rootMode ? path + ':root' : path;
+
+    // Optimistic Load (if not forced)
+    if (!force && fileCache[listKey]) {
+      setFiles(fileCache[listKey]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const { files: fetchedFiles, error } = await browseDirectory(serverId, path, rootMode);
       if (error) {
         toast({ variant: "destructive", title: "Failed to browse directory", description: error });
-        setFiles([]);
+        // If server fails, we might want to keep showing cached version if available?
+        // But for now let's show empty/error state or stick to what we have if we handled it differently.
+        // Current behavior: setFiles([])
+        if (!fileCache[listKey]) setFiles([]);
       } else {
         const sortedFiles = fetchedFiles.sort((a, b) => {
           if (a.type === 'directory' && b.type !== 'directory') return -1;
@@ -118,6 +162,8 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
           return a.name.localeCompare(b.name);
         });
         setFiles(sortedFiles);
+        // Update Cache
+        setFileCache(prev => ({ ...prev, [listKey]: sortedFiles }));
       }
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
@@ -125,7 +171,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       setIsLoading(false);
       setSelectedFiles(new Set()); // Clear selection on navigate
     }
-  }, [serverId, toast, rootMode]);
+  }, [serverId, toast, rootMode, fileCache, setFileCache]);
 
   useEffect(() => {
     fetchFiles(currentPath);
@@ -277,7 +323,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     } else {
       toast({ title: 'Success', description: `Items ${op === 'copy' ? 'copied' : 'moved'} successfully.` });
       if (op === 'move') setClipboard(null); // Clear clipboard after move
-      fetchFiles(currentPath);
+      await fetchFiles(currentPath, true); // Force fetch on Paste as it's complex to predict exact file object
     }
     setIsProcessing(false);
     setContextMenu(null);
@@ -292,19 +338,39 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
 
   const confirmRename = async () => {
     if (!renameState) return;
-    setIsProcessing(true);
-    const currentFilePath = currentPath.endsWith('/') ? currentPath + renameState.oldName : currentPath + '/' + renameState.oldName;
+    // Optimistic Update
+    const oldFiles = [...files];
+    const oldCache = { ...fileCache };
+    const { oldName, newName } = renameState;
+    const cacheKey = rootMode ? currentPath + ':root' : currentPath;
 
-    const result = await renameFile(serverId, currentFilePath, renameState.newName, rootMode);
+    if (oldName === newName) {
+      setRenameState(null);
+      return;
+    }
+
+    // Update UI
+    const updatedFiles = files.map(f => f.name === oldName ? { ...f, name: newName } : f).sort((a, b) => {
+      if (a.type === 'directory' && b.type !== 'directory') return -1;
+      if (a.type !== 'directory' && b.type === 'directory') return 1;
+      return a.name.localeCompare(b.name);
+    });
+    setFiles(updatedFiles);
+    setFileCache(prev => ({ ...prev, [cacheKey]: updatedFiles }));
+    setRenameState(null);
+
+    const currentFilePath = currentPath.endsWith('/') ? currentPath + oldName : currentPath + '/' + oldName;
+    const result = await renameFile(serverId, currentFilePath, newName, rootMode);
 
     if (result.error) {
       toast({ variant: 'destructive', title: 'Rename Failed', description: result.error });
+      // Revert
+      setFiles(oldFiles);
+      setFileCache(oldCache);
     } else {
-      toast({ title: 'Renamed', description: `Successfully renamed to ${renameState.newName}` });
-      fetchFiles(currentPath);
-      setRenameState(null);
+      toast({ title: 'Renamed', description: `Successfully renamed to ${newName}` });
+      // No need to fetchFiles, we already updated state.
     }
-    setIsProcessing(false);
   };
 
   const handleDelete = () => {
@@ -318,10 +384,23 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
 
     // Set deleting state for specific files
     const deleteSet = new Set(deleteState.files);
-    setDeletingFiles(deleteSet);
-    setDeleteState(null); // Close dialog immediately to show card state
+    // setDeletingFiles(deleteSet); // No need for deleting state if we remove immediately? 
+    // Wait, visual feedback: User said "show the changes immediately". Removing them is the most immediate change.
+    // So we remove them from the list.
 
-    const pathsToDelete = deleteState.files.map(name =>
+    setDeleteState(null);
+
+    const oldFiles = [...files];
+    const oldCache = { ...fileCache };
+    const filesToDelete = deleteState.files;
+    const cacheKey = rootMode ? currentPath + ':root' : currentPath;
+
+    // Optimistic Remove
+    const newFiles = files.filter(f => !deleteSet.has(f.name));
+    setFiles(newFiles);
+    setFileCache(prev => ({ ...prev, [cacheKey]: newFiles }));
+
+    const pathsToDelete = filesToDelete.map(name =>
       currentPath.endsWith('/') ? currentPath + name : currentPath + '/' + name
     );
 
@@ -329,7 +408,9 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
 
     if (result.error) {
       toast({ variant: 'destructive', title: 'Delete Failed', description: result.error });
-      setDeletingFiles(new Set());
+      // Revert
+      setFiles(oldFiles);
+      setFileCache(oldCache);
     } else {
       // Play sound
       try {
@@ -338,11 +419,8 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       } catch (e) {
         console.error("Audio init failed", e);
       }
-
-      toast({ title: 'Deleted', description: `Successfully deleted ${deleteState.files.length} items.` });
-      await fetchFiles(currentPath);
-      setDeletingFiles(new Set());
-      setSelectedFiles(new Set());
+      toast({ title: 'Deleted', description: `Successfully deleted ${filesToDelete.length} items.` });
+      // Don't fetch again
     }
   }
 
@@ -404,7 +482,35 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
 
     if (successCount > 0) {
       toast({ title: 'Upload Complete', description: `${successCount} files uploaded successfully.` });
-      await fetchFiles(currentPath);
+
+      // Optimistic Update: Add uploaded files to current view
+      const newFiles: FileOrFolder[] = Array.from(selectedFiles).map(file => ({
+        name: file.name,
+        type: 'file',
+        size: file.size,
+        permissions: 'rw-r--r--', // dummy
+        lastModified: new Date().toISOString(),
+        owner: 'root',
+        group: 'root'
+      }));
+
+      // Merge with existing files, replacing potential duplicates
+      const mergedFiles = [...files];
+      newFiles.forEach(nf => {
+        const idx = mergedFiles.findIndex(f => f.name === nf.name);
+        if (idx >= 0) mergedFiles[idx] = nf;
+        else mergedFiles.push(nf);
+      });
+
+      const sortedFiles = mergedFiles.sort((a, b) => {
+        if (a.type === 'directory' && b.type !== 'directory') return -1;
+        if (a.type !== 'directory' && b.type === 'directory') return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      setFiles(sortedFiles);
+      const cacheKey = rootMode ? currentPath + ':root' : currentPath;
+      setFileCache(prev => ({ ...prev, [cacheKey]: sortedFiles }));
     }
 
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -457,7 +563,54 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     }
 
     toast({ title: 'Folder Upload Complete', description: `${successCount} files uploaded successfully.` });
-    await fetchFiles(currentPath);
+
+    // Optimistic Update for Folder Upload
+    // Start with existing
+    const mergedFiles = [...files];
+    const cacheKey = rootMode ? currentPath + ':root' : currentPath;
+    let hasChanges = false;
+
+    // Identify direct children of currentPath being created
+    Array.from(selectedFiles).forEach(file => {
+      // webkitRelativePath example: "folderName/subFolder/file.txt"
+      // If we are uploading "folderName", we want to see "folderName" in current directory.
+      if (file.webkitRelativePath) {
+        const parts = file.webkitRelativePath.split('/');
+        if (parts.length > 0) {
+          const topLevelName = parts[0];
+
+          // Check if this top level item is already in our list
+          const conflict = mergedFiles.find(f => f.name === topLevelName);
+          // If it's not there, add it as a directory. 
+          // If it is there, we assume it's updated (maybe size diff? folders don't have size usually shown correctly sum-wise here immediately)
+          // Just ensuring it exists is enough for "Folder Upload".
+
+          if (!conflict) {
+            mergedFiles.push({
+              name: topLevelName,
+              type: 'directory',
+              size: 0,
+              permissions: 'drwxr-xr-x',
+              lastModified: new Date().toISOString(),
+              owner: 'root',
+              group: 'root'
+            });
+            hasChanges = true;
+          }
+        }
+      }
+    });
+
+    if (hasChanges) {
+      const sortedFiles = mergedFiles.sort((a, b) => {
+        if (a.type === 'directory' && b.type !== 'directory') return -1;
+        if (a.type !== 'directory' && b.type === 'directory') return 1;
+        return a.name.localeCompare(b.name);
+      });
+      setFiles(sortedFiles);
+      setFileCache(prev => ({ ...prev, [cacheKey]: sortedFiles }));
+    }
+
     if (folderInputRef.current) folderInputRef.current.value = '';
   }
 
@@ -466,19 +619,13 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
   }
 
   const handleCreateSubmit = async (e: React.FocusEvent<HTMLInputElement> | React.KeyboardEvent<HTMLInputElement>) => {
-    if ('key' in e && e.key !== 'Enter') return; // Only process on Enter key or Blur (if we want blur to save)
-    // Actually, let's treat Blur as Cancel if empty, Save if not? Or just Cancel.
-    // Prompt: "if the user does not passes in the file or folder name... does not gets executed"
-    // I'll make Blur cancel if empty. If has text, I'll auto-save? Or purely Enter?
-    // Safest UX: Enter to save. Blur cancels.
+    if ('key' in e && e.key !== 'Enter') return;
 
     if (e.type === 'blur') {
-      // If we want blur to cancel:
       setNewItemState(null);
       return;
     }
 
-    // Only Enter key reaches here
     const val = e.currentTarget.value.trim();
     if (!val) {
       setNewItemState(null);
@@ -487,12 +634,38 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
 
     if (newItemState?.isCreating) return;
 
-    setNewItemState(prev => prev ? { ...prev, isCreating: true } : null);
+    // Optimistic Create
+    const type = newItemState?.type || 'file';
+    const oldFiles = [...files];
+    const oldCache = { ...fileCache };
+    const cacheKey = rootMode ? currentPath + ':root' : currentPath;
+
+    const newFileObj: FileOrFolder = {
+      name: val,
+      type: type === 'folder' ? 'directory' : 'file',
+      size: 0,
+      permissions: 'drwxr-xr-x', // dummy
+      lastModified: new Date().toISOString(),
+      owner: 'root',
+      group: 'root'
+    };
+
+    // Insert and sort
+    const updatedFiles = [...files, newFileObj].sort((a, b) => {
+      if (a.type === 'directory' && b.type !== 'directory') return -1;
+      if (a.type !== 'directory' && b.type === 'directory') return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    setFiles(updatedFiles);
+    setFileCache(prev => ({ ...prev, [cacheKey]: updatedFiles }));
+    setNewItemState(null); // Remove input
 
     const newPath = currentPath.endsWith('/') ? currentPath + val : currentPath + '/' + val;
-
     let res;
-    if (newItemState?.type === 'folder') {
+    // We set creating state implicitly by having "optimistic" item. We don't have a "loading" state on that item unless we add it to a special "creating" set, but user wants immediate "show changes". showing the file is the change.
+
+    if (type === 'folder') {
       res = await createDirectory(serverId, newPath, rootMode);
     } else {
       res = await createEmptyFile(serverId, newPath, rootMode);
@@ -500,11 +673,12 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
 
     if (res.error) {
       toast({ variant: 'destructive', title: 'Action Failed', description: res.error });
-      setNewItemState(null);
+      // Revert
+      setFiles(oldFiles);
+      setFileCache(oldCache);
     } else {
-      toast({ title: 'Success', description: `${newItemState?.type === 'folder' ? 'Folder' : 'File'} created.` });
-      await fetchFiles(currentPath);
-      setNewItemState(null);
+      toast({ title: 'Success', description: `${type === 'folder' ? 'Folder' : 'File'} created.` });
+      // No fetch needed
     }
   }
 
