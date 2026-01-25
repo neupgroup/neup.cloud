@@ -55,34 +55,7 @@ function formatBytes(bytes: number, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-function useLocalStorage<T>(key: string, initialValue: T) {
-  const [storedValue, setStoredValue] = useState<T>(() => {
-    if (typeof window === "undefined") {
-      return initialValue;
-    }
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.log(error);
-      return initialValue;
-    }
-  });
-
-  const setValue = (value: T | ((val: T) => T)) => {
-    try {
-      const valueToStore =
-        value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(key, JSON.stringify(valueToStore));
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-  return [storedValue, setValue] as const;
-}
+// function useLocalStorage removed
 
 function ServerFilesBrowser({ serverId }: { serverId: string }) {
   const { toast } = useToast();
@@ -133,28 +106,16 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     [searchParams]
   )
 
-  // Cache
-  const [fileCache, setFileCache] = useLocalStorage<Record<string, FileOrFolder[]>>(`neup-file-cache-${serverId}`, {});
+  // Cache logic removed
 
-  const fetchFiles = useCallback(async (path: string, force = false) => {
-    const listKey = rootMode ? path + ':root' : path;
 
-    // Optimistic Load (if not forced)
-    if (!force && fileCache[listKey]) {
-      setFiles(fileCache[listKey]);
-      setIsLoading(false);
-      return;
-    }
-
+  const fetchFiles = useCallback(async (path: string) => {
     setIsLoading(true);
     try {
       const { files: fetchedFiles, error } = await browseDirectory(serverId, path, rootMode);
       if (error) {
         toast({ variant: "destructive", title: "Failed to browse directory", description: error });
-        // If server fails, we might want to keep showing cached version if available?
-        // But for now let's show empty/error state or stick to what we have if we handled it differently.
-        // Current behavior: setFiles([])
-        if (!fileCache[listKey]) setFiles([]);
+        setFiles([]);
       } else {
         const sortedFiles = fetchedFiles.sort((a, b) => {
           if (a.type === 'directory' && b.type !== 'directory') return -1;
@@ -162,8 +123,6 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
           return a.name.localeCompare(b.name);
         });
         setFiles(sortedFiles);
-        // Update Cache
-        setFileCache(prev => ({ ...prev, [listKey]: sortedFiles }));
       }
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
@@ -171,7 +130,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       setIsLoading(false);
       setSelectedFiles(new Set()); // Clear selection on navigate
     }
-  }, [serverId, toast, rootMode, fileCache, setFileCache]);
+  }, [serverId, toast, rootMode]);
 
   useEffect(() => {
     fetchFiles(currentPath);
@@ -323,7 +282,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     } else {
       toast({ title: 'Success', description: `Items ${op === 'copy' ? 'copied' : 'moved'} successfully.` });
       if (op === 'move') setClipboard(null); // Clear clipboard after move
-      await fetchFiles(currentPath, true); // Force fetch on Paste as it's complex to predict exact file object
+      await fetchFiles(currentPath); // Force fetch on Paste as it's complex to predict exact file object
     }
     setIsProcessing(false);
     setContextMenu(null);
@@ -340,9 +299,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     if (!renameState) return;
     // Optimistic Update
     const oldFiles = [...files];
-    const oldCache = { ...fileCache };
     const { oldName, newName } = renameState;
-    const cacheKey = rootMode ? currentPath + ':root' : currentPath;
 
     if (oldName === newName) {
       setRenameState(null);
@@ -356,7 +313,6 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       return a.name.localeCompare(b.name);
     });
     setFiles(updatedFiles);
-    setFileCache(prev => ({ ...prev, [cacheKey]: updatedFiles }));
     setRenameState(null);
 
     const currentFilePath = currentPath.endsWith('/') ? currentPath + oldName : currentPath + '/' + oldName;
@@ -366,7 +322,6 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       toast({ variant: 'destructive', title: 'Rename Failed', description: result.error });
       // Revert
       setFiles(oldFiles);
-      setFileCache(oldCache);
     } else {
       toast({ title: 'Renamed', description: `Successfully renamed to ${newName}` });
       // No need to fetchFiles, we already updated state.
@@ -391,14 +346,11 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     setDeleteState(null);
 
     const oldFiles = [...files];
-    const oldCache = { ...fileCache };
     const filesToDelete = deleteState.files;
-    const cacheKey = rootMode ? currentPath + ':root' : currentPath;
 
     // Optimistic Remove
     const newFiles = files.filter(f => !deleteSet.has(f.name));
     setFiles(newFiles);
-    setFileCache(prev => ({ ...prev, [cacheKey]: newFiles }));
 
     const pathsToDelete = filesToDelete.map(name =>
       currentPath.endsWith('/') ? currentPath + name : currentPath + '/' + name
@@ -410,7 +362,6 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       toast({ variant: 'destructive', title: 'Delete Failed', description: result.error });
       // Revert
       setFiles(oldFiles);
-      setFileCache(oldCache);
     } else {
       // Play sound
       try {
@@ -489,9 +440,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
         type: 'file',
         size: file.size,
         permissions: 'rw-r--r--', // dummy
-        lastModified: new Date().toISOString(),
-        owner: 'root',
-        group: 'root'
+        lastModified: new Date().toISOString()
       }));
 
       // Merge with existing files, replacing potential duplicates
@@ -509,8 +458,6 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       });
 
       setFiles(sortedFiles);
-      const cacheKey = rootMode ? currentPath + ':root' : currentPath;
-      setFileCache(prev => ({ ...prev, [cacheKey]: sortedFiles }));
     }
 
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -591,9 +538,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
               type: 'directory',
               size: 0,
               permissions: 'drwxr-xr-x',
-              lastModified: new Date().toISOString(),
-              owner: 'root',
-              group: 'root'
+              lastModified: new Date().toISOString()
             });
             hasChanges = true;
           }
@@ -608,7 +553,6 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
         return a.name.localeCompare(b.name);
       });
       setFiles(sortedFiles);
-      setFileCache(prev => ({ ...prev, [cacheKey]: sortedFiles }));
     }
 
     if (folderInputRef.current) folderInputRef.current.value = '';
@@ -637,17 +581,13 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     // Optimistic Create
     const type = newItemState?.type || 'file';
     const oldFiles = [...files];
-    const oldCache = { ...fileCache };
-    const cacheKey = rootMode ? currentPath + ':root' : currentPath;
 
     const newFileObj: FileOrFolder = {
       name: val,
       type: type === 'folder' ? 'directory' : 'file',
       size: 0,
       permissions: 'drwxr-xr-x', // dummy
-      lastModified: new Date().toISOString(),
-      owner: 'root',
-      group: 'root'
+      lastModified: new Date().toISOString()
     };
 
     // Insert and sort
@@ -658,7 +598,6 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     });
 
     setFiles(updatedFiles);
-    setFileCache(prev => ({ ...prev, [cacheKey]: updatedFiles }));
     setNewItemState(null); // Remove input
 
     const newPath = currentPath.endsWith('/') ? currentPath + val : currentPath + '/' + val;
@@ -675,7 +614,6 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       toast({ variant: 'destructive', title: 'Action Failed', description: res.error });
       // Revert
       setFiles(oldFiles);
-      setFileCache(oldCache);
     } else {
       toast({ title: 'Success', description: `${type === 'folder' ? 'Folder' : 'File'} created.` });
       // No fetch needed
@@ -804,33 +742,45 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       {/* Dialogs */}
       <Dialog open={!!renameState} onOpenChange={(o) => !o && setRenameState(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Rename Item</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Rename Item</DialogTitle>
+            <DialogDescription>
+              Enter a new name for the item.
+            </DialogDescription>
+          </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="name" className="text-right">Name</Label>
-              <Input id="name" value={renameState?.newName || ''} onChange={(e) => setRenameState(prev => prev ? ({ ...prev, newName: e.target.value }) : null)} className="col-span-3" />
+              <Input
+                id="name"
+                value={renameState?.newName || ''}
+                onChange={(e) => setRenameState(prev => prev ? ({ ...prev, newName: e.target.value }) : null)}
+                onKeyDown={(e) => e.key === 'Enter' && confirmRename()}
+                className="col-span-3"
+              />
             </div>
           </div>
           <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameState(null)}>Cancel</Button>
             <Button onClick={confirmRename}>Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleteState} onOpenChange={(o) => !o && setDeleteState(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
+      <Dialog open={!!deleteState} onOpenChange={(o) => !o && setDeleteState(null)}>
+        <DialogContent onKeyDown={(e) => e.key === 'Enter' && confirmDelete()}>
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogDescription>
               This will permanently delete {deleteState?.files.length} items. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteState(null)}>Cancel</Button>
+            <Button onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!detailsState} onOpenChange={(o) => !o && setDetailsState(null)}>
         <DialogContent>
