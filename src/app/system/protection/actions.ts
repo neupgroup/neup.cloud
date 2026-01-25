@@ -74,3 +74,83 @@ export async function checkSshProtection(serverId: string) {
         return { error: e.message };
     }
 }
+
+export async function enableMemoryProtection(serverId: string) {
+    const server = await getServerForRunner(serverId);
+    if (!server) {
+        return { error: 'Server not found.' };
+    }
+    if (!server.username || !server.privateKey) {
+        return { error: 'Server is missing username or private key configuration for SSH access.' };
+    }
+
+    try {
+        // Fetch total RAM in KB
+        const ramResult = await runCommandOnServer(
+            server.publicIp,
+            server.username,
+            server.privateKey,
+            "grep MemTotal /proc/meminfo | awk '{print $2}'"
+        );
+        if (ramResult.code !== 0) return { error: `Failed to fetch RAM: ${ramResult.stderr}` };
+
+        const totalRamKb = parseInt(ramResult.stdout.trim(), 10);
+        if (isNaN(totalRamKb)) return { error: 'Failed to parse total RAM size.' };
+
+        // Calculate 10% for min_free_kbytes (capped at reasonable limits if needed, but per request 10%)
+        // User request: "keep minimum of 10% of the ram always available"
+        const minFreeKbytes = Math.floor(totalRamKb * 0.10);
+
+        const configContent = `vm.min_free_kbytes = ${minFreeKbytes}
+vm.overcommit_memory = 2
+vm.swappiness = 10`;
+
+        // Write to a dedicated sysctl file for persistence
+        const writeCommand = `echo '${configContent}' | sudo tee /etc/sysctl.d/99-neup-memory.conf`;
+        let result = await runCommandOnServer(
+            server.publicIp,
+            server.username,
+            server.privateKey,
+            writeCommand
+        );
+        if (result.code !== 0) return { error: `Failed to write sysctl config: ${result.stderr}` };
+
+        // Apply using sysctl -p on the specific file
+        result = await runCommandOnServer(
+            server.publicIp,
+            server.username,
+            server.privateKey,
+            'sudo sysctl -p /etc/sysctl.d/99-neup-memory.conf'
+        );
+        if (result.code !== 0) return { error: `Failed to apply sysctl changes: ${result.stderr}` };
+
+        return { success: true };
+
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
+
+export async function checkMemoryProtection(serverId: string) {
+    const server = await getServerForRunner(serverId);
+    if (!server) {
+        return { error: 'Server not found.' };
+    }
+    if (!server.username || !server.privateKey) {
+        return { error: 'Server is missing username or private key configuration for SSH access.' };
+    }
+
+    try {
+        // Check if our specific config file exists and has content
+        const result = await runCommandOnServer(
+            server.publicIp,
+            server.username,
+            server.privateKey,
+            'test -f /etc/sysctl.d/99-neup-memory.conf && grep -q "vm.min_free_kbytes" /etc/sysctl.d/99-neup-memory.conf'
+        );
+
+        return { enabled: result.code === 0 };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
