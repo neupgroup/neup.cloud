@@ -455,3 +455,31 @@ export async function getRunningProcesses() {
         return [];
     }
 }
+
+export async function restartApplicationProcess(serverId: string, pmId: string | number) {
+    if (!serverId) return { error: "Server not selected" };
+
+    // Using executeQuickCommand to avoid full DB logging overhead for simple process management, 
+    // or use executeCommand if we want history. PM2 management is usually ephemeral.
+    const result = await executeQuickCommand(serverId, `pm2 restart ${pmId}`);
+
+    if (result.error) {
+        return { error: result.error };
+    }
+
+    // Re-fetch list to verify? The UI will likely re-fetch.
+    return { success: true, output: result.output };
+}
+
+export async function saveRunningProcesses(serverId: string) {
+    if (!serverId) return { error: "Server not selected" };
+
+    // pm2 save dumps current process list to ~/.pm2/dump.pm2
+    const result = await executeQuickCommand(serverId, `pm2 save`);
+
+    if (result.error) {
+        return { error: result.error };
+    }
+
+    return { success: true, output: result.output };
+}

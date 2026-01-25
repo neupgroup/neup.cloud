@@ -152,3 +152,56 @@ export async function checkMemoryProtection(serverId: string) {
         return { error: e.message };
     }
 }
+
+export async function disableSshProtection(serverId: string) {
+    const server = await getServerForRunner(serverId);
+    if (!server) {
+        return { error: 'Server not found.' };
+    }
+    if (!server.username || !server.privateKey) {
+        return { error: 'Server is missing username or private key configuration for SSH access.' };
+    }
+
+    try {
+        // Remove config and restart service
+        const command = `sudo rm -f /etc/systemd/system/ssh.service.d/oom.conf && sudo systemctl daemon-reexec && sudo systemctl restart ssh`;
+        const result = await runCommandOnServer(
+            server.publicIp,
+            server.username,
+            server.privateKey,
+            command
+        );
+        if (result.code !== 0) return { error: `Failed to disable SSH protection: ${result.stderr}` };
+
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}
+
+export async function disableMemoryProtection(serverId: string) {
+    const server = await getServerForRunner(serverId);
+    if (!server) {
+        return { error: 'Server not found.' };
+    }
+    if (!server.username || !server.privateKey) {
+        return { error: 'Server is missing username or private key configuration for SSH access.' };
+    }
+
+    try {
+        // Remove sysctl file and reset min_free_kbytes to a safe default (12288KB approx 12MB)
+        // This ensures the memory is immediately released back to applications without needing a reboot
+        const command = `sudo rm -f /etc/sysctl.d/99-neup-memory.conf && sudo sysctl -w vm.min_free_kbytes=12288 && sudo sysctl -w vm.swappiness=60`;
+        const result = await runCommandOnServer(
+            server.publicIp,
+            server.username,
+            server.privateKey,
+            command
+        );
+        if (result.code !== 0) return { error: `Failed to disable memory protection: ${result.stderr}` };
+
+        return { success: true };
+    } catch (e: any) {
+        return { error: e.message };
+    }
+}

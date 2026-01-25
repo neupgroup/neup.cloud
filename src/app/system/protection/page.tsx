@@ -6,7 +6,14 @@ import { ShieldCheck, Loader2, Check, XCircle, HardDrive } from "lucide-react";
 import { useState, useEffect } from "react";
 import Cookies from "universal-cookie";
 import { useToast } from "@/hooks/use-toast";
-import { enableSshProtection, checkSshProtection, enableMemoryProtection, checkMemoryProtection } from './actions';
+import {
+    enableSshProtection,
+    checkSshProtection,
+    enableMemoryProtection,
+    checkMemoryProtection,
+    disableSshProtection,
+    disableMemoryProtection
+} from './actions';
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -66,8 +73,8 @@ export default function ProtectionPage() {
         }
     };
 
-    const handleEnableSshProtection = async () => {
-        if (isSshEnabled || isSshLoading || isSshChecking) return;
+    const handleToggleSshProtection = async () => {
+        if (isSshLoading || isSshChecking) return;
 
         if (!serverId) {
             toast({ variant: 'destructive', title: 'No server selected', description: 'Please select a server.' });
@@ -76,12 +83,24 @@ export default function ProtectionPage() {
 
         setIsSshLoading(true);
         try {
-            const result = await enableSshProtection(serverId);
-            if (result.error) {
-                toast({ variant: 'destructive', title: 'SSH Protection Failed', description: result.error });
+            if (isSshEnabled) {
+                // Disable
+                const result = await disableSshProtection(serverId);
+                if (result.error) {
+                    toast({ variant: 'destructive', title: 'Disable Failed', description: result.error });
+                } else {
+                    toast({ title: 'SSH Protection Disabled', description: 'SSH process protection has been removed.' });
+                    setIsSshEnabled(false);
+                }
             } else {
-                toast({ title: 'SSH Protection Enabled', description: 'SSH is now prioritized to survive OOM situations.' });
-                setIsSshEnabled(true);
+                // Enable
+                const result = await enableSshProtection(serverId);
+                if (result.error) {
+                    toast({ variant: 'destructive', title: 'SSH Protection Failed', description: result.error });
+                } else {
+                    toast({ title: 'SSH Protection Enabled', description: 'SSH is now prioritized to survive OOM situations.' });
+                    setIsSshEnabled(true);
+                }
             }
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -90,8 +109,8 @@ export default function ProtectionPage() {
         }
     };
 
-    const handleEnableMemProtection = async () => {
-        if (isMemEnabled || isMemLoading || isMemChecking) return;
+    const handleToggleMemProtection = async () => {
+        if (isMemLoading || isMemChecking) return;
 
         if (!serverId) {
             toast({ variant: 'destructive', title: 'No server selected', description: 'Please select a server.' });
@@ -100,12 +119,24 @@ export default function ProtectionPage() {
 
         setIsMemLoading(true);
         try {
-            const result = await enableMemoryProtection(serverId);
-            if (result.error) {
-                toast({ variant: 'destructive', title: 'Memory Protection Failed', description: result.error });
+            if (isMemEnabled) {
+                // Disable
+                const result = await disableMemoryProtection(serverId);
+                if (result.error) {
+                    toast({ variant: 'destructive', title: 'Disable Failed', description: result.error });
+                } else {
+                    toast({ title: 'Memory Protection Disabled', description: 'Emergency memory buffer has been removed.' });
+                    setIsMemEnabled(false);
+                }
             } else {
-                toast({ title: 'Memory Protection Enabled', description: 'System emergency memory buffer is now configured.' });
-                setIsMemEnabled(true);
+                // Enable
+                const result = await enableMemoryProtection(serverId);
+                if (result.error) {
+                    toast({ variant: 'destructive', title: 'Memory Protection Failed', description: result.error });
+                } else {
+                    toast({ title: 'Memory Protection Enabled', description: 'System emergency memory buffer is now configured.' });
+                    setIsMemEnabled(true);
+                }
             }
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
@@ -114,8 +145,8 @@ export default function ProtectionPage() {
         }
     };
 
-    const isSshInteractive = !isSshEnabled && !isSshLoading && !isSshChecking;
-    const isMemInteractive = !isMemEnabled && !isMemLoading && !isMemChecking;
+    const isSshInteractive = !isSshLoading && !isSshChecking;
+    const isMemInteractive = !isMemLoading && !isMemChecking;
 
     return (
         <div className="space-y-6">
@@ -127,10 +158,10 @@ export default function ProtectionPage() {
             <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
                 {/* SSH Protection Card */}
                 <div
-                    onClick={handleEnableSshProtection}
+                    onClick={handleToggleSshProtection}
                     className={cn(
                         "p-4 min-w-0 w-full transition-colors flex items-center justify-between border-b border-border",
-                        isSshInteractive ? "hover:bg-muted/50 cursor-pointer" : "cursor-default"
+                        isSshInteractive ? "hover:bg-muted/50 cursor-pointer" : "cursor-default opacity-70"
                     )}
                 >
                     <div className="min-w-0 flex-1">
@@ -142,7 +173,7 @@ export default function ProtectionPage() {
                             {isSshChecking || isSshLoading ? (
                                 <Badge variant="outline" className="gap-1 animate-pulse">
                                     <Loader2 className="h-3 w-3 animate-spin" />
-                                    {isSshLoading ? "Applying..." : "Checking"}
+                                    {isSshLoading ? (isSshEnabled ? "Disabling..." : "Enabling...") : "Checking"}
                                 </Badge>
                             ) : isSshEnabled ? (
                                 <Badge className="bg-green-500 hover:bg-green-600 gap-1">
@@ -162,10 +193,10 @@ export default function ProtectionPage() {
 
                 {/* Memory Protection Card */}
                 <div
-                    onClick={handleEnableMemProtection}
+                    onClick={handleToggleMemProtection}
                     className={cn(
                         "p-4 min-w-0 w-full transition-colors flex items-center justify-between",
-                        isMemInteractive ? "hover:bg-muted/50 cursor-pointer" : "cursor-default"
+                        isMemInteractive ? "hover:bg-muted/50 cursor-pointer" : "cursor-default opacity-70"
                     )}
                 >
                     <div className="min-w-0 flex-1">
@@ -177,7 +208,7 @@ export default function ProtectionPage() {
                             {isMemChecking || isMemLoading ? (
                                 <Badge variant="outline" className="gap-1 animate-pulse">
                                     <Loader2 className="h-3 w-3 animate-spin" />
-                                    {isMemLoading ? "Applying..." : "Checking"}
+                                    {isMemLoading ? (isMemEnabled ? "Disabling..." : "Enabling...") : "Checking"}
                                 </Badge>
                             ) : isMemEnabled ? (
                                 <Badge className="bg-green-500 hover:bg-green-600 gap-1">
