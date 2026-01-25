@@ -121,7 +121,6 @@ function NavLink({
 function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData }: { currentPath: string, onLinkClick?: () => void, isServerSelected: boolean, serverData: any }) {
   const navLinks = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
-    { href: "/recommendations", label: "Recommendations", icon: Lightbulb },
     { href: "/commandset", label: "Command Sets", icon: Command },
   ];
 
@@ -155,12 +154,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     { href: "/applications/deploy", label: "Deploy", icon: Rocket },
   ]
 
-  const maintenanceLinks = [
-    { href: "/storage", label: "Storage", icon: HardDrive },
-    { href: "/files", label: "File Manager", icon: FolderKanban },
-    { href: "/packages", label: "Packages", icon: Package },
-    { href: "/updates", label: "Updates", icon: ArrowUpCircle },
-  ]
+  /* Maintenance Links removed as they are moved to System */
 
   const firewallLinks = [
     { href: "/firewall", label: "Home", icon: ShieldAlert },
@@ -194,7 +188,10 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
 
   const systemLinks = [
     { href: "/system", label: "Home", icon: LayoutGrid },
-    { href: "/system/package", label: "Packages", icon: Package },
+    { href: "/files", label: "File Manager", icon: FolderKanban },
+    { href: "/packages", label: "Packages", icon: Package },
+    { href: "/updates", label: "Updates", icon: ArrowUpCircle },
+    { href: "/storage", label: "Storage", icon: HardDrive },
     { href: "/system/requirement", label: "Requirements", icon: ListChecks },
     { href: "/system/protection", label: "Protection", icon: Shield },
   ];
@@ -206,7 +203,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     ...accountLinks.map(l => l.href),
     ...(isServerSelected ? serverLinks.map(l => l.href) : []),
     ...(isServerSelected ? applicationsLinks.map(l => l.href) : []),
-    ...(isServerSelected ? maintenanceLinks.map(l => l.href) : []),
+    // maintenanceLinks removed
     ...(isServerSelected ? firewallLinks.map(l => l.href) : []),
     ...(isServerSelected ? webservicesLinks.map(l => l.href) : []),
 
@@ -257,20 +254,6 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
             Applications
           </div>
           {applicationsLinks.map(({ href, label, icon: Icon }) => (
-            <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
-              <Icon className="h-4 w-4" />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-        </div>
-      )}
-
-      {isServerSelected && (
-        <div className="space-y-2">
-          <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
-            Maintenance
-          </div>
-          {maintenanceLinks.map(({ href, label, icon: Icon }) => (
             <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
               <Icon className="h-4 w-4" />
               <span>{label}</span>
