@@ -20,6 +20,7 @@ import * as NextJsDev from '@/core/next-js/dev';
 import * as NextJsStart from '@/core/next-js/start';
 import * as NextJsStop from '@/core/next-js/stop';
 import * as NextJsBuild from '@/core/next-js/build';
+import * as NextJsInstall from '@/core/next-js/install';
 import * as NodeJsStart from '@/core/node/start';
 import * as NodeJsStop from '@/core/node/stop';
 import * as NodeJsBuild from '@/core/node/build';
@@ -59,6 +60,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
         setIfMissing('start', NextJsStart.getStartCommand(application.name, application.location, application.networkAccess?.map(Number) || []));
         setIfMissing('stop', NextJsStop.getStopCommand(application.name));
         setIfMissing('build', NextJsBuild.getBuildCommand(application.location));
+        setIfMissing('install', NextJsInstall.getInstallCommand(application.location));
         setIfMissing('dev', NextJsDev.getDevCommand(application.name, application.location, application.networkAccess?.map(Number) || []));
     } else if (application.language === 'node') {
         const entry = application.information?.entryFile || 'index.js';

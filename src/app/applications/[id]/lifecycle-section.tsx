@@ -5,7 +5,7 @@ import { executeApplicationCommand } from "@/app/applications/actions";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Check, Hammer, Loader2, Play, PlayCircle, RefreshCw, StopCircle, Terminal } from "lucide-react";
+import { Check, Hammer, Loader2, Play, PlayCircle, RefreshCw, StopCircle, Terminal, Download } from "lucide-react";
 import { useState } from "react";
 
 interface LifecycleSectionProps {
@@ -18,7 +18,7 @@ export function LifecycleSection({ application }: LifecycleSectionProps) {
 
     if (!application.commands) return null;
 
-    const lifecycleNames = ['start', 'stop', 'restart', 'build', 'dev', 'lifecycle.start', 'lifecycle.stop', 'lifecycle.restart', 'lifecycle.build', 'lifecycle.dev'];
+    const lifecycleNames = ['install', 'start', 'stop', 'restart', 'build', 'dev', 'lifecycle.install', 'lifecycle.start', 'lifecycle.stop', 'lifecycle.restart', 'lifecycle.build', 'lifecycle.dev'];
 
     const lifecycleCommands = Object.entries(application.commands).filter(([name]) =>
         lifecycleNames.includes(name) || name.startsWith('lifecycle.')
@@ -32,6 +32,7 @@ export function LifecycleSection({ application }: LifecycleSectionProps) {
         if (lower.includes('stop')) return StopCircle;
         if (lower.includes('restart')) return RefreshCw;
         if (lower.includes('build')) return Hammer;
+        if (lower.includes('install')) return Download;
         if (lower.includes('dev')) return Terminal;
         return Terminal;
     };
