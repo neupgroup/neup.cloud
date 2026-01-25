@@ -39,6 +39,11 @@ export async function runCommandOnServer(
         // If we want Windows, we should pass an option `osType`.
         // Upgrading signature to support osType later if needed.
 
+        // Replace Memory Variables with Shell Commands
+        // This allows using {{NEUP_SERVER_RAM_TOTAL}} in commands to get the server's total RAM
+        command = command.replace(/{{NEUP_SERVER_RAM_TOTAL}}/g, "$(grep MemTotal /proc/meminfo | awk '{print $2}')");
+        command = command.replace(/{{NEUP_SERVER_RAM_AVAILABLE}}/g, "$(grep MemAvailable /proc/meminfo | awk '{print $2}')");
+
         const universal = new UniversalLinux({ variables }, executor);
         const processedCommand = await universal.process(command);
 

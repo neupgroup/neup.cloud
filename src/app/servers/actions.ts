@@ -134,6 +134,49 @@ export async function getSystemStats(serverId: string) {
   }
 }
 
+export async function getServerMemory(serverId: string) {
+  const server = await getServerForRunner(serverId);
+  if (!server) {
+    return { error: 'Server not found.' };
+  }
+  if (!server.username || !server.privateKey) {
+    return { error: 'Server is missing username or private key configuration for SSH access.' };
+  }
+
+  try {
+    const result = await runCommandOnServer(
+      server.publicIp,
+      server.username,
+      server.privateKey,
+      "grep -E 'MemTotal|MemAvailable' /proc/meminfo"
+    );
+
+    if (result.code !== 0) return { error: `Failed to fetch memory info: ${result.stderr}` };
+
+    const totalMatch = result.stdout.match(/MemTotal:\s+(\d+)\s+kB/);
+    const availMatch = result.stdout.match(/MemAvailable:\s+(\d+)\s+kB/);
+
+    if (!totalMatch) return { error: 'Could not parse MemTotal' };
+
+    // MemAvailable might not be present in very old kernels
+    const totalKb = parseInt(totalMatch[1], 10);
+    const availableKb = availMatch ? parseInt(availMatch[1], 10) : 0;
+
+    return {
+      totalKb,
+      availableKb,
+      // also return simple total/available RAM variable-like structure if user wants simple access
+      ram: {
+        total: totalKb,
+        available: availableKb
+      }
+    };
+
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
 export async function createServer(serverData: {
   name: string;
   username: string;

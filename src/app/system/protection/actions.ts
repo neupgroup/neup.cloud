@@ -85,17 +85,15 @@ export async function enableMemoryProtection(serverId: string) {
     }
 
     try {
-        // Fetch total RAM in KB
-        const ramResult = await runCommandOnServer(
-            server.publicIp,
-            server.username,
-            server.privateKey,
-            "grep MemTotal /proc/meminfo | awk '{print $2}'"
-        );
-        if (ramResult.code !== 0) return { error: `Failed to fetch RAM: ${ramResult.stderr}` };
+        // Fetch RAM using shared utility
+        const { getServerMemory } = await import('@/app/servers/actions');
+        const memoryInfo = await getServerMemory(serverId);
 
-        const totalRamKb = parseInt(ramResult.stdout.trim(), 10);
-        if (isNaN(totalRamKb)) return { error: 'Failed to parse total RAM size.' };
+        if (memoryInfo.error || !memoryInfo.totalKb) {
+            return { error: memoryInfo.error || 'Failed to fetch total RAM.' };
+        }
+
+        const totalRamKb = memoryInfo.totalKb;
 
         // Calculate 10% for min_free_kbytes (capped at reasonable limits if needed, but per request 10%)
         // User request: "keep minimum of 10% of the ram always available"
