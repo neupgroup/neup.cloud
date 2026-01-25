@@ -1,4 +1,3 @@
-
 'use server';
 
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -51,8 +50,8 @@ export async function getServerForRunner(id: string) {
     username: string;
     type: string;
     provider: string;
-    ram: string;
-    storage: string;
+    ram?: string;
+    storage?: string;
     publicIp: string;
     privateIp?: string;
     privateKey?: string;
@@ -85,6 +84,50 @@ export async function getRamUsage(serverId: string) {
 
     const usedRam = Math.round(totalRamKb / 1024); // Convert KB to MB
     return { usedRam };
+
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
+export async function getSystemStats(serverId: string) {
+  const server = await getServerForRunner(serverId);
+  if (!server) {
+    return { error: 'Server not found.' };
+  }
+  if (!server.username || !server.privateKey) {
+    return { error: 'Server is missing username or private key configuration for SSH access.' };
+  }
+
+  try {
+    // We get CPU via vmstat (takes 1s) and RAM via free -m
+    // vmstat 1 2 gives 2 lines, we need the last one. Column 15 is 'id' (idle).
+    // free -m gives total and used.
+
+    const cmd = `
+    vmstat 1 2 | tail -1 | awk '{print 100 - $15}'
+    echo "---"
+    free -m | awk 'NR==2{print $2 " " $3}'
+    `;
+
+    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, cmd);
+    if (result.code !== 0) {
+      return { error: result.stderr || 'Failed to get system stats.' };
+    }
+
+    const [cpuLine, ramLine] = result.stdout.trim().split('---');
+
+    const cpuUsage = parseFloat(cpuLine.trim());
+    const [totalRam, usedRam] = ramLine.trim().split(' ').map(Number);
+
+    return {
+      cpuUsage: isNaN(cpuUsage) ? 0 : cpuUsage,
+      memory: {
+        total: totalRam,
+        used: usedRam,
+        percentage: totalRam > 0 ? Math.round((usedRam / totalRam) * 100) : 0
+      }
+    };
 
   } catch (e: any) {
     return { error: e.message };

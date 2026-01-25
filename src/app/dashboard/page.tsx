@@ -18,24 +18,44 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { Server, Loader2, Clock, Globe, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Clock, Globe, Activity, Cpu } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getServerUptime } from "@/app/status/actions";
-import { getServer } from "@/app/servers/actions";
+import { getServer, getSystemStats } from "@/app/servers/actions";
 import Cookies from 'universal-cookie';
 import { format } from 'date-fns';
 import { getRecentActivity, ActivityLog } from "./actions";
+import { useAuth } from "@/firebase/provider";
+import { onAuthStateChanged } from "firebase/auth";
 
 export default function DashboardPage() {
   const router = useRouter();
-
+  const auth = useAuth();
+  const [userFirstName, setUserFirstName] = useState<string>("");
 
   const [loading, setLoading] = useState(true);
   const [serverId, setServerId] = useState<string | null>(null);
   const [serverInfo, setServerInfo] = useState<any>(null);
   const [uptime, setUptime] = useState<string | null>(null);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [systemStats, setSystemStats] = useState<{
+    cpuUsage: number;
+    memory: { total: number; used: number; percentage: number };
+  } | null>(null);
+
+  useEffect(() => {
+    if (!auth) return;
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // Try to get first name from displayName or email
+        // const name = user.displayName?.split(' ')[0] || user.email?.split('@')[0] || "User";
+        setUserFirstName("Kishor");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [auth]);
 
   useEffect(() => {
     const cookies = new Cookies(null, { path: '/' });
@@ -45,10 +65,17 @@ export default function DashboardPage() {
     if (id) {
       fetchServerInfo(id);
       fetchActivity(id);
+      fetchStats(id);
     } else {
       fetchActivity();
       setLoading(false);
     }
+
+    // Poll stats every 10 seconds if server is selected
+    const interval = setInterval(() => {
+      if (id) fetchStats(id);
+    }, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchServerInfo = async (id: string) => {
@@ -66,6 +93,17 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchStats = async (id: string) => {
+    try {
+      const stats = await getSystemStats(id);
+      if (stats && !stats.error && stats.cpuUsage !== undefined) {
+        setSystemStats(stats as any);
+      }
+    } catch (err) {
+      console.error("Failed to fetch system stats", err);
+    }
+  };
+
   const fetchActivity = async (id?: string) => {
     try {
       const logs = await getRecentActivity(id);
@@ -79,35 +117,47 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      {/* User Welcome Section */}
+      <div className="space-y-1">
+        <h1 className="text-3xl font-bold font-headline tracking-tight">
+          Hello <span className="text-primary">{userFirstName}</span>! Welcome Back,
+        </h1>
+        <p className="text-muted-foreground text-lg">
+          You're managing the "<span className="font-semibold text-foreground">{serverInfo?.name || "..."}</span>" now!
+        </p>
+      </div>
 
       {/* Server Hero Section */}
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-        {/* 1. Server Identity Card */}
+
+        {/* 1. Live RAM Usage */}
         <Card className="overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Server Identity</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Memory Usage</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {serverInfo ? serverInfo.name || 'Server' : 'Loading...'}
+              {systemStats ? `${systemStats.memory.percentage}%` : '...'}
             </div>
             <p className="text-xs text-muted-foreground">
-              {serverInfo ? serverInfo.username || 'root' : '...'}
+              {systemStats ? `${systemStats.memory.used}MB / ${systemStats.memory.total}MB` : 'Fetching live data...'}
             </p>
           </CardContent>
         </Card>
 
-        {/* 2. Live Servers (Servers Online) */}
+        {/* 2. Live CPU Usage */}
         <Card className="overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Servers Online</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">CPU Usage</CardTitle>
+            <Cpu className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1 / 1</div>
+            <div className="text-2xl font-bold">
+              {systemStats ? `${systemStats.cpuUsage.toFixed(1)}%` : '...'}
+            </div>
             <p className="text-xs text-muted-foreground">
-              All systems operational
+              Live utilization
             </p>
           </CardContent>
         </Card>
@@ -120,7 +170,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {serverInfo ? serverInfo.publicIp || 'N/A' : 'Loading...'}
+              {serverInfo ? serverInfo.publicIp || 'N/A' : '...'}
             </div>
             <p className="text-xs text-muted-foreground truncate" title={serverInfo?.publicIpv6}>
               {serverInfo ? (serverInfo.publicIpv6 ? 'IPv6 Configured' : 'IPv4 Only') : '...'}
