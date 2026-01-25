@@ -39,8 +39,7 @@ export default function AddServerPage() {
   const [username, setUsername] = useState('root');
   const [provider, setProvider] = useState('');
   const [type, setType] = useState('');
-  const [ram, setRam] = useState('4096');
-  const [storage, setStorage] = useState('100');
+
   const [publicIp, setPublicIp] = useState('');
   const [privateIp, setPrivateIp] = useState('');
   const [privateKey, setPrivateKey] = useState('');
@@ -118,14 +117,13 @@ export default function AddServerPage() {
       username,
       type,
       provider,
-      ram: `${ram}MB`,
-      storage: `${storage}GB`,
+
       publicIp,
       privateIp,
       privateKey,
     };
 
-    if (!serverData.name || !serverData.username || !serverData.type || !serverData.provider || !serverData.ram || !serverData.storage || !serverData.publicIp) {
+    if (!serverData.name || !serverData.username || !serverData.type || !serverData.provider || !serverData.publicIp) {
       toast({
         variant: "destructive",
         title: "Missing fields",
@@ -213,22 +211,7 @@ export default function AddServerPage() {
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="ram">RAM</Label>
-                <div className="relative">
-                  <Input id="ram" name="ram" type="number" placeholder="e.g., 4096" value={ram} onChange={(e) => setRam(e.target.value)} className="pr-12" />
-                  <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">MB</span>
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="storage">Storage</Label>
-                <div className="relative">
-                  <Input id="storage" name="storage" type="number" placeholder="e.g., 100" value={storage} onChange={(e) => setStorage(e.target.value)} className="pr-12" />
-                  <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">GB</span>
-                </div>
-              </div>
-            </div>
+
 
             <div className="grid md:grid-cols-2 gap-6">
               <div className="grid gap-2">
@@ -263,8 +246,8 @@ export default function AddServerPage() {
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragging
-                    ? 'border-primary bg-primary/5'
-                    : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-muted-foreground/25 hover:border-muted-foreground/50'
                   }`}
               >
                 <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />

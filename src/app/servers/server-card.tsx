@@ -1,21 +1,9 @@
-
 'use client';
 
-import { MoreHorizontal, Trash2, ServerIcon, User, RefreshCcw, Loader2, CheckCircle } from "lucide-react";
-import Link from "next/link";
-import React, { useEffect, useState } from "react";
-import NProgress from 'nprogress';
-import { usePathname } from 'next/navigation';
+import { MoreHorizontal, Trash2, ServerIcon, User, Check, Loader2 } from "lucide-react";
+import React, { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter
-} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,39 +12,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { deleteServer, getRamUsage, selectServer } from "./actions";
+import { deleteServer, selectServer } from "./actions";
 import type { Server } from './page';
-import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 type ServerCardProps = {
   server: Server;
   onServerDeleted: (id: string) => void;
   onServerSelected: (id: string) => void;
   isSelected: boolean;
+  className?: string;
 };
 
-export function ServerCard({ server, onServerDeleted, onServerSelected, isSelected }: ServerCardProps) {
+export function ServerCard({ server, onServerDeleted, onServerSelected, isSelected, className }: ServerCardProps) {
   const { toast } = useToast();
-  const pathname = usePathname();
-  const [usedRam, setUsedRam] = useState<number | null>(null);
-  const [isRamLoading, setIsRamLoading] = useState(true);
   const [isSwitching, setIsSwitching] = useState(false);
 
-  useEffect(() => {
-    async function fetchRam() {
-      setIsRamLoading(true);
-      const result = await getRamUsage(server.id);
-      if (result.usedRam !== undefined) {
-        setUsedRam(result.usedRam);
-      } else {
-        console.error(`Failed to fetch RAM for ${server.name} (${server.id}):`, result.error);
-      }
-      setIsRamLoading(false);
-    }
-    fetchRam();
-  }, [server.id, server.name]);
-
-  const handleDelete = async () => {
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering selection
     try {
       await deleteServer(server.id);
       toast({
@@ -73,8 +46,10 @@ export function ServerCard({ server, onServerDeleted, onServerSelected, isSelect
       });
     }
   };
-  
+
   const handleSelect = async () => {
+    if (isSelected || isSwitching) return;
+
     setIsSwitching(true);
     try {
       await selectServer(server.id, server.name);
@@ -84,84 +59,76 @@ export function ServerCard({ server, onServerDeleted, onServerSelected, isSelect
       });
       onServerSelected(server.id);
     } catch (error) {
-       console.error("Error selecting server: ", error);
-       toast({
+      console.error("Error selecting server: ", error);
+      toast({
         variant: "destructive",
         title: "Error",
         description: "There was a problem selecting the server.",
       });
     } finally {
-        setIsSwitching(false);
+      setIsSwitching(false);
     }
   };
 
-  const totalRam = parseInt(server.ram.replace('MB', ''), 10);
-
   return (
-    <Card className="flex flex-col">
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="font-headline text-xl flex items-center gap-2">
-                 <ServerIcon className="h-5 w-5 text-muted-foreground" />
-                 {server.name}
-            </CardTitle>
-            <CardDescription className="flex items-center gap-2 pt-1">
-                <User className="h-4 w-4 text-muted-foreground" />
-                {server.username}@{server.publicIp}
-            </CardDescription>
+    <div
+      onClick={handleSelect}
+      className={cn(
+        "group flex items-center justify-between p-4 min-w-0 w-full transition-all hover:bg-muted/50 cursor-pointer",
+        isSelected && "bg-muted/50",
+        className
+      )}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 mb-2">
+          <p className="text-sm font-medium text-foreground break-all font-mono leading-tight">
+            {server.name}
+          </p>
+          {isSelected && <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Current</span>}
+          {isSwitching && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <User className="h-3.5 w-3.5" />
+            <span>{server.username}@{server.publicIp}</span>
           </div>
-           <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button aria-haspopup="true" size="icon" variant="ghost">
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="sr-only">Toggle menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={handleDelete}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <ServerIcon className="h-3.5 w-3.5" />
+            <span>{server.provider}</span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="font-semibold">{server.type}</span>
+          </div>
         </div>
-      </CardHeader>
-      <CardContent className="flex-grow space-y-4">
-        <div className="text-sm text-muted-foreground space-y-1">
-            <p><span className="font-semibold text-foreground">OS:</span> {server.type}</p>
-            <p><span className="font-semibold text-foreground">Provider:</span> {server.provider}</p>
-            <div className="flex items-center gap-1">
-              <span className="font-semibold text-foreground">RAM:</span>
-              {isRamLoading ? (
-                 <Skeleton className="h-4 w-24" />
-              ): (
-                <span>
-                    {usedRam !== null ? `${usedRam}MB / ${totalRam}MB` : 'N/A'}
-                </span>
-              )}
-            </div>
-             <p><span className="font-semibold text-foreground">Storage:</span> {server.storage}</p>
-        </div>
-      </CardContent>
-      <CardFooter>
-        {isSelected ? (
-             <Button className="w-full" disabled variant="secondary">
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Selected
-            </Button>
-        ) : (
-            <Button className="w-full" onClick={handleSelect} disabled={isSwitching}>
-                {isSwitching ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                    <RefreshCcw className="mr-2 h-4 w-4" />
-                )}
-                {isSwitching ? 'Switching...' : 'Switch'}
-            </Button>
+      </div>
+
+      <div className="flex items-center gap-2 ml-4">
+        {isSelected && (
+          <Check className="h-5 w-5 text-primary" />
         )}
-      </CardFooter>
-    </Card>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              aria-haspopup="true"
+              size="icon"
+              variant="ghost"
+              className="opacity-0 group-hover:opacity-100 transition-opacity data-[state=open]:opacity-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">Toggle menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={handleDelete}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
   );
 }

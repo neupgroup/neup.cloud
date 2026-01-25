@@ -96,8 +96,8 @@ export async function createServer(serverData: {
   username: string;
   type: string;
   provider: string;
-  ram: string;
-  storage: string;
+  ram?: string;
+  storage?: string;
   publicIp: string;
   privateIp: string;
   privateKey: string;
