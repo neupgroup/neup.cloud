@@ -2,9 +2,71 @@
 
 import { PageTitle } from '@/components/page-header';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Activity, Cpu, HardDrive } from "lucide-react";
+import { Activity, Cpu, HardDrive } from "lucide-react"; // Removed Power, Loader2, Clock, Button imports as they are inside component or unused
+import { useState, useEffect } from 'react';
+import { rebootSystem } from '@/app/applications/actions';
+import { getSystemUptime } from '@/app/servers/actions';
+import { useToast } from "@/hooks/use-toast";
+import Cookies from "universal-cookie";
+import { SystemHealthCard } from '@/components/system-health-card';
 
 export default function SystemPage() {
+    const { toast } = useToast();
+    const [isRebooting, setIsRebooting] = useState(false);
+    const [uptime, setUptime] = useState<string | null>(null);
+
+    // Fetch uptime
+    useEffect(() => {
+        const fetchUptime = async () => {
+            const cookies = new Cookies(null, { path: '/' });
+            const serverId = cookies.get('selected_server');
+
+            if (!serverId) {
+                setUptime(null);
+                return;
+            }
+
+            try {
+                const result = await getSystemUptime(serverId);
+                if (result.error) {
+                    setUptime("Unavailable");
+                } else if (result.uptime) {
+                    setUptime(result.uptime);
+                }
+            } catch (error) {
+                setUptime("Error");
+            }
+        };
+
+        fetchUptime();
+    }, []);
+
+    const handleReboot = async () => {
+        if (!confirm("Are you sure you want to reboot the server? This will cause temporary downtime.")) return;
+
+        const cookies = new Cookies(null, { path: '/' });
+        const serverId = cookies.get('selected_server');
+
+        if (!serverId) {
+            toast({ variant: "destructive", title: "Error", description: "No server selected." });
+            return;
+        }
+
+        setIsRebooting(true);
+        try {
+            const result = await rebootSystem(serverId);
+            if (result.error) {
+                toast({ variant: "destructive", title: "Reboot Failed", description: result.error });
+            } else {
+                toast({ title: "Reboot Initiated", description: "Server is rebooting. It may take a few minutes to come back online." });
+            }
+        } catch (e: any) {
+            toast({ variant: "destructive", title: "Error", description: e.message });
+        } finally {
+            setTimeout(() => setIsRebooting(false), 5000);
+        }
+    };
+
     return (
         <div className="space-y-8">
             <PageTitle
@@ -55,7 +117,15 @@ export default function SystemPage() {
                         </p>
                     </CardContent>
                 </Card>
+
+                <SystemHealthCard
+                    uptime={uptime}
+                    onReboot={handleReboot}
+                    isRebooting={isRebooting}
+                />
             </div>
+
+
 
             <Card className="p-6">
                 <div className="space-y-2">

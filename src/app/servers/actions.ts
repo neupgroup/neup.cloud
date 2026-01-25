@@ -120,6 +120,7 @@ export async function getSystemStats(serverId: string) {
     const cpuUsage = parseFloat(cpuLine.trim());
     const [totalRam, usedRam] = ramLine.trim().split(' ').map(Number);
 
+
     return {
       cpuUsage: isNaN(cpuUsage) ? 0 : cpuUsage,
       memory: {
@@ -128,6 +129,43 @@ export async function getSystemStats(serverId: string) {
         percentage: totalRam > 0 ? Math.round((usedRam / totalRam) * 100) : 0
       }
     };
+
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
+export async function getSystemUptime(serverId: string) {
+  const server = await getServerForRunner(serverId);
+  if (!server) {
+    return { error: 'Server not found.' };
+  }
+  if (!server.username || !server.privateKey) {
+    return { error: 'Server is missing username or private key configuration for SSH access.' };
+  }
+
+  try {
+    const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, 'cat /proc/uptime');
+    if (result.code !== 0) {
+      return { error: result.stderr || 'Failed to get uptime.' };
+    }
+
+    const seconds = parseFloat(result.stdout.trim().split(/\s+/)[0]);
+
+    if (isNaN(seconds)) {
+      return { error: 'Could not parse uptime data.' };
+    }
+
+    const d = Math.floor(seconds / (3600 * 24));
+    const h = Math.floor((seconds % (3600 * 24)) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+
+    const parts = [];
+    if (d > 0) parts.push(`${d}d`);
+    if (h > 0) parts.push(`${h}h`);
+    if (m > 0 || parts.length === 0) parts.push(`${m}m`);
+
+    return { uptime: parts.join(' ') };
 
   } catch (e: any) {
     return { error: e.message };

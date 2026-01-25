@@ -483,3 +483,21 @@ export async function saveRunningProcesses(serverId: string) {
 
     return { success: true, output: result.output };
 }
+
+export async function rebootSystem(serverId: string) {
+    if (!serverId) return { error: "Server not selected" };
+
+    // Reboot command with sudo. 
+    // Ideally use 'shutdown -r now'
+    const result = await executeQuickCommand(serverId, `sudo reboot`);
+
+    // Connection drop is expected.
+    if (result.error && !result.error.toLowerCase().includes('closed') && !result.error.toLowerCase().includes('timeout') && !result.error.toLowerCase().includes('reset')) {
+        // It's hard to catch exactly as SSH client might throw various network errors on instant reboot.
+        // Pass for now?
+        // Actually if we get an error let's return it, but UI should handle it gracefully if it looks like a network drop.
+        return { error: result.error };
+    }
+
+    return { success: true, message: "Reboot initiated." };
+}
