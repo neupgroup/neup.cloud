@@ -33,7 +33,8 @@ import {
   FileKey,
   LayoutGrid,
   ListChecks,
-  Monitor
+  Monitor,
+  Shield
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -186,6 +187,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     { href: "/system", label: "Home", icon: LayoutGrid },
     { href: "/system/package", label: "Packages", icon: Package },
     { href: "/system/requirement", label: "Requirements", icon: ListChecks },
+    { href: "/system/protection", label: "Protection", icon: Shield },
   ];
 
   // Collect all paths for longest match calculation
