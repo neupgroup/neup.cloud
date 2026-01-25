@@ -30,7 +30,10 @@ import {
   Users,
   Key,
   Command,
-  FileKey
+  FileKey,
+  LayoutGrid,
+  ListChecks,
+  Monitor
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -176,7 +179,14 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
   }
 
   webservicesLinks.push({ href: "/webservices/certificates", label: "Certificates", icon: FileKey });
+
   webservicesLinks.push({ href: "/webservices/configure", label: "Configure", icon: Settings });
+
+  const systemLinks = [
+    { href: "/system", label: "Home", icon: LayoutGrid },
+    { href: "/system/package", label: "Packages", icon: Package },
+    { href: "/system/requirement", label: "Requirements", icon: ListChecks },
+  ];
 
   // Collect all paths for longest match calculation
   const allPaths = [
@@ -187,6 +197,8 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     ...(isServerSelected ? maintenanceLinks.map(l => l.href) : []),
     ...(isServerSelected ? firewallLinks.map(l => l.href) : []),
     ...(isServerSelected ? webservicesLinks.map(l => l.href) : []),
+
+    ...systemLinks.map(l => l.href),
     ...rootLinks.map(l => l.href),
   ];
 
@@ -280,6 +292,19 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
           </NavLink>
         ))}
       </div>
+
+      <div className="space-y-2">
+        <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
+          System
+        </div>
+        {systemLinks.map(({ href, label, icon: Icon }) => (
+          <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
+            <Icon className="h-4 w-4" />
+            <span>{label}</span>
+          </NavLink>
+        ))}
+      </div>
+
       <div className="space-y-2">
         <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
           Root
