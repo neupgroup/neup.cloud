@@ -36,7 +36,8 @@ import {
   Monitor,
   Shield,
   Activity,
-  Rocket
+  Rocket,
+  Play
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -121,7 +122,6 @@ function NavLink({
 function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData }: { currentPath: string, onLinkClick?: () => void, isServerSelected: boolean, serverData: any }) {
   const navLinks = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
-    { href: "/commandset", label: "Command Sets", icon: Command },
   ];
 
   const domainLinks = [
@@ -144,14 +144,21 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     { href: "/processes", label: "Processes", icon: FileCode },
     { href: "/network", label: "Network", icon: Network },
     { href: "/database", label: "Databases", icon: Database },
-    { href: "/commands", label: "Commands", icon: Terminal },
-    { href: "/history", label: "History", icon: History },
   ]
 
   const applicationsLinks = [
     { href: "/applications", label: "Home", icon: AppWindow },
     { href: "/applications/running", label: "Running", icon: Activity },
     { href: "/applications/deploy", label: "Deploy", icon: Rocket },
+  ]
+
+  const commandsLinks = [
+    { href: "/commands", label: "Home", icon: Terminal },
+    { href: "/commands/set", label: "Command Set", icon: Command },
+    { href: "/commands/custom", label: "Run Custom", icon: Play },
+    { href: "/commands/history", label: "History", icon: History },
+    { href: "/commands/create", label: "Create", icon: Plus },
+    { href: "/commands/live", label: "Live Session", icon: Activity },
   ]
 
   /* Maintenance Links removed as they are moved to System */
@@ -203,6 +210,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     ...accountLinks.map(l => l.href),
     ...(isServerSelected ? serverLinks.map(l => l.href) : []),
     ...(isServerSelected ? applicationsLinks.map(l => l.href) : []),
+    ...(isServerSelected ? commandsLinks.map(l => l.href) : []),
     // maintenanceLinks removed
     ...(isServerSelected ? firewallLinks.map(l => l.href) : []),
     ...(isServerSelected ? webservicesLinks.map(l => l.href) : []),
@@ -254,6 +262,20 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
             Applications
           </div>
           {applicationsLinks.map(({ href, label, icon: Icon }) => (
+            <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </div>
+      )}
+
+      {isServerSelected && (
+        <div className="space-y-2">
+          <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
+            Commands
+          </div>
+          {commandsLinks.map(({ href, label, icon: Icon }) => (
             <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
               <Icon className="h-4 w-4" />
               <span>{label}</span>

@@ -12,7 +12,8 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Server } from 'lucide-react';
-import { getServerLogs } from '../servers/[id]/actions';
+
+import { getServerLogs } from '../../servers/[id]/actions';
 import { HistoryClient } from './history-client';
 import type { Metadata } from 'next';
 import { PageTitle } from '@/components/page-header';

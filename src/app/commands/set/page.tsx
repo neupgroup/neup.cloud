@@ -226,13 +226,14 @@ function CommandSetsContent() {
                                 className={cn(
                                     "p-4 min-w-0 w-full transition-colors hover:bg-muted/50 group flex items-start gap-4 cursor-pointer border-b border-border",
                                 )}
-                                onClick={() => router.push('/commandset/create')}
+                                onClick={() => router.push('/commands/set/create')}
                             >
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-center justify-between mb-0 h-8">
                                         <h3 className="font-semibold leading-none tracking-tight truncate pr-4 text-foreground group-hover:underline decoration-muted-foreground/30 underline-offset-4">
                                             Create Command Set
                                         </h3>
+
 
                                         {/* Arrow Icon */}
                                         <div className="flex items-center gap-1">
@@ -292,7 +293,7 @@ function CommandSetsContent() {
                                             index !== paginatedSets.length - 1 && "border-b border-border"
                                         )}
                                         // Clicking row goes to Edit page
-                                        onClick={() => router.push(`/commandset/${set.id}`)}
+                                        onClick={() => router.push(`/commands/set/${set.id}`)}
                                     >
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center justify-between mb-0">

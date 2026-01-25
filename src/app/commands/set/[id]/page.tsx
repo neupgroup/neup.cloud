@@ -228,7 +228,7 @@ export default function RunCommandSetPage() {
                     <p className="text-muted-foreground">{commandSet.description || "No description provided."}</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => router.push(`/commandset/${id}/edit`)}>
+                    <Button variant="outline" onClick={() => router.push(`/commands/set/${id}/edit`)}>
                         <Edit className="mr-2 h-4 w-4" /> Edit Set
                     </Button>
                 </div>

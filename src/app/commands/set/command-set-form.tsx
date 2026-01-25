@@ -149,7 +149,7 @@ export function CommandSetForm({ initialData, userId, onSubmit, title, subtitle 
 
         if (result.success) {
             toast({ title: "Success", description: "Command set saved successfully." });
-            router.push('/commandset');
+            router.push('/commands/set');
             router.refresh();
         } else {
             toast({ variant: "destructive", title: "Error", description: result.error });

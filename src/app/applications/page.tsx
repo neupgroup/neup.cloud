@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { getApplications } from "./actions";
 import { ApplicationCard } from "./application-card";
 import { ApplicationCardSkeleton } from "./application-card-skeleton";
-import { RunningProcessesDialog } from "./running-processes";
 
 export type Application = {
   id: string;
@@ -64,7 +63,6 @@ export default function AppsPage() {
             Deploy and manage your applications.
           </p>
         </div>
-        <RunningProcessesDialog />
       </div>
 
       <div className="grid grid-cols-1 gap-6">

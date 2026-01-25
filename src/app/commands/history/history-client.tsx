@@ -16,9 +16,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RefreshCw, CheckCircle2, XCircle, Clock, ChevronRight } from 'lucide-react';
 import { format, formatDistanceToNow, differenceInHours, differenceInDays, getYear, isSameYear } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { getServerLogs } from '../servers/[id]/actions';
-import { getSavedCommands } from '../commands/actions';
-import { SavedCommand } from '../commands/types';
+import { getServerLogs } from '../../servers/[id]/actions';
+import { getSavedCommands } from '../actions';
+import { SavedCommand } from '../types';
 import { PageTitleWithComponent } from '@/components/page-header';
 import { cn } from '@/lib/utils'; // Included this
 
