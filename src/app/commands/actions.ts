@@ -79,7 +79,7 @@ async function executeSingleCommand(
                 finalOutput += chunk;
                 updateDoc(logRef, { output: finalOutput });
             },
-            true, // skipSwap - never create swap memory
+            false, // skipSwap - create swap memory as per requirement
             serverVariables
         );
 

@@ -49,13 +49,14 @@ export async function runCommandOnServer(
 
         let finalCommand = processedCommand;
         if (!skipSwap) {
-            // Wrapper script to manage swap file with sudo
+            // Wrapper script to manage swap file with sudo using user-defined spec
             finalCommand = `
-                sudo fallocate -l 4G /tmp/swapfile 2>/dev/null || true;
-                sudo chmod 600 /tmp/swapfile 2>/dev/null || true;
-                sudo mkswap /tmp/swapfile 2>/dev/null || true;
-                sudo swapon /tmp/swapfile 2>/dev/null || true;
-                trap "sudo swapoff /tmp/swapfile 2>/dev/null; sudo rm -f /tmp/swapfile 2>/dev/null" EXIT;
+                SWAP_FILE="/command_swapfile";
+                sudo fallocate -l 4G "$SWAP_FILE" || true;
+                sudo chmod 600 "$SWAP_FILE" || true;
+                sudo mkswap "$SWAP_FILE" || true;
+                sudo swapon "$SWAP_FILE" || true;
+                trap "sudo swapoff \"$SWAP_FILE\" 2>/dev/null; sudo rm -f \"$SWAP_FILE\" 2>/dev/null" EXIT;
                 ${processedCommand}
             `;
         }

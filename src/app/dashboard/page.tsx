@@ -131,7 +131,10 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
 
         {/* 1. Live RAM Usage */}
-        <Card className="overflow-hidden">
+        <Card
+          className="overflow-hidden cursor-pointer active:opacity-75 transition-opacity"
+          onClick={() => serverId && fetchStats(serverId)}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Memory Usage</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
@@ -147,7 +150,10 @@ export default function DashboardPage() {
         </Card>
 
         {/* 2. Live CPU Usage */}
-        <Card className="overflow-hidden">
+        <Card
+          className="overflow-hidden cursor-pointer active:opacity-75 transition-opacity"
+          onClick={() => serverId && fetchStats(serverId)}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">CPU Usage</CardTitle>
             <Cpu className="h-4 w-4 text-muted-foreground" />

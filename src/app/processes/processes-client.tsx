@@ -6,14 +6,23 @@ import {
     Card,
     CardContent,
 } from "@/components/ui/card";
-import { Cpu, User, Hash, Search } from "lucide-react";
-import { getProcesses, type Process } from './actions';
+import { Cpu, User, Hash, Search, XCircle, Loader2 } from "lucide-react";
+import { getProcesses, killProcess, type Process } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from "@/components/ui/input";
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
-function ProcessesList({ processes }: { processes: Process[] }) {
+function ProcessesList({ processes, onKill }: { processes: Process[], onKill: (pid: string) => void }) {
+    const [killingPid, setKillingPid] = useState<string | null>(null);
+
+    const handleKillClick = async (pid: string) => {
+        setKillingPid(pid);
+        await onKill(pid);
+        setKillingPid(null);
+    };
+
     return (
         <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
             {processes.map((process, index) => (
@@ -42,6 +51,18 @@ function ProcessesList({ processes }: { processes: Process[] }) {
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-memory-stick"><path d="M6 3v18" /><path d="M18 3v18" /><path d="M6 9h12" /><path d="M6 15h12" /><path d="M9 3v18" /><path d="M15 3v18" /></svg>
                                 <span className="font-medium">{process.memory}% RAM</span>
                             </div>
+                            <button
+                                onClick={() => handleKillClick(process.pid)}
+                                disabled={killingPid === process.pid}
+                                className="flex items-center gap-1.5 shrink-0 text-red-500 hover:text-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {killingPid === process.pid ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                    <XCircle className="h-3.5 w-3.5" />
+                                )}
+                                <span className="font-medium">Kill</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -85,25 +106,28 @@ export default function ProcessesClient({ serverId }: { serverId: string }) {
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState(searchParams.get('query') || '');
 
-    useEffect(() => {
-        async function fetchProcesses() {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const result = await getProcesses(serverId);
-                if (result.error) {
-                    setError(result.error);
-                    toast({ variant: 'destructive', title: 'Failed to get processes', description: result.error });
-                } else if (result.processes) {
-                    setProcesses(result.processes);
-                }
-            } catch (e: any) {
-                setError(e.message);
-                toast({ variant: 'destructive', title: 'An unexpected error occurred', description: e.message });
-            } finally {
-                setIsLoading(false);
+    const fetchProcesses = async () => {
+        // Only show loading on initial fetch or full refresh, not necessarily on every kill?
+        // But for consistency let's simple re-fetch
+        try {
+            const result = await getProcesses(serverId);
+            if (result.error) {
+                setError(result.error);
+                toast({ variant: 'destructive', title: 'Failed to get processes', description: result.error });
+            } else if (result.processes) {
+                setProcesses(result.processes);
             }
+        } catch (e: any) {
+            setError(e.message);
+            toast({ variant: 'destructive', title: 'An unexpected error occurred', description: e.message });
+        } finally {
+            setIsLoading(false);
         }
+    };
+
+    useEffect(() => {
+        setIsLoading(true);
+        setError(null);
         fetchProcesses();
     }, [serverId, toast]);
 
@@ -124,6 +148,21 @@ export default function ProcessesClient({ serverId }: { serverId: string }) {
             params.delete('query');
         }
         router.replace(`?${params.toString()}`, { scroll: false });
+    };
+
+    const handleKill = async (pid: string) => {
+        try {
+            const result = await killProcess(serverId, pid);
+            if (result.success) {
+                toast({ title: 'Process Killed', description: `Successfully killed process ${pid}` });
+                // Refresh list
+                await fetchProcesses();
+            } else {
+                toast({ variant: 'destructive', title: 'Failed to kill process', description: result.error });
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Failed to kill process', description: e.message });
+        }
     };
 
     const filteredProcesses = processes.filter(p =>
@@ -160,7 +199,7 @@ export default function ProcessesClient({ serverId }: { serverId: string }) {
                     <p>No processes found matching &quot;{searchQuery}&quot;</p>
                 </div>
             ) : (
-                <ProcessesList processes={filteredProcesses} />
+                <ProcessesList processes={filteredProcesses} onKill={handleKill} />
             )}
         </div>
     );

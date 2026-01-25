@@ -92,3 +92,31 @@ export async function getProcesses(serverId: string): Promise<{ processes?: Proc
         return { error: `Failed to get process list: ${e.message}` };
     }
 }
+
+export async function killProcess(serverId: string, pid: string): Promise<{ success?: boolean, error?: string }> {
+    const server = await getServerForRunner(serverId);
+    if (!server) {
+        return { error: 'Server not found.' };
+    }
+    if (!server.username || !server.privateKey) {
+        return { error: 'No username or private key configured for this server.' };
+    }
+
+    try {
+        const command = `sudo kill -9 ${pid}`;
+        const result = await runCommandOnServer(
+            server.publicIp,
+            server.username,
+            server.privateKey,
+            command
+        );
+
+        if (result.code !== 0) {
+            return { error: result.stderr || `Failed to kill process ${pid}. Exit code: ${result.code}` };
+        }
+
+        return { success: true };
+    } catch (e: any) {
+        return { error: `Failed to kill process: ${e.message}` };
+    }
+}

@@ -7,6 +7,6 @@ export const getBuildCommand = (appLocation: string) => {
     return `
 cd ${appLocation} && \
 rm -rf .next && \
-NODE_OPTIONS="--max-old-space-size=${maxRamVar}" npm run build
+NODE_OPTIONS="--max-old-space-size=2048" npm run build
 `;
 };
