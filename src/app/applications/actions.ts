@@ -441,7 +441,12 @@ export async function getRunningProcesses() {
     const serverId = cookieStore.get('selected_server')?.value;
     if (!serverId) throw new Error("No server selected");
 
-    const result = await executeQuickCommand(serverId, "pm2 jlist");
+    const delimiter = "---NEUP_CLOUD_SPLIT---";
+    // Check if dump file exists and has content (-s).
+    // Use || echo "[]" as absolute fallback.
+    const command = `pm2 jlist && echo "${delimiter}" && (if [ -s ~/.pm2/dump.pm2 ]; then cat ~/.pm2/dump.pm2; else echo "[]"; fi)`;
+
+    const result = await executeQuickCommand(serverId, command);
 
     if (result.error) {
         console.warn("Error fetching pm2 list:", result.error);
@@ -449,9 +454,39 @@ export async function getRunningProcesses() {
     }
 
     try {
-        return JSON.parse(result.output);
+        const parts = (result.output || "").split(delimiter);
+        const runningListRaw = parts[0]?.trim();
+        const savedListRaw = parts[1]?.trim();
+
+        // Parse running processes
+        let runningList = [];
+        try {
+            runningList = JSON.parse(runningListRaw || "[]");
+        } catch (e) {
+            console.error("Failed to parse running list:", e, runningListRaw);
+            return [];
+        }
+
+        // Parse saved processes
+        let savedList = [];
+        try {
+            savedList = JSON.parse(savedListRaw || "[]");
+        } catch (e) {
+            // It's possible the dump file is empty or corrupted, simply assume no saved processes.
+            console.warn("Failed to parse saved list:", e);
+            savedList = [];
+        }
+
+        // Create a set of saved process names for lookup
+        const savedNames = new Set(savedList.map((p: any) => p.name));
+
+        return runningList.map((proc: any) => ({
+            ...proc,
+            isPermanent: savedNames.has(proc.name)
+        }));
+
     } catch (e) {
-        console.error("Failed to parse pm2 jlist output:", result.output);
+        console.error("Failed to process pm2 output:", e);
         return [];
     }
 }
@@ -474,14 +509,29 @@ export async function restartApplicationProcess(serverId: string, pmId: string |
 export async function saveRunningProcesses(serverId: string) {
     if (!serverId) return { error: "Server not selected" };
 
-    // pm2 save dumps current process list to ~/.pm2/dump.pm2
-    const result = await executeQuickCommand(serverId, `pm2 save`);
-
-    if (result.error) {
-        return { error: result.error };
+    // 1. Save current process list to dump file
+    const saveResult = await executeQuickCommand(serverId, `pm2 save --force`);
+    if (saveResult.error) {
+        return { error: saveResult.error };
     }
 
-    return { success: true, output: result.output };
+    // 2. Ensure startup hook is present for reboot persistence
+    // Running 'pm2 startup' checks the init system and prints a command to run (starting with sudo) if needed.
+    const startupResult = await executeQuickCommand(serverId, `pm2 startup`);
+    const output = startupResult.output || "";
+
+    // Regex to find the suggested command: "sudo env PATH=..."
+    // We look for a line starting with sudo env PATH
+    const commandMatch = output.match(/sudo env PATH=[^\n]+/);
+
+    if (commandMatch) {
+        const setupCommand = commandMatch[0];
+        // Execute the generated startup command
+        await executeQuickCommand(serverId, setupCommand);
+    }
+
+    revalidatePath('/applications/running');
+    return { success: true, output: saveResult.output };
 }
 
 export async function rebootSystem(serverId: string) {
@@ -500,4 +550,88 @@ export async function rebootSystem(serverId: string) {
     }
 
     return { success: true, message: "Reboot initiated." };
+}
+
+export async function getProcessDetails(provider: string, name: string) {
+    const cookieStore = await cookies();
+    const serverId = cookieStore.get('selected_server')?.value;
+    if (!serverId) throw new Error("No server selected");
+
+    if (provider !== 'pm2') {
+        throw new Error(`Provider ${provider} not supported`);
+    }
+
+    // pm2 describe returns details including env vars, paths, etc.
+    const result = await executeQuickCommand(serverId, `pm2 describe "${name}" --json`);
+
+    if (result.error) {
+        console.warn("Error fetching process details:", result.error);
+        return null; // Or throw
+    }
+
+    try {
+        const list = JSON.parse(result.output || "[]");
+        if (Array.isArray(list) && list.length > 0) {
+            return list[0];
+        }
+        return null;
+    } catch (e) {
+        console.error("Failed to parse pm2 describe output:", e);
+        return null;
+    }
+}
+
+export async function deployConfiguration(applicationId: string) {
+    const app = await getApplication(applicationId) as any;
+    if (!app) throw new Error("Application not found");
+
+    const cookieStore = await cookies();
+    const serverId = cookieStore.get('selected_server')?.value;
+    if (!serverId) throw new Error("No server selected. Please select a server first.");
+
+    const location = app.location;
+    if (!location) throw new Error("Application location not defined");
+
+    // 1. Prepare Environment Variables
+    let envContent = "";
+    if (app.environments) {
+        envContent = Object.entries(app.environments)
+            .map(([k, v]) => `${k}=${v}`)
+            .join('\n');
+    }
+
+
+    const cmdEnv = `cat <<'EOF' > "${location}/.env"
+${envContent}
+EOF
+`;
+
+    await executeCommand(serverId, cmdEnv, `Deploying .env for ${app.name}`, cmdEnv);
+
+    // 2. Handle Config (Next.js) - REMOVED
+
+
+    // 3. Handle Custom File Overrides
+    if (app.files && Object.keys(app.files).length > 0) {
+        let fileOpsScript = `echo "Starting Custom File Deployment..."\n`;
+
+        for (const [filePath, content] of Object.entries(app.files as Record<string, string>)) {
+            // Create unique delimiter to avoid conflicts with file content
+            const delimiter = `EOF_${Math.random().toString(36).substring(7).toUpperCase()}`;
+            const targetPath = `${location}/${filePath}`;
+
+            fileOpsScript += `
+mkdir -p "$(dirname "${targetPath}")"
+cat <<'${delimiter}' > "${targetPath}"
+${content}
+${delimiter}
+echo "Deployed ${filePath}"
+`;
+        }
+
+        await executeCommand(serverId, fileOpsScript, `Deploying ${Object.keys(app.files).length} custom files for ${app.name}`, fileOpsScript);
+    }
+
+    revalidatePath(`/applications/${applicationId}`);
+    return { success: true };
 }

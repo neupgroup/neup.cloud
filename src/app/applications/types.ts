@@ -36,6 +36,13 @@ export interface Application {
 
     /** Last update timestamp */
     updatedAt?: string;
+
+    /** Environment variables for the application */
+    environments?: Record<string, string>;
+
+
+    /** Custom file overrides (path -> content) */
+    files?: Record<string, string>;
 }
 
 /**

@@ -14,11 +14,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Trash } from "lucide-react";
+import { Edit, Trash, Key, UploadCloud, Loader2, FileText } from "lucide-react";
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { deleteApplication } from "./actions";
+import { deleteApplication, deployConfiguration } from "./actions";
 
 interface ApplicationActionsProps {
     applicationId: string;
@@ -28,6 +28,27 @@ export function ApplicationActions({ applicationId }: ApplicationActionsProps) {
     const { toast } = useToast();
     const router = useRouter();
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isDeploying, setIsDeploying] = useState(false);
+
+    const handleDeploy = async () => {
+        setIsDeploying(true);
+        try {
+            await deployConfiguration(applicationId);
+            toast({
+                title: "Configuration Deployed",
+                description: "Environment variables and config files have been updated on the server.",
+            });
+        } catch (error) {
+            console.error(error);
+            toast({
+                variant: "destructive",
+                title: "Deployment Failed",
+                description: "Failed to deploy configuration.",
+            });
+        } finally {
+            setIsDeploying(false);
+        }
+    };
 
     const handleDelete = async () => {
         setIsDeleting(true);
@@ -51,6 +72,39 @@ export function ApplicationActions({ applicationId }: ApplicationActionsProps) {
 
     return (
         <div className="flex items-center gap-2">
+            <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5"
+                onClick={handleDeploy}
+                disabled={isDeploying}
+            >
+                {isDeploying ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Deploy
+                </span>
+            </Button>
+
+
+
+            <Link href={`/applications/${applicationId}/environments`}>
+                <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                    <Key className="h-4 w-4" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Env
+                    </span>
+                </Button>
+            </Link>
+
+            <Link href={`/applications/${applicationId}/files`}>
+                <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                    <FileText className="h-4 w-4" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Files
+                    </span>
+                </Button>
+            </Link>
+
             <Link href={`/applications/${applicationId}/edit`}>
                 <Button variant="outline" size="sm" className="h-8 gap-1.5">
                     <Edit className="h-4 w-4" />

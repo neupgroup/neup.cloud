@@ -1,6 +1,7 @@
 'use client';
 
 import { PageTitle } from "@/components/page-header";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Activity, Cpu, HardDrive, RefreshCw, Hash, CircleDot, RotateCw, Save, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -114,10 +115,11 @@ export default function RunningApplicationsPage() {
     // Helper to determine status color and state
     const getProcessState = (proc: any) => {
         const status = proc.pm2_env?.status;
-        const autoRestart = proc.pm2_env?.autorestart; // boolean
+        // const autoRestart = proc.pm2_env?.autorestart; // boolean -> This was incorrect for "Permanent" check
+        const isPermanent = proc.isPermanent;
 
         if (status === 'online') {
-            if (autoRestart) return 'green'; // Running and Permanent
+            if (isPermanent) return 'green'; // Running and Permanent
             return 'blue'; // Running but not permanent
         }
         if (status === 'stopped' || status === 'stopping') {
@@ -192,9 +194,9 @@ export default function RunningApplicationsPage() {
                                 )}>
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-3 mb-3">
+                                            <Link href={`/applications/running/pm2.${proc.name}`} className="flex items-center gap-3 mb-3 hover:underline group">
                                                 <div className={cn("h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-offset-2 ring-offset-card", dotColor, state === 'green' && "animate-pulse")} />
-                                                <p className="text-sm font-medium text-foreground break-all font-mono leading-tight">
+                                                <p className="text-sm font-medium text-foreground break-all font-mono leading-tight group-hover:text-primary transition-colors">
                                                     {proc.name}
                                                 </p>
                                                 {state !== 'green' && (
@@ -207,7 +209,7 @@ export default function RunningApplicationsPage() {
                                                         {state === 'blue' ? 'Not Permanent' : state === 'orange' ? 'Stopped' : 'Errored'}
                                                     </Badge>
                                                 )}
-                                            </div>
+                                            </Link>
 
                                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
                                                 <div className="flex items-center gap-1.5 shrink-0">
