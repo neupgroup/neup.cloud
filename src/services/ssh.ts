@@ -116,3 +116,23 @@ export async function uploadDirectoryToServer(
         ssh.dispose();
     }
 }
+
+export async function downloadFileFromServer(
+    host: string,
+    username: string,
+    privateKey: string,
+    remotePath: string,
+    localPath: string
+): Promise<void> {
+    const ssh = new NodeSSH();
+    try {
+        await ssh.connect({
+            host: host,
+            username: username,
+            privateKey: privateKey,
+        });
+        await ssh.getFile(localPath, remotePath);
+    } finally {
+        ssh.dispose();
+    }
+}

@@ -7,11 +7,12 @@ import { AppWindow, Code, FolderOpen, GitBranch, Network, User, Calendar, Activi
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PageTitleBack } from '@/components/page-header';
-import { ApplicationActions } from '../application-actions';
+import { Edit } from 'lucide-react';
 import { GitHubSection } from './github-section';
 import { SystemSection } from './system-section';
 import { LifecycleSection } from './lifecycle-section';
-import { ActionsSection } from './actions-section';
+import { DeploymentActionsCard } from './deployment-actions-card';
+import { DeleteApplicationButton } from './delete-application-button';
 import { LogsSection } from './logs-section';
 import { StatusDashboard } from './status-dashboard';
 import { Separator } from '@/components/ui/separator';
@@ -87,28 +88,28 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
                     description="Application details and management"
                     backHref="/applications"
                 >
-                    <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="text-sm py-1 px-3 border-primary/20 bg-primary/5">
-                            {appLanguage}
-                        </Badge>
-                        <ApplicationActions applicationId={application.id} />
-                    </div>
+                    <Badge variant="outline" className="text-sm py-1 px-3 border-primary/20 bg-primary/5">
+                        {appLanguage}
+                    </Badge>
                 </PageTitleBack>
             </div>
 
             {/* Status Dashboard */}
             <StatusDashboard applicationId={application.id} />
 
+
             {/* Lifecycle Section (Build, Start, Stop, Restart) - Moved up */}
             <LifecycleSection application={application} />
 
-            {/* Actions Section (Custom Commands) - Moved up */}
-            <ActionsSection application={application} />
+
+
 
             {/* GitHub / Repository Section */}
-            {application.repository && (
-                <GitHubSection application={application} />
-            )}
+            {
+                application.repository && (
+                    <GitHubSection application={application} />
+                )
+            }
 
             {/* Logs Section */}
             <LogsSection application={application} />
@@ -116,7 +117,21 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
             {/* System Info Section */}
             <SystemSection application={application} />
 
+            {/* Deployment & Configuration Card */}
+            <DeploymentActionsCard applicationId={application.id} />
 
-        </div>
+            {/* Edit and Delete Actions */}
+            <div className="flex items-center gap-3 pt-4">
+                <Link href={`/applications/${application.id}/edit`}>
+                    <Button variant="outline" className="gap-2">
+                        <Edit className="h-4 w-4" />
+                        Edit Application
+                    </Button>
+                </Link>
+
+                <DeleteApplicationButton applicationId={application.id} />
+            </div>
+
+        </div >
     );
 }

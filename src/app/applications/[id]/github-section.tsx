@@ -151,16 +151,6 @@ export function GitHubSection({ application }: GitHubSectionProps) {
                     onClick={() => handleAction('pull-force')}
                     isLoading={loading === 'pull-force'}
                     isDestructive
-                />
-
-                {/* 5. Reset */}
-                <ActionRow
-                    icon={RotateCcw}
-                    title="Reset Branch"
-                    description="Hard reset the branch to match the remote main branch"
-                    onClick={() => handleAction('reset-main')}
-                    isLoading={loading === 'reset-main'}
-                    isDestructive
                     isLast
                 />
             </Card>

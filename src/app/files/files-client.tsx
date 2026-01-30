@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Loader2, Copy, Trash, Move, Edit, Info, ClipboardPaste, X, FolderPlus, FilePlus, LayoutGrid, List, Shield, ShieldOff } from 'lucide-react';
+import { Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Loader2, Copy, Trash, Move, Edit, Info, ClipboardPaste, X, FolderPlus, FilePlus, LayoutGrid, List, Shield, ShieldOff, Download } from 'lucide-react';
 import { browseDirectory, uploadFile, renameFile, deleteFiles, moveFiles, copyFiles, createDirectory, createEmptyFile, isDirectory, type FileOrFolder } from '../servers/[id]/actions';
 import {
   Dialog,
@@ -640,6 +640,86 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
     setContextMenu(null);
   }
 
+  const handleDownload = async () => {
+    if (selectedFiles.size === 0) return;
+    setContextMenu(null);
+
+    // Show initial toast
+    const downloadToast = toast({
+      title: 'Starting Download',
+      description: "Please wait, preparing download...",
+      duration: Infinity, // Don't auto-dismiss
+    });
+
+    try {
+      const filesToDownload = Array.from(selectedFiles).map(name =>
+        currentPath.endsWith('/') ? currentPath + name : currentPath + '/' + name
+      );
+
+      const response = await fetch('/api/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paths: filesToDownload,
+          rootMode,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        downloadToast.update({
+          variant: 'destructive',
+          title: 'Download Failed',
+          description: error.error || 'Failed to download files.',
+          duration: 5000,
+        });
+        return;
+      }
+
+      // Get the filename from the response headers
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'download';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create a blob from the response
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      // Update toast to success and auto-dismiss
+      downloadToast.update({
+        title: 'Download Started',
+        description: `Downloading ${selectedFiles.size} item(s).`,
+        duration: 3000, // Auto-dismiss after 3 seconds
+      });
+
+      // Manually dismiss after duration
+      setTimeout(() => {
+        downloadToast.dismiss();
+      }, 3000);
+    } catch (e: any) {
+      downloadToast.update({
+        variant: 'destructive',
+        title: 'Download Error',
+        description: e.message,
+        duration: 5000,
+      });
+    }
+  }
+
   const handleBreadcrumbClick = (index: number) => {
     const pathSegments = currentPath.split('/').filter(Boolean);
     const newPath = '/' + pathSegments.slice(0, index + 1).join('/');
@@ -674,6 +754,9 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
                     <Edit className="mr-2 h-4 w-4" /> Rename
                   </button>
                 )}
+                <button onClick={handleDownload} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground">
+                  <Download className="mr-2 h-4 w-4" /> Download
+                </button>
                 <button onClick={handleDelete} className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 outline-none hover:bg-accent hover:text-accent-foreground text-red-600">
                   <Trash className="mr-2 h-4 w-4" /> Delete
                 </button>

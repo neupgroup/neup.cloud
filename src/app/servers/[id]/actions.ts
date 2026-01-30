@@ -314,3 +314,107 @@ export async function createEmptyFile(serverId: string, path: string, rootMode =
     return { error: e.message };
   }
 }
+
+export async function downloadFiles(serverId: string, paths: string[], rootMode = false): Promise<{ filePath?: string, fileName?: string, error?: string }> {
+  const server = await getServerForRunner(serverId);
+  if (!server || !server.username || !server.privateKey) return { error: 'Server configuration missing.' };
+
+  const tempDir = path.join(os.tmpdir(), 'neup-downloads');
+  await fs.mkdir(tempDir, { recursive: true });
+
+  try {
+    // Single file download
+    if (paths.length === 1) {
+      const remotePath = paths[0];
+      const fileName = remotePath.split('/').pop() || 'download';
+
+      // Check if it's a directory
+      const checkCmd = rootMode ? `sudo test -d "${remotePath}"` : `test -d "${remotePath}"`;
+      const checkResult = await runCommandOnServer(server.publicIp, server.username, server.privateKey, checkCmd, undefined, undefined, true);
+
+      if (checkResult.code === 0) {
+        // It's a directory, create a zip
+        const zipFileName = `${fileName}.zip`;
+        const remoteZipPath = `/tmp/${zipFileName}`;
+        const localZipPath = path.join(tempDir, zipFileName);
+
+        // Create zip on remote server
+        const zipCmd = rootMode
+          ? `cd "$(dirname "${remotePath}")" && sudo zip -r "${remoteZipPath}" "$(basename "${remotePath}")"`
+          : `cd "$(dirname "${remotePath}")" && zip -r "${remoteZipPath}" "$(basename "${remotePath}")"`;
+
+        const zipResult = await runCommandOnServer(server.publicIp, server.username, server.privateKey, zipCmd, undefined, undefined, true);
+
+        if (zipResult.code !== 0) {
+          return { error: zipResult.stderr || 'Failed to create zip archive.' };
+        }
+
+        // Download the zip file
+        const { downloadFileFromServer } = await import('@/services/ssh');
+        await downloadFileFromServer(server.publicIp, server.username, server.privateKey, remoteZipPath, localZipPath);
+
+        // Clean up remote zip
+        const cleanupCmd = rootMode ? `sudo rm -f "${remoteZipPath}"` : `rm -f "${remoteZipPath}"`;
+        await runCommandOnServer(server.publicIp, server.username, server.privateKey, cleanupCmd, undefined, undefined, true);
+
+        return { filePath: localZipPath, fileName: zipFileName };
+      } else {
+        // It's a file, download directly
+        const localFilePath = path.join(tempDir, fileName);
+
+        // If root mode, we need to copy to a temp location first
+        if (rootMode) {
+          const tempRemotePath = `/tmp/${fileName}`;
+          const copyCmd = `sudo cp "${remotePath}" "${tempRemotePath}" && sudo chmod 644 "${tempRemotePath}"`;
+          const copyResult = await runCommandOnServer(server.publicIp, server.username, server.privateKey, copyCmd, undefined, undefined, true);
+
+          if (copyResult.code !== 0) {
+            return { error: copyResult.stderr || 'Failed to prepare file for download.' };
+          }
+
+          const { downloadFileFromServer } = await import('@/services/ssh');
+          await downloadFileFromServer(server.publicIp, server.username, server.privateKey, tempRemotePath, localFilePath);
+
+          // Clean up temp file
+          const cleanupCmd = `sudo rm -f "${tempRemotePath}"`;
+          await runCommandOnServer(server.publicIp, server.username, server.privateKey, cleanupCmd, undefined, undefined, true);
+        } else {
+          const { downloadFileFromServer } = await import('@/services/ssh');
+          await downloadFileFromServer(server.publicIp, server.username, server.privateKey, remotePath, localFilePath);
+        }
+
+        return { filePath: localFilePath, fileName };
+      }
+    } else {
+      // Multiple files/folders - create a zip
+      const zipFileName = `download-${Date.now()}.zip`;
+      const remoteZipPath = `/tmp/${zipFileName}`;
+      const localZipPath = path.join(tempDir, zipFileName);
+
+      // Create zip with all selected files
+      const pathArgs = paths.map(p => `"${p}"`).join(' ');
+      const zipCmd = rootMode
+        ? `sudo zip -r "${remoteZipPath}" ${pathArgs}`
+        : `zip -r "${remoteZipPath}" ${pathArgs}`;
+
+      const zipResult = await runCommandOnServer(server.publicIp, server.username, server.privateKey, zipCmd, undefined, undefined, true);
+
+      if (zipResult.code !== 0) {
+        return { error: zipResult.stderr || 'Failed to create zip archive.' };
+      }
+
+      // Download the zip file
+      const { downloadFileFromServer } = await import('@/services/ssh');
+      await downloadFileFromServer(server.publicIp, server.username, server.privateKey, remoteZipPath, localZipPath);
+
+      // Clean up remote zip
+      const cleanupCmd = rootMode ? `sudo rm -f "${remoteZipPath}"` : `rm -f "${remoteZipPath}"`;
+      await runCommandOnServer(server.publicIp, server.username, server.privateKey, cleanupCmd, undefined, undefined, true);
+
+      return { filePath: localZipPath, fileName: zipFileName };
+    }
+  } catch (e: any) {
+    return { error: `Download failed: ${e.message}` };
+  }
+}
+

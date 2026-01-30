@@ -245,9 +245,9 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
       {isServerSelected && (
         <div className="space-y-2">
           <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
-            Server
+            Applications
           </div>
-          {serverLinks.map(({ href, label, icon: Icon }) => (
+          {applicationsLinks.map(({ href, label, icon: Icon }) => (
             <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
               <Icon className="h-4 w-4" />
               <span>{label}</span>
@@ -259,9 +259,9 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
       {isServerSelected && (
         <div className="space-y-2">
           <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
-            Applications
+            Server
           </div>
-          {applicationsLinks.map(({ href, label, icon: Icon }) => (
+          {serverLinks.map(({ href, label, icon: Icon }) => (
             <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
               <Icon className="h-4 w-4" />
               <span>{label}</span>
