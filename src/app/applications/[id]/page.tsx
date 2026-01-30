@@ -50,18 +50,19 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
     };
 
     // Get all commands from the appropriate module
-    let allCommands: Record<string, any> = {};
+    let commandsArray: any[] = [];
 
     if (application.language === 'next') {
-        allCommands = NextJs.getAllCommands(context);
+        commandsArray = NextJs.getCommands(context);
     } else if (application.language === 'node') {
-        allCommands = NodeJs.getAllCommands(context);
+        commandsArray = NodeJs.getCommands(context);
     } else if (application.language === 'python') {
-        allCommands = Python.getAllCommands(context);
+        commandsArray = Python.getCommands(context);
     }
 
     // Inject commands into application.commands
-    Object.entries(allCommands).forEach(([name, cmdDef]) => {
+    commandsArray.forEach((cmdDef: any) => {
+        const name = cmdDef.title.toLowerCase();
         if (!application.commands[name]) {
             // Build the full command string from pre/main/post
             const parts = [];
@@ -74,7 +75,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
     });
 
     // Store command definitions for the UI
-    application.commandDefinitions = allCommands;
+    application.commandDefinitions = commandsArray;
 
     return (
         <div className="flex flex-col gap-8 max-w-5xl animate-in fade-in duration-500">

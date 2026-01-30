@@ -20,16 +20,25 @@ export function LifecycleSection({ application }: LifecycleSectionProps) {
     if (!application.commands) return null;
 
     // Use command definitions if available, otherwise fall back to old logic
-    const commandDefinitions = application.commandDefinitions || {};
-    const hasDefinitions = Object.keys(commandDefinitions).length > 0;
+    // Use command definitions if available (Array or Object), otherwise fall back to old logic
+    const commandDefinitions = application.commandDefinitions || [];
+    const isArray = Array.isArray(commandDefinitions);
+    const hasDefinitions = isArray ? commandDefinitions.length > 0 : Object.keys(commandDefinitions).length > 0;
 
-    // Filter to only show published commands
-    const availableCommands = hasDefinitions
-        ? Object.entries(commandDefinitions).filter(([name, def]: [string, any]) => def.status === 'published')
-        : Object.entries(application.commands).filter(([name]) => {
+    let availableCommands: [string, any][] = [];
+
+    if (isArray) {
+        availableCommands = commandDefinitions
+            .filter((def: any) => def.status === 'published')
+            .map((def: any) => [def.title.toLowerCase(), def]);
+    } else if (hasDefinitions) {
+        availableCommands = Object.entries(commandDefinitions).filter(([name, def]: [string, any]) => def.status === 'published');
+    } else {
+        availableCommands = Object.entries(application.commands).filter(([name]) => {
             const lifecycleNames = ['install', 'start', 'stop', 'restart', 'build', 'dev', 'lifecycle.install', 'lifecycle.start', 'lifecycle.stop', 'lifecycle.restart', 'lifecycle.build', 'lifecycle.dev'];
             return lifecycleNames.includes(name) || name.startsWith('lifecycle.');
         });
+    }
 
     if (availableCommands.length === 0) return null;
 
@@ -99,13 +108,7 @@ export function LifecycleSection({ application }: LifecycleSectionProps) {
         const Icon = definition?.icon ? getIconComponent(definition.icon) : getIconFromName(name);
         const type = definition?.type || 'normal';
         const isLoading = executing === name;
-
-        // Color based on type
-        const typeColors = {
-            normal: '',
-            destructive: 'text-red-600 dark:text-red-400',
-            success: 'text-green-600 dark:text-green-400',
-        };
+        const isDestructive = type === 'destructive';
 
         return (
             <div
@@ -120,7 +123,7 @@ export function LifecycleSection({ application }: LifecycleSectionProps) {
                     <div className="flex items-center justify-between mb-0 h-8">
                         <h3 className={cn(
                             "font-semibold leading-none tracking-tight truncate pr-4 capitalize transition-colors group-hover:underline decoration-muted-foreground/30 underline-offset-4",
-                            typeColors[type as keyof typeof typeColors]
+                            isDestructive ? "text-destructive" : "text-foreground"
                         )}>
                             {displayName}
                         </h3>
@@ -128,15 +131,18 @@ export function LifecycleSection({ application }: LifecycleSectionProps) {
                         {/* Icon on Right, matching GitHub Section style */}
                         <div className="flex items-center gap-1">
                             <div className={cn(
-                                "h-8 w-8 flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors",
-                                typeColors[type as keyof typeof typeColors]
+                                "h-8 w-8 flex items-center justify-center transition-colors",
+                                isDestructive ? "text-destructive/70 group-hover:text-destructive" : "text-muted-foreground group-hover:text-foreground"
                             )}>
                                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
                             </div>
                         </div>
                     </div>
                     {/* Description instead of command */}
-                    <p className="text-sm text-muted-foreground line-clamp-2">
+                    <p className={cn(
+                        "text-sm line-clamp-2",
+                        isDestructive ? "text-destructive/70" : "text-muted-foreground"
+                    )}>
                         {description}
                     </p>
                 </div>

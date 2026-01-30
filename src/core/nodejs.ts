@@ -24,13 +24,16 @@ export interface CommandContext {
 }
 
 /**
- * Port finder utility script
+ * Get all commands for Node.js applications
+ * Simply add a new object to this array to add a new command!
  */
-const getPortFinderScript = (preferredPorts: number[] = []) => {
-    const portsStr = preferredPorts.join(' ');
-    return `
+export const getCommands = (context: CommandContext): CommandDefinition[] => {
+    const portsStr = context.preferredPorts?.join(' ') || '';
+    const entryFile = context.entryFile || 'index.js';
+
+    const portFinderScript = portsStr ? `
 find_port() {
-    local PORTS="$1"
+    local PORTS="${portsStr}"
     for port in $PORTS; do
         if ! (echo >/dev/tcp/127.0.0.1/$port) >/dev/null 2>&1; then
             echo $port
@@ -48,101 +51,93 @@ find_port() {
 }
 CHOSEN_PORT=$(find_port "${portsStr}")
 echo "Selected Port: $CHOSEN_PORT"
-`;
+` : '';
+
+    return [
+        // Build Command
+        {
+            title: 'Build',
+            description: 'Build the application for production',
+            icon: 'Hammer',
+            status: 'published',
+            type: 'normal',
+            command: {
+                mainCommand: `cd ${context.appLocation} && npm install && if grep -q "\\"build\\":" "package.json"; then npm run build; fi`
+            }
+        },
+
+        // Start Command (Production)
+        {
+            title: 'Start',
+            description: 'Start the application in production mode',
+            icon: 'PlayCircle',
+            status: 'published',
+            type: 'success',
+            command: {
+                preCommand: portFinderScript,
+                mainCommand: `cd ${context.appLocation} && PORT=$CHOSEN_PORT pm2 start ${entryFile} --name "${context.appName}"`
+            }
+        },
+
+        // Stop Command
+        {
+            title: 'Stop',
+            description: 'Stop the running application',
+            icon: 'StopCircle',
+            status: 'published',
+            type: 'destructive',
+            command: {
+                mainCommand: `pm2 stop ${context.appName}`
+            }
+        },
+
+        // Restart Command
+        {
+            title: 'Restart',
+            description: 'Restart the application with latest changes',
+            icon: 'RefreshCw',
+            status: 'published',
+            type: 'normal',
+            command: {
+                mainCommand: `pm2 restart "${context.appName}"`
+            }
+        },
+    ];
 };
 
 /**
- * Build Command
+ * Get all commands as a keyed object (for backward compatibility)
  */
-export const build = (context: CommandContext): CommandDefinition => ({
-    title: 'Build',
-    description: 'Build the application for production',
-    icon: 'Hammer',
-    status: 'published',
-    type: 'normal',
-    command: {
-        mainCommand: `cd ${context.appLocation} && npm install && if grep -q "\\"build\\":" "package.json"; then npm run build; fi`
-    }
-});
+export const getAllCommands = (context: CommandContext): Record<string, CommandDefinition> => {
+    const commands = getCommands(context);
+    const result: Record<string, CommandDefinition> = {};
 
-/**
- * Start Command (Production)
- */
-export const start = (context: CommandContext): CommandDefinition => {
-    const entryFile = context.entryFile || 'index.js';
-    return {
-        title: 'Start',
-        description: 'Start the application in production mode',
-        icon: 'PlayCircle',
-        status: 'published',
-        type: 'success',
-        command: {
-            preCommand: getPortFinderScript(context.preferredPorts || []),
-            mainCommand: `cd ${context.appLocation} && PORT=$CHOSEN_PORT pm2 start ${entryFile} --name "${context.appName}"`
-        }
-    };
+    commands.forEach(cmd => {
+        const key = cmd.title.toLowerCase();
+        result[key] = cmd;
+    });
+
+    return result;
 };
 
 /**
- * Stop Command
- */
-export const stop = (context: CommandContext): CommandDefinition => ({
-    title: 'Stop',
-    description: 'Stop the running application',
-    icon: 'StopCircle',
-    status: 'published',
-    type: 'destructive',
-    command: {
-        mainCommand: `pm2 stop ${context.appName}`
-    }
-});
-
-/**
- * Restart Command
- */
-export const restart = (context: CommandContext): CommandDefinition => ({
-    title: 'Restart',
-    description: 'Restart the application with latest changes',
-    icon: 'RefreshCw',
-    status: 'published',
-    type: 'normal',
-    command: {
-        mainCommand: `pm2 restart "${context.appName}"`
-    }
-});
-
-/**
- * Get all available commands for Node.js
- */
-export const getAllCommands = (context: CommandContext): Record<string, CommandDefinition> => ({
-    build: build(context),
-    start: start(context),
-    stop: stop(context),
-    restart: restart(context),
-});
-
-/**
- * Get command by name
- */
-export const getCommand = (name: string, context: CommandContext): CommandDefinition | null => {
-    const commands = getAllCommands(context);
-    return commands[name] || null;
-};
-
-/**
- * Legacy compatibility - get command string
+ * Legacy compatibility functions
  */
 export const getStartCommand = (appName: string, appLocation: string, entryFile: string = 'index.js', preferredPorts: number[] = []) => {
-    const cmd = start({ appName, appLocation, entryFile, preferredPorts });
+    const commands = getCommands({ appName, appLocation, entryFile, preferredPorts });
+    const cmd = commands.find(c => c.title === 'Start');
+    if (!cmd) return '';
     return `${cmd.command.preCommand || ''}\n${cmd.command.mainCommand}`;
 };
 
 export const getStopCommand = (appName: string) => {
-    const cmd = stop({ appName, appLocation: '' });
-    return cmd.command.mainCommand;
+    const commands = getCommands({ appName, appLocation: '' });
+    const cmd = commands.find(c => c.title === 'Stop');
+    return cmd?.command.mainCommand || '';
 };
 
 export const getBuildCommand = (appLocation: string) => {
-    const cmd = build({ appName: '', appLocation });
-    return cmd.command.mainCommand;
+    const commands = getCommands({ appName: '', appLocation });
+    const cmd = commands.find(c => c.title === 'Build');
+    return cmd?.command.mainCommand || '';
 };
