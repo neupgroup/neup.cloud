@@ -2,7 +2,7 @@
 'use server';
 
 import { NodeSSH } from 'node-ssh';
-import { UniversalLinux } from '../core/universal/linux';
+import { UniversalLinux } from '../core/universal';
 
 export async function runCommandOnServer(
     host: string,

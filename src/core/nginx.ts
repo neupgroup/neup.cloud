@@ -1,3 +1,8 @@
+/**
+ * Nginx Configuration Generator
+ * Unified module for generating Nginx configurations
+ */
+
 export interface NginxLocation {
     path: string;
     proxyPass?: string; // If proxying to another server/upstream

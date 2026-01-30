@@ -6,17 +6,14 @@ import { initializeFirebase } from '@/firebase';
 import { revalidatePath } from 'next/cache';
 import { executeCommand, executeQuickCommand } from '../commands/actions';
 import { cookies } from 'next/headers';
-import * as NextJsStop from '@/core/next-js/stop';
-import * as NodeJsStop from '@/core/node/stop';
-import * as PythonStop from '@/core/python/stop';
+import * as NextJs from '@/core/nextjs';
+import * as NodeJs from '@/core/nodejs';
+import * as Python from '@/core/python';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { readFile, unlink } from 'fs/promises';
 import path from 'path';
-import * as GitClone from '@/core/github/clone';
-import * as GitPull from '@/core/github/pull';
-import * as GitPullForce from '@/core/github/pull-force';
-import * as GitReset from '@/core/github/reset';
+import * as Git from '@/core/github';
 
 const execAsync = promisify(exec);
 
@@ -108,13 +105,13 @@ export async function deleteApplication(id: string) {
                 // 2. Use Core Modules based on language
                 switch (app.language) {
                     case 'next':
-                        stopCommand = NextJsStop.getStopCommand(app.name);
+                        stopCommand = NextJs.getStopCommand(app.name);
                         break;
                     case 'node':
-                        stopCommand = NodeJsStop.getStopCommand(app.name);
+                        stopCommand = NodeJs.getStopCommand(app.name);
                         break;
                     case 'python':
-                        stopCommand = PythonStop.getStopCommand(app.name);
+                        stopCommand = Python.getStopCommand(app.name);
                         break;
                     default:
                         // Generic fallback if PM2 is used
@@ -392,33 +389,33 @@ rm -f "${keyFilePath}"
         case 'clone':
             description = `Cloning Repository`;
             if (isPrivate && privateKey) {
-                command = wrapWithKey((path) => GitClone.getPrivateCloneCommand(location, repoUrl, path));
+                command = wrapWithKey((path) => Git.getPrivateCloneCommand(location, repoUrl, path));
             } else {
-                command = GitClone.getPublicCloneCommand(location, repoUrl);
+                command = Git.getPublicCloneCommand(location, repoUrl);
             }
             break;
         case 'pull':
             description = `Pulling Repository`;
             if (isPrivate && privateKey) {
-                command = wrapWithKey((path) => GitPull.getPrivatePullCommand(location, path, 'main'));
+                command = wrapWithKey((path) => Git.getPrivatePullCommand(location, path, 'main'));
             } else {
-                command = GitPull.getPullCommand(location, 'main');
+                command = Git.getPullCommand(location, 'main');
             }
             break;
         case 'pull-force':
             description = `Force Pulling Repository`;
             if (isPrivate && privateKey) {
-                command = wrapWithKey((path) => GitPullForce.getPrivatePullForceCommand(location, path, 'main'));
+                command = wrapWithKey((path) => Git.getPrivatePullForceCommand(location, path, 'main'));
             } else {
-                command = GitPullForce.getPullForceCommand(location, 'main');
+                command = Git.getPullForceCommand(location, 'main');
             }
             break;
         case 'reset-main':
             description = `Resetting to Main`;
             if (isPrivate && privateKey) {
-                command = wrapWithKey((path) => GitReset.getPrivateResetCommand(location, path, 'origin/main'));
+                command = wrapWithKey((path) => Git.getPrivateResetCommand(location, path, 'origin/main'));
             } else {
-                command = GitReset.getResetCommand(location, 'origin/main');
+                command = Git.getResetCommand(location, 'origin/main');
             }
             break;
     }

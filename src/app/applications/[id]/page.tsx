@@ -17,16 +17,9 @@ import { LogsSection } from './logs-section';
 import { StatusDashboard } from './status-dashboard';
 import { Separator } from '@/components/ui/separator';
 
-import * as NextJsDev from '@/core/next-js/dev';
-import * as NextJsStart from '@/core/next-js/start';
-import * as NextJsStop from '@/core/next-js/stop';
-import * as NextJsBuild from '@/core/next-js/build';
-import * as NextJsInstall from '@/core/next-js/install';
-import * as NodeJsStart from '@/core/node/start';
-import * as NodeJsStop from '@/core/node/stop';
-import * as NodeJsBuild from '@/core/node/build';
-import * as PythonStart from '@/core/python/start';
-import * as PythonStop from '@/core/python/stop';
+import * as NextJs from '@/core/nextjs';
+import * as NodeJs from '@/core/nodejs';
+import * as Python from '@/core/python';
 
 export default async function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -43,36 +36,45 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
         application.language === 'node' ? 'Node.js' :
             application.language === 'python' ? 'Python' : 'Custom';
 
-    // Inject Default Commands if missing
+    // Inject Default Commands if missing using new unified structure
     if (!application.commands) {
         application.commands = {};
     }
 
-    const setIfMissing = (key: string, value: string) => {
-        if (!application.commands[key] && !application.commands[`lifecycle.${key}`]) {
-            application.commands[key] = value;
-        }
+    // Build context for command generation
+    const context = {
+        appName: application.name,
+        appLocation: application.location,
+        preferredPorts: application.networkAccess?.map(Number) || [],
+        entryFile: application.information?.entryFile,
     };
 
-    // Generic Restart (PM2)
-    setIfMissing('restart', `pm2 restart "${application.name}"`);
+    // Get all commands from the appropriate module
+    let allCommands: Record<string, any> = {};
 
     if (application.language === 'next') {
-        setIfMissing('start', NextJsStart.getStartCommand(application.name, application.location, application.networkAccess?.map(Number) || []));
-        setIfMissing('stop', NextJsStop.getStopCommand(application.name));
-        setIfMissing('build', NextJsBuild.getBuildCommand(application.location));
-        setIfMissing('install', NextJsInstall.getInstallCommand(application.location));
-        setIfMissing('dev', NextJsDev.getDevCommand(application.name, application.location, application.networkAccess?.map(Number) || []));
+        allCommands = NextJs.getAllCommands(context);
     } else if (application.language === 'node') {
-        const entry = application.information?.entryFile || 'index.js';
-        setIfMissing('start', NodeJsStart.getStartCommand(application.name, application.location, entry, application.networkAccess?.map(Number) || []));
-        setIfMissing('stop', NodeJsStop.getStopCommand(application.name));
-        setIfMissing('build', NodeJsBuild.getBuildCommand(application.location));
+        allCommands = NodeJs.getAllCommands(context);
     } else if (application.language === 'python') {
-        const entry = application.information?.entryFile || 'main.py';
-        setIfMissing('start', PythonStart.getStartCommand(application.name, application.location, entry, application.networkAccess?.map(Number) || []));
-        setIfMissing('stop', PythonStop.getStopCommand(application.name));
+        allCommands = Python.getAllCommands(context);
     }
+
+    // Inject commands into application.commands
+    Object.entries(allCommands).forEach(([name, cmdDef]) => {
+        if (!application.commands[name]) {
+            // Build the full command string from pre/main/post
+            const parts = [];
+            if (cmdDef.command.preCommand) parts.push(cmdDef.command.preCommand);
+            parts.push(cmdDef.command.mainCommand);
+            if (cmdDef.command.postCommand) parts.push(cmdDef.command.postCommand);
+
+            application.commands[name] = parts.join('\n');
+        }
+    });
+
+    // Store command definitions for the UI
+    application.commandDefinitions = allCommands;
 
     return (
         <div className="flex flex-col gap-8 max-w-5xl animate-in fade-in duration-500">

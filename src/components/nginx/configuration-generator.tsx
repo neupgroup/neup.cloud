@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { generateNginxConfig, NginxLocation } from '@/core/nginx/generator';
+import { generateNginxConfig, NginxLocation } from '@/core/nginx';
 import { Plus, Trash, Copy, Check, FileCode } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
