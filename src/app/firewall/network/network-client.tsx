@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
     Card,
 } from "@/components/ui/card";
-import { ShieldCheck, Network, Trash2, Plus, Info } from "lucide-react";
+import { ShieldCheck, Network, Trash2, Plus, Info, Activity, ChevronRight } from "lucide-react";
 import { getFirewallStatus, allowPort, deleteRule, toggleFirewall, type FirewallRule } from '../actions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -278,29 +279,6 @@ export default function NetworkClient({ serverId }: { serverId: string }) {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className={cn(
-                        "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border",
-                        isActive
-                            ? "bg-green-500/10 text-green-600 border-green-500/20"
-                            : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
-                    )}>
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        {isActive ? "Firewall Active" : "Firewall Inactive"}
-                    </div>
-                    {defaults.incoming !== 'unknown' && (
-                        <>
-                            <div className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border bg-muted/50 border-border text-muted-foreground">
-                                <span>{isActive ? 'Incoming:' : 'Configured Incoming:'} <span className="text-foreground capitalize">{defaults.incoming}</span></span>
-                            </div>
-                            <div className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border bg-muted/50 border-border text-muted-foreground">
-                                <span>{isActive ? 'Outgoing:' : 'Configured Outgoing:'} <span className="text-foreground capitalize">{defaults.outgoing}</span></span>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
 
             {isLoading ? (
                 <LoadingSkeleton />
@@ -310,62 +288,85 @@ export default function NetworkClient({ serverId }: { serverId: string }) {
                 </Card>
             ) : (
                 <div className="space-y-6">
-                    {/* Action Cards */}
-                    {!isActive ? (
-                        <Card className="p-6 flex items-center justify-between border-l-4 border-l-yellow-500/50">
-                            <div>
-                                <h3 className="text-lg font-medium">Enable Firewall</h3>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    Secure your server by enabling the firewall. This will block unauthorized access based on your rules.
+                    <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+                        {/* Status Toggle Row */}
+                        <div
+                            onClick={handleToggleFirewall}
+                            className={cn(
+                                "p-4 min-w-0 w-full transition-colors flex items-center justify-between border-b border-border",
+                                !isToggling ? "hover:bg-muted/50 cursor-pointer" : "cursor-default opacity-70"
+                            )}
+                        >
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <ShieldCheck className={cn("h-4 w-4", isActive ? "text-green-500" : "text-destructive")} />
+                                    <p className="text-base font-semibold text-foreground font-mono leading-tight">
+                                        Firewall Service
+                                    </p>
+                                    {isToggling ? (
+                                        <Badge variant="outline" className="gap-1 animate-pulse ml-2">
+                                            <Skeleton className="h-3 w-3 rounded-full" />
+                                            {isActive ? "Disabling..." : "Enabling..."}
+                                        </Badge>
+                                    ) : isActive ? (
+                                        <Badge className="bg-green-500 hover:bg-green-600 gap-1 ml-2">
+                                            Active
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="destructive" className="gap-1 ml-2">
+                                            Inactive
+                                        </Badge>
+                                    )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    {isActive
+                                        ? "Firewall is currently managing network traffic based on your active rules."
+                                        : "Firewall is disabled. All incoming traffic is currently permitted based on server defaults."}
                                 </p>
                             </div>
-                            <Button
-                                onClick={handleToggleFirewall}
-                                disabled={isToggling}
+                        </div>
+
+                        {/* Add Rule Row (Only when active) */}
+                        {isActive && (
+                            <div
+                                onClick={() => setIsAddDialogOpen(true)}
+                                className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 cursor-pointer flex items-center justify-between border-b border-border"
                             >
-                                {isToggling ? 'Enabling...' : 'Enable Firewall'}
-                            </Button>
-                        </Card>
-                    ) : (
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <Card className="p-6 flex flex-col justify-between">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="p-2 bg-primary/10 rounded-md text-primary">
-                                            <Plus className="h-4 w-4" />
-                                        </div>
-                                        <h3 className="font-medium">Add New Rule</h3>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Plus className="h-4 w-4 text-primary" />
+                                        <p className="text-base font-semibold text-foreground font-mono leading-tight">
+                                            Add New Rule
+                                        </p>
                                     </div>
-                                    <p className="text-sm text-muted-foreground mb-4">
+                                    <p className="text-xs text-muted-foreground">
                                         Open a specific port to allow incoming traffic for your applications.
                                     </p>
                                 </div>
                                 <AddRuleDialog onAdd={handleAddRule} isOpen={isAddDialogOpen} setIsOpen={setIsAddDialogOpen} />
-                            </Card>
+                            </div>
+                        )}
 
-                            <Card className="p-6 flex flex-col justify-between border-destructive/20 bg-destructive/5">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="p-2 bg-destructive/10 rounded-md text-destructive">
-                                            <ShieldCheck className="h-4 w-4" />
-                                        </div>
-                                        <h3 className="font-medium text-destructive">Disable Firewall</h3>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground mb-4">
-                                        Temporarily disable the firewall. This will allow all incoming traffic.
+                        {/* Test Connectivity Row */}
+                        <div
+                            onClick={() => router.push('/firewall/network/test')}
+                            className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 cursor-pointer flex items-center justify-between group"
+                        >
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Activity className="h-4 w-4 text-blue-500" />
+                                    <p className="text-base font-semibold text-foreground font-mono leading-tight">
+                                        Test Network Connectivity
                                     </p>
                                 </div>
-                                <Button
-                                    variant="destructive"
-                                    onClick={handleToggleFirewall}
-                                    disabled={isToggling}
-                                    className="w-full"
-                                >
-                                    {isToggling ? 'Disabling...' : 'Disable Firewall'}
-                                </Button>
-                            </Card>
+                                <p className="text-xs text-muted-foreground">
+                                    Verify if the server is receiving requests on specific ports from the internet.
+                                </p>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                         </div>
-                    )}
+                    </Card>
+
 
                     {!isActive && rules.length > 0 && (
                         <div className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-900/50 p-4 rounded-md text-sm text-yellow-800 dark:text-yellow-200">

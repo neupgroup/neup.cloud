@@ -331,3 +331,108 @@ export async function toggleFirewall(serverId: string, enable: boolean): Promise
         return { success: false, message: error.message };
     }
 }
+
+export async function checkPortConnectivity(serverId: string, port: number): Promise<{ status: 'open' | 'closed' | 'blocked' | 'error', message: string, latency?: number }> {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.publicIp) {
+        return { status: 'error', message: 'Server not found or missing IP.' };
+    }
+
+    const net = await import('net');
+
+    const connectionTest = await new Promise<{ status: 'open' | 'closed' | 'blocked' | 'error', message: string, latency?: number }>((resolve) => {
+        const start = Date.now();
+        const socket = new net.Socket();
+        socket.setTimeout(3000);
+
+        socket.on('connect', () => {
+            const latency = Date.now() - start;
+            socket.destroy();
+            resolve({ status: 'open', message: 'Connection successful', latency });
+        });
+
+        socket.on('timeout', () => {
+            socket.destroy();
+            resolve({ status: 'blocked', message: 'Connection timed out' });
+        });
+
+        socket.on('error', (err: any) => {
+            socket.destroy();
+            if (err.code === 'ECONNREFUSED') {
+                resolve({ status: 'closed', message: 'Connection refused' });
+            } else {
+                resolve({ status: 'error', message: err.message });
+            }
+        });
+
+        try {
+            socket.connect(port, server.publicIp);
+        } catch (err: any) {
+            resolve({ status: 'error', message: err.message });
+        }
+    });
+
+    // If it's open, return immediately
+    if (connectionTest.status === 'open') {
+        return { ...connectionTest, message: 'Receiving requests (Handled by application)' };
+    }
+
+    // If it failed/timed out, let's check the Firewall (UFW) to see if it's the culprit
+    try {
+        const fw = await getFirewallStatus(serverId);
+
+        if (!fw.active) {
+            // Firewall is off, so it must be something else
+            return {
+                ...connectionTest,
+                message: connectionTest.status === 'closed'
+                    ? 'Receiving requests (No application listening)'
+                    : 'Not receiving requests'
+            };
+        }
+
+        // Check rules
+        const portStr = port.toString();
+        const matchingRule = fw.rules.find(r =>
+            r.to === portStr ||
+            r.to.startsWith(portStr + '/') ||
+            r.to === 'Anywhere'
+        );
+
+        if (matchingRule) {
+            if (matchingRule.action.includes('ALLOW')) {
+                // Rule allows it, but connection still failed
+                return {
+                    ...connectionTest,
+                    message: connectionTest.status === 'closed'
+                        ? 'Receiving requests (No application listening)'
+                        : 'Not receiving requests'
+                };
+            } else {
+                // Explicitly denied
+                return { status: 'blocked', message: 'Not receiving requests' };
+            }
+        }
+
+        // No specific rule, check default policy
+        if (fw.defaultIncoming === 'deny' || fw.defaultIncoming === 'reject') {
+            return { status: 'blocked', message: 'Not receiving requests' };
+        }
+
+        return {
+            status: connectionTest.status,
+            message: connectionTest.status === 'closed'
+                ? 'Receiving requests (No application listening)'
+                : 'Not receiving requests'
+        };
+
+    } catch (e) {
+        // If we can't check firewall status, just return the original result
+        return {
+            ...connectionTest,
+            message: connectionTest.status === 'closed'
+                ? 'Receiving requests (No application listening)'
+                : 'Not receiving requests'
+        };
+    }
+}
