@@ -62,7 +62,9 @@ echo "Selected Port: $CHOSEN_PORT"
             status: 'published',
             type: 'normal',
             command: {
-                mainCommand: `cd ${context.appLocation} && npm install && if grep -q "\\"build\\":" "package.json"; then npm run build; fi`
+                mainCommand: `cd ${context.appLocation} && 
+                npm install && 
+                if grep -q "\\"build\\":" "package.json"; then npm run build; fi`
             }
         },
 
@@ -75,7 +77,9 @@ echo "Selected Port: $CHOSEN_PORT"
             type: 'success',
             command: {
                 preCommand: portFinderScript,
-                mainCommand: `cd ${context.appLocation} && PORT=$CHOSEN_PORT pm2 start ${entryFile} --name "${context.appName}"`
+                mainCommand: `cd ${context.appLocation} && 
+                pm2 delete ${context.appName} || true && 
+                PORT=$CHOSEN_PORT pm2 start ${entryFile} --name "${context.appName}"`
             }
         },
 
@@ -87,21 +91,10 @@ echo "Selected Port: $CHOSEN_PORT"
             status: 'published',
             type: 'destructive',
             command: {
-                mainCommand: `pm2 stop ${context.appName}`
+                mainCommand: `pm2 stop ${context.appName} && 
+                pm2 delete ${context.appName}`
             }
-        },
-
-        // Restart Command
-        {
-            title: 'Restart',
-            description: 'Restart the application with latest changes',
-            icon: 'RefreshCw',
-            status: 'published',
-            type: 'normal',
-            command: {
-                mainCommand: `pm2 restart "${context.appName}"`
-            }
-        },
+        }
     ];
 };
 

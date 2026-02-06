@@ -53,18 +53,6 @@ echo "Selected Port: $CHOSEN_PORT"
 ` : '';
 
     return [
-        // Install Command
-        {
-            title: 'Install',
-            description: 'Install dependencies and prepare the application',
-            icon: 'Download',
-            status: 'published',
-            type: 'normal',
-            command: {
-                mainCommand: `cd ${context.appLocation} && npm install`
-            }
-        },
-
         // Build Command
         {
             title: 'Build',
@@ -73,8 +61,11 @@ echo "Selected Port: $CHOSEN_PORT"
             status: 'published',
             type: 'normal',
             command: {
-                preCommand: `cd ${context.appLocation} && rm -rf .next`,
-                mainCommand: `cd ${context.appLocation} && NODE_OPTIONS="--max-old-space-size=1400" npm run build`
+                preCommand: `cd ${context.appLocation} && 
+                npm install &&
+                rm -rf .next`,
+                mainCommand: `cd ${context.appLocation} && 
+                NODE_OPTIONS="--max-old-space-size=1400" npm run build`
             }
         },
 
@@ -87,20 +78,24 @@ echo "Selected Port: $CHOSEN_PORT"
             type: 'success',
             command: {
                 preCommand: portFinderScript,
-                mainCommand: `cd ${context.appLocation} && PORT=$CHOSEN_PORT pm2 start npm --name "${context.appName}" -- start -- -p $CHOSEN_PORT`
+                mainCommand: `cd ${context.appLocation} && 
+                pm2 delete ${context.appName} || true && 
+                PORT=$CHOSEN_PORT pm2 start npm --name "${context.appName}" -- start -- -p $CHOSEN_PORT`
             }
         },
 
         // Dev Command (Development)
         {
             title: 'Dev',
-            description: 'Start the application in development mode',
+            description: 'Start the application in development mode overrides the production port',
             icon: 'Terminal',
             status: 'published',
             type: 'normal',
             command: {
                 preCommand: portFinderScript,
-                mainCommand: `cd ${context.appLocation} && npm install && PORT=$CHOSEN_PORT pm2 start npm --name "${context.appName}" -- run dev -- -p $CHOSEN_PORT`
+                mainCommand: `cd ${context.appLocation} && 
+                npm install && 
+                PORT=$CHOSEN_PORT pm2 start npm --name "${context.appName}" -- run dev -- -p $CHOSEN_PORT`
             }
         },
 
@@ -112,21 +107,10 @@ echo "Selected Port: $CHOSEN_PORT"
             status: 'published',
             type: 'destructive',
             command: {
-                mainCommand: `pm2 stop ${context.appName} && pm2 delete ${context.appName}`
+                mainCommand: `pm2 stop ${context.appName} && 
+                pm2 delete ${context.appName}`
             }
-        },
-
-        // Restart Command
-        {
-            title: 'Restart',
-            description: 'Restart the application with latest changes',
-            icon: 'RefreshCw',
-            status: 'published',
-            type: 'normal',
-            command: {
-                mainCommand: `pm2 restart "${context.appName}"`
-            }
-        },
+        }
     ];
 };
 
