@@ -19,6 +19,14 @@ type ApplicationCardProps = {
 export function ApplicationCard({ application }: ApplicationCardProps) {
   const { toast } = useToast();
 
+  const languageDisplay = {
+    'next': 'Next.js',
+    'node': 'Node.js',
+    'python': 'Python',
+    'go': 'Go',
+    'custom': 'Custom'
+  }[application.language] || application.language;
+
   return (
     <Card className="flex flex-col hover:shadow-md transition-shadow">
       <CardHeader>
@@ -32,7 +40,7 @@ export function ApplicationCard({ application }: ApplicationCardProps) {
                 </Link>
                 <Badge variant="outline" className="bg-primary/10">
                   <Code className="h-3 w-3 mr-1" />
-                  {application.language}
+                  {languageDisplay}
                 </Badge>
               </div>
             </CardTitle>

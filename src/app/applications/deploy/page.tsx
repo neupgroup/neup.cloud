@@ -40,6 +40,12 @@ const FRAMEWORKS = [
       { name: 'start', description: 'Start the application', value: 'python main.py' }
     ]
   },
+  {
+    id: 'go', name: 'Go', defaultCommands: [
+      { name: 'build', description: 'Build the application', value: 'go build -o main .' },
+      { name: 'start', description: 'Start the application', value: './main' }
+    ]
+  },
   { id: 'custom', name: 'Custom', defaultCommands: [] },
 ];
 

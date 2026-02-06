@@ -9,6 +9,7 @@ import { cookies } from 'next/headers';
 import * as NextJs from '@/core/nextjs';
 import * as NodeJs from '@/core/nodejs';
 import * as Python from '@/core/python';
+import * as Go from '@/core/go';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { readFile, unlink } from 'fs/promises';
@@ -112,6 +113,9 @@ export async function deleteApplication(id: string) {
                         break;
                     case 'python':
                         stopCommand = Python.getStopCommand(app.name);
+                        break;
+                    case 'go':
+                        stopCommand = Go.getStopCommand(app.name);
                         break;
                     default:
                         // Generic fallback if PM2 is used

@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import * as NextJs from '@/core/nextjs';
 import * as NodeJs from '@/core/nodejs';
 import * as Python from '@/core/python';
+import * as Go from '@/core/go';
 
 export default async function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -34,7 +35,8 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
     // In real app, we would ping the server/status file.
     const appLanguage = application.language === 'next' ? 'Next.js' :
         application.language === 'node' ? 'Node.js' :
-            application.language === 'python' ? 'Python' : 'Custom';
+            application.language === 'python' ? 'Python' :
+                application.language === 'go' ? 'Go' : 'Custom';
 
     // Inject Default Commands if missing using new unified structure
     if (!application.commands) {
@@ -58,6 +60,8 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
         commandsArray = NodeJs.getCommands(context);
     } else if (application.language === 'python') {
         commandsArray = Python.getCommands(context);
+    } else if (application.language === 'go') {
+        commandsArray = Go.getCommands(context);
     }
 
     // Inject commands into application.commands
