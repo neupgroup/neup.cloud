@@ -199,6 +199,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     { href: "/packages", label: "Packages", icon: Package },
     { href: "/updates", label: "Updates", icon: ArrowUpCircle },
     { href: "/storage", label: "Storage", icon: HardDrive },
+    { href: "/system/startup", label: "Startup", icon: Play },
     { href: "/system/requirement", label: "Requirements", icon: ListChecks },
     { href: "/system/protection", label: "Protection", icon: Shield },
   ];
