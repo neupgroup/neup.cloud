@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, RefreshCw, Terminal, Activity, Clock, FileCode, Play, Square, Trash2, Loader2, Cpu, HardDrive } from "lucide-react";
-import { getProcessDetails, restartApplicationProcess, restartSupervisorProcess } from "../../actions"; // Adjust import path
+import { getProcessDetails, restartApplicationProcess, restartSupervisorProcess } from "../../actions";
+import { getServer } from "@/app/servers/actions";
+import { ServerNameLink } from "@/components/server-name-link";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -28,6 +30,7 @@ export default function ProcessDetailsPage() {
     // e.g. pm2.my-app
     const [provider, setProvider] = useState<string>('');
     const [appName, setAppName] = useState<string>('');
+    const [serverName, setServerName] = useState<string | null>(null);
 
     useEffect(() => {
         if (!idParam) return;
@@ -56,7 +59,20 @@ export default function ProcessDetailsPage() {
         }
 
         fetchDetails(prov, name);
+        fetchServerInfo();
     }, [idParam]);
+
+    const fetchServerInfo = async () => {
+        const id = await getServerId();
+        if (id) {
+            try {
+                const server = await getServer(id);
+                if (server) setServerName(server.name);
+            } catch (err) {
+                console.error("Failed to fetch server info", err);
+            }
+        }
+    }
 
     const fetchDetails = async (prov: string, name: string) => {
         setLoading(true);
@@ -81,9 +97,9 @@ export default function ProcessDetailsPage() {
         try {
             let result;
             if (provider === 'supervisor') {
-                 result = await restartSupervisorProcess(await getServerId(), processData.name);
+                result = await restartSupervisorProcess(await getServerId(), processData.name);
             } else {
-                 result = await restartApplicationProcess(await getServerId(), processData.pm_id);
+                result = await restartApplicationProcess(await getServerId(), processData.pm_id);
             }
 
             if (result.error) {
@@ -137,7 +153,7 @@ export default function ProcessDetailsPage() {
         return `${seconds}s`;
     };
 
-    if (loading) {
+    if (loading && !processData) {
         return (
             <div className="space-y-6 animate-in fade-in">
                 <div className="flex items-center gap-4">
@@ -171,7 +187,7 @@ export default function ProcessDetailsPage() {
     const isOnline = status === 'online';
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-10">
+        <div className="space-y-8 animate-in fade-in duration-500 pb-20">
             {/* Header */}
             <div className="flex items-start justify-between">
                 <div className="space-y-1">
@@ -186,22 +202,26 @@ export default function ProcessDetailsPage() {
                         <PageTitle
                             title={processData.name}
                             description={`ID: ${processData.pm_id} • ${provider === 'pm2' ? 'PM2 Managed' : 'System Process'}`}
+                            serverName={serverName}
                         />
-                        <Badge variant={isOnline ? "default" : "destructive"} className={cn("mb-6 ml-2", isOnline && "bg-green-600 hover:bg-green-700")}>
-                            {status}
-                        </Badge>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => fetchDetails(provider, appName)} disabled={loading}>
-                        <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
-                        Refresh
-                    </Button>
-                    <Button variant="default" size="sm" onClick={handleRestart} disabled={!!actionLoading}>
-                        {actionLoading === 'restart' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                        Restart
-                    </Button>
+                {/* Buttons removed from header */}
+            </div>
+
+            {/* Status Section (Moved from Header) */}
+            <div className="flex items-center justify-between bg-card border rounded-lg p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                    <div className={cn("h-3 w-3 rounded-full", isOnline ? "bg-green-500" : "bg-red-500 animate-pulse")} />
+                    <span className="font-medium">Status</span>
                 </div>
+                {loading ? (
+                    <Skeleton className="h-6 w-20" />
+                ) : (
+                    <Badge variant={isOnline ? "default" : "destructive"} className={cn("text-xs px-3 py-1 uppercase tracking-wide", isOnline && "bg-green-100 text-green-700 hover:bg-green-100 border-green-200")}>
+                        {status}
+                    </Badge>
+                )}
             </div>
 
             <div className="grid gap-6 md:grid-cols-3">
@@ -218,28 +238,28 @@ export default function ProcessDetailsPage() {
                             <span className="text-xs font-medium text-muted-foreground uppercase">CPU Usage</span>
                             <div className="flex items-center gap-2 text-2xl font-mono">
                                 <Cpu className="h-5 w-5 text-muted-foreground" />
-                                {processData.monit?.cpu}%
+                                {loading ? <Skeleton className="h-8 w-24" /> : `${processData.monit?.cpu}%`}
                             </div>
                         </div>
                         <div className="space-y-1">
                             <span className="text-xs font-medium text-muted-foreground uppercase">Memory Usage</span>
                             <div className="flex items-center gap-2 text-2xl font-mono">
                                 <HardDrive className="h-5 w-5 text-muted-foreground" />
-                                {formatMemory(processData.monit?.memory)}
+                                {loading ? <Skeleton className="h-8 w-32" /> : formatMemory(processData.monit?.memory)}
                             </div>
                         </div>
                         <div className="space-y-1">
                             <span className="text-xs font-medium text-muted-foreground uppercase">Uptime</span>
                             <div className="flex items-center gap-2 text-xl font-mono">
                                 <Clock className="h-5 w-5 text-muted-foreground" />
-                                {formatUptime(pmEnv.pm_uptime)}
+                                {loading ? <Skeleton className="h-7 w-28" /> : formatUptime(pmEnv.pm_uptime)}
                             </div>
                         </div>
                         <div className="space-y-1">
                             <span className="text-xs font-medium text-muted-foreground uppercase">Restarts</span>
                             <div className="flex items-center gap-2 text-xl font-mono">
                                 <RefreshCw className="h-5 w-5 text-muted-foreground" />
-                                {pmEnv.restart_time || 0}
+                                {loading ? <Skeleton className="h-7 w-12" /> : (pmEnv.restart_time || 0)}
                             </div>
                         </div>
                     </CardContent>
@@ -256,15 +276,19 @@ export default function ProcessDetailsPage() {
                     <CardContent className="space-y-4 text-sm">
                         <div>
                             <span className="text-xs text-muted-foreground block mb-1">Script Path</span>
-                            <code className="bg-muted p-1.5 rounded block text-xs break-all font-mono">
-                                {pmEnv.pm_exec_path}
-                            </code>
+                            <Link href={`/viewer?path=${encodeURIComponent(pmEnv.pm_exec_path)}`} className="block group">
+                                <code className="bg-muted p-1.5 rounded block text-xs break-all font-mono group-hover:bg-primary/10 group-hover:text-primary transition-colors cursor-pointer">
+                                    {pmEnv.pm_exec_path}
+                                </code>
+                            </Link>
                         </div>
                         <div>
                             <span className="text-xs text-muted-foreground block mb-1">Working Directory</span>
-                            <code className="bg-muted p-1.5 rounded block text-xs break-all font-mono">
-                                {pmEnv.pm_cwd}
-                            </code>
+                            <Link href={`/files?path=${encodeURIComponent(pmEnv.pm_cwd)}`} className="block group">
+                                <code className="bg-muted p-1.5 rounded block text-xs break-all font-mono group-hover:bg-primary/10 group-hover:text-primary transition-colors cursor-pointer">
+                                    {pmEnv.pm_cwd}
+                                </code>
+                            </Link>
                         </div>
                         <div>
                             <span className="text-xs text-muted-foreground block mb-1">Interpreter</span>
@@ -289,28 +313,54 @@ export default function ProcessDetailsPage() {
                             Log Paths
                         </CardTitle>
                         <CardDescription>
-                            Locations of the log files for this process.
+                            Locations of the log files for this process. Click to view logs.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid sm:grid-cols-2 gap-4">
                             <div>
                                 <span className="text-xs font-semibold text-muted-foreground uppercase mb-1 block">Output Log</span>
-                                <div className="bg-black/5 p-2 rounded border border-border/50 font-mono text-xs break-all text-muted-foreground">
-                                    {pmEnv.pm_out_log_path}
-                                </div>
+                                {pmEnv.pm_out_log_path ? (
+                                    <Link href={`/viewer?path=${encodeURIComponent(pmEnv.pm_out_log_path)}`} className="block group">
+                                        <div className="bg-black/5 p-2 rounded border border-border/50 font-mono text-xs break-all text-muted-foreground group-hover:bg-primary/5 group-hover:border-primary/30 group-hover:text-primary transition-all cursor-pointer">
+                                            {pmEnv.pm_out_log_path}
+                                        </div>
+                                    </Link>
+                                ) : (
+                                    <div className="bg-black/5 p-2 rounded border border-border/50 font-mono text-xs text-muted-foreground/50">
+                                        Not available
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <span className="text-xs font-semibold text-muted-foreground uppercase mb-1 block">Error Log</span>
-                                <div className="bg-black/5 p-2 rounded border border-border/50 font-mono text-xs break-all text-destructive/80">
-                                    {pmEnv.pm_err_log_path}
-                                </div>
+                                {pmEnv.pm_err_log_path ? (
+                                    <Link href={`/viewer?path=${encodeURIComponent(pmEnv.pm_err_log_path)}`} className="block group">
+                                        <div className="bg-black/5 p-2 rounded border border-border/50 font-mono text-xs break-all text-destructive/80 group-hover:bg-destructive/10 group-hover:border-destructive/30 transition-all cursor-pointer">
+                                            {pmEnv.pm_err_log_path}
+                                        </div>
+                                    </Link>
+                                ) : (
+                                    <div className="bg-black/5 p-2 rounded border border-border/50 font-mono text-xs text-muted-foreground/50">
+                                        Not available
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </CardContent>
                 </Card>
+            </div>
 
-                {/* Environment Variables can be large, maybe collapsible? */}
+            {/* Actions Footer */}
+            <div className="flex gap-4 items-center justify-start mt-8">
+                <Button variant="outline" onClick={() => fetchDetails(provider, appName)} disabled={loading}>
+                    <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
+                    Refresh Status
+                </Button>
+                <Button variant="destructive" onClick={handleRestart} disabled={!!actionLoading} className="min-w-[120px]">
+                    {actionLoading === 'restart' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                    Restart Process
+                </Button>
             </div>
         </div>
     );
