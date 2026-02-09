@@ -347,26 +347,7 @@ export default function Home() {
         </div>
       )}
 
-      {serverId && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[
-            { title: 'Applications', icon: AppWindow, href: '/applications' },
-            { title: 'Live Terminal', icon: Terminal, href: '/commands/live' },
-            { title: 'Firewall', icon: ShieldAlert, href: '/firewall' },
-            { title: 'Monitoring', icon: Activity, href: '/status' },
-          ].map((item) => (
-            <Button
-              key={item.title}
-              variant="outline"
-              className="h-20 flex flex-col items-center justify-center gap-2"
-              onClick={() => router.push(item.href)}
-            >
-              <item.icon className="h-5 w-5" />
-              <span className="text-xs font-semibold">{item.title}</span>
-            </Button>
-          ))}
-        </div>
-      )}
+
 
       {/* Running Processes Section */}
       {serverId && (
@@ -404,29 +385,47 @@ export default function Home() {
               activityLogs.map((log) => (
                 <div
                   key={log.id}
-                  className="p-6 flex items-center justify-between gap-4 hover:bg-muted/10 transition-all duration-300 group cursor-default"
+                  className="p-3 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 hover:bg-muted/10 transition-all duration-300 group cursor-default"
                 >
-                  <div className="flex items-center gap-4 min-w-0">
+                  <div className="flex items-start sm:items-center gap-3 sm:gap-4 w-full min-w-0">
                     <div className={cn(
-                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition-all duration-300 group-hover:scale-110",
+                      "flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl border transition-all duration-300 group-hover:scale-110 mt-1 sm:mt-0",
                       log.status === 'Success' ? "bg-green-50 text-green-600 border-green-100" :
                         log.status === 'Error' ? "bg-red-50 text-red-600 border-red-100" :
                           "bg-muted/50 text-muted-foreground"
                     )}>
-                      {log.status === 'Success' ? <Activity className="h-5 w-5" /> :
-                        log.status === 'Error' ? <ShieldAlert className="h-5 w-5" /> :
-                          <Clock className="h-5 w-5" />}
+                      {log.status === 'Success' ? <Activity className="h-4 w-4 sm:h-5 sm:w-5" /> :
+                        log.status === 'Error' ? <ShieldAlert className="h-4 w-4 sm:h-5 sm:w-5" /> :
+                          <Clock className="h-4 w-4 sm:h-5 sm:w-5" />}
                     </div>
-                    <div className="min-w-0">
-                      <div className="font-bold text-sm sm:text-base tracking-tight group-hover:text-primary transition-colors" title={log.commandName || log.command}>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-sm sm:text-base tracking-tight group-hover:text-primary transition-colors break-words">
                         {log.commandName || log.command}
                       </div>
-                      <div className="text-[10px] sm:text-xs text-muted-foreground font-mono truncate max-w-[400px] mt-0.5">
+                      <div className="text-[10px] sm:text-xs text-muted-foreground font-mono break-all mt-0.5 line-clamp-2">
                         {log.command}
+                      </div>
+
+                      {/* Mobile-only status/date row */}
+                      <div className="flex sm:hidden items-center gap-3 mt-2">
+                        <Badge
+                          variant={log.status === 'Success' ? 'outline' : log.status === 'Error' ? 'destructive' : 'secondary'}
+                          className={cn(
+                            "text-[9px] uppercase tracking-widest font-black px-2 py-0.5 rounded-md",
+                            log.status === 'Success' && "text-green-600 border-green-200 bg-green-50"
+                          )}
+                        >
+                          {log.status}
+                        </Badge>
+                        <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">
+                          {format(new Date(log.runAt), 'MMM d, HH:mm')}
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
+
+                  {/* Desktop-only status/date column */}
+                  <div className="hidden sm:flex flex-col items-end gap-1 sm:gap-2 shrink-0">
                     <Badge
                       variant={log.status === 'Success' ? 'outline' : log.status === 'Error' ? 'destructive' : 'secondary'}
                       className={cn(

@@ -1,19 +1,13 @@
 'use client';
 
-import { MoreHorizontal, Trash2, ServerIcon, User, Check, Loader2 } from "lucide-react";
+import { ChevronRight, ServerIcon, User, Check, Loader2 } from "lucide-react";
 import React, { useState } from "react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { deleteServer, selectServer } from "./actions";
-import type { Server } from './page';
+import type { Server } from './client-page';
 import { cn } from "@/lib/utils";
 
 type ServerCardProps = {
@@ -107,27 +101,19 @@ export function ServerCard({ server, onServerDeleted, onServerSelected, isSelect
         {isSelected && (
           <Check className="h-5 w-5 text-primary" />
         )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              aria-haspopup="true"
-              size="icon"
-              variant="ghost"
-              className="opacity-0 group-hover:opacity-100 transition-opacity data-[state=open]:opacity-100"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-              <span className="sr-only">Toggle menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive" onClick={handleDelete}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Link
+          href={`/servers/${server.id}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          >
+            <ChevronRight className="h-5 w-5" />
+            <span className="sr-only">View Server Details</span>
+          </Button>
+        </Link>
       </div>
     </div>
   );
