@@ -3,6 +3,8 @@
  * Unified command definitions for Go applications
  */
 
+import { sanitizeAppName } from './universal';
+
 export interface CommandDefinition {
     title: string;
     description: string;
@@ -28,11 +30,12 @@ export interface CommandContext {
  * Simply add a new object to this array to add a new command!
  */
 export const getCommands = (context: CommandContext): CommandDefinition[] => {
+    const sanitizedAppName = sanitizeAppName(context.appName);
     const portsStr = context.preferredPorts?.join(' ') || '';
     // For Go, entryFile might be main.go, or the directory '.'
     const entryFile = context.entryFile || '.';
-    // We'll use the appName as the binary name
-    const binaryName = context.appName;
+    // We'll use the sanitizedAppName as the binary name
+    const binaryName = sanitizedAppName;
 
     const portFinderScript = portsStr ? `
 find_port() {
@@ -81,13 +84,13 @@ echo "Selected Port: $CHOSEN_PORT"
             command: {
                 preCommand: portFinderScript,
                 mainCommand: `
-CONF_FILE="/etc/supervisor/conf.d/${context.appName}.conf"
+CONF_FILE="/etc/supervisor/conf.d/${sanitizedAppName}.conf"
 LOG_OUT="${context.appLocation}/terminal.output.log"
 LOG_ERR="${context.appLocation}/terminal.error.log"
 USER_NAME=$(whoami)
 
 cat <<EOF | sudo tee $CONF_FILE
-[program:${context.appName}]
+[program:${sanitizedAppName}]
 command=${context.appLocation}/${binaryName}
 directory=${context.appLocation}
 user=$USER_NAME
@@ -103,7 +106,7 @@ EOF
 
 sudo supervisorctl reread
 sudo supervisorctl update
-sudo supervisorctl restart ${context.appName}
+sudo supervisorctl restart ${sanitizedAppName}
 `
             }
         },
@@ -116,8 +119,8 @@ sudo supervisorctl restart ${context.appName}
             status: 'published',
             type: 'destructive',
             command: {
-                mainCommand: `sudo supervisorctl stop ${context.appName}
-sudo rm /etc/supervisor/conf.d/${context.appName}.conf
+                mainCommand: `sudo supervisorctl stop ${sanitizedAppName}
+sudo rm /etc/supervisor/conf.d/${sanitizedAppName}.conf
 sudo supervisorctl reread
 sudo supervisorctl update`
             }
@@ -131,7 +134,7 @@ sudo supervisorctl update`
             status: 'published',
             type: 'normal',
             command: {
-                mainCommand: `sudo supervisorctl restart "${context.appName}"`
+                mainCommand: `sudo supervisorctl restart "${sanitizedAppName}"`
             }
         },
     ];

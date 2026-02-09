@@ -4,6 +4,7 @@
 import { executeQuickCommand } from '../commands/actions';
 import { getApplication } from './actions';
 import { cookies } from 'next/headers';
+import { sanitizeAppName } from '@/core/universal';
 
 export async function getApplicationLogs(applicationId: string, lines: number = 50) {
     const app = await getApplication(applicationId) as any;
@@ -19,6 +20,8 @@ export async function getApplicationLogs(applicationId: string, lines: number = 
     }
 
     // Determine the log source based on language/framework
+    const sanitizedName = sanitizeAppName(app.name);
+
     // Currently primary support is PM2
     // Command: pm2 logs <name> --lines <N> --nostream
     let command = '';
@@ -27,7 +30,7 @@ export async function getApplicationLogs(applicationId: string, lines: number = 
     // If not found in PM2, we might fail or return empty
     // We can use --raw to avoid colors codes if executeQuickCommand doesn't handle them well, 
     // but colors often help in UI if we render them.
-    command = `pm2 logs "${app.name}" --lines ${lines} --nostream --raw`;
+    command = `pm2 logs "${sanitizedName}" --lines ${lines} --nostream --raw`;
 
     const result = await executeQuickCommand(serverId, command);
 

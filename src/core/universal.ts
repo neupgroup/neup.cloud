@@ -170,3 +170,20 @@ export class UniversalWindows extends UniversalBase {
         return undefined;
     }
 }
+
+/**
+ * Sanitize application name for use in Linux commands (Supervisor, PM2, etc.)
+ * - Take first 16 characters
+ * - Replace spaces with underscores
+ * - Convert to lowercase
+ * - Remove illegal characters (anything not a-z, 0-9, or _)
+ */
+export function sanitizeAppName(name: string): string {
+    if (!name) return 'app';
+
+    return name
+        .slice(0, 16)
+        .replace(/ /g, '_')
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, '');
+}

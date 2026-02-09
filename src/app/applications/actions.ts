@@ -14,6 +14,7 @@ import { promisify } from 'util';
 import { readFile, unlink } from 'fs/promises';
 import path from 'path';
 import * as Git from '@/core/github';
+import { sanitizeAppName } from '@/core/universal';
 
 const execAsync = promisify(exec);
 
@@ -118,7 +119,7 @@ export async function deleteApplication(id: string) {
                         break;
                     default:
                         // Generic fallback if PM2 is used
-                        stopCommand = `pm2 stop "${app.name}"`;
+                        stopCommand = `pm2 stop "${sanitizeAppName(app.name)}"`;
                         break;
                 }
             }
@@ -532,10 +533,10 @@ export async function getSupervisorProcesses() {
 
         for (const line of lines) {
             if (!line) continue;
-            
+
             // Robust parsing: Name (no spaces) + Spaces + State (no spaces) + Optional Spaces + Optional Description
             const match = line.match(/^(\S+)\s+(\S+)(?:\s+(.*))?$/);
-            
+
             if (match) {
                 const name = match[1];
                 const state = match[2];
@@ -708,7 +709,7 @@ export async function getProcessDetails(provider: string, name: string) {
         const state = match[2]; // RUNNING, STOPPED, FATAL, etc.
         const description = match[3];
         let pid = 0;
-        
+
         const pidMatch = description.match(/pid (\d+)/);
         if (pidMatch) pid = parseInt(pidMatch[1], 10);
 
@@ -721,7 +722,7 @@ export async function getProcessDetails(provider: string, name: string) {
             // %cpu, rss (in KB), lstart (start time)
             const psCmd = `ps -p ${pid} -o %cpu,rss,lstart --no-headers`;
             const psRes = await executeQuickCommand(serverId, psCmd);
-            
+
             if (!psRes.error && psRes.output) {
                 // Output format: " 0.0  1234 Mon Jan 1 10:00:00 2024"
                 // Trim and split by whitespace
@@ -729,7 +730,7 @@ export async function getProcessDetails(provider: string, name: string) {
                 const trimmed = psRes.output.trim();
                 const firstSpace = trimmed.indexOf(' ');
                 const secondSpace = trimmed.indexOf(' ', firstSpace + 1);
-                
+
                 if (firstSpace > -1 && secondSpace > -1) {
                     const cpuStr = trimmed.substring(0, firstSpace);
                     const memStr = trimmed.substring(firstSpace + 1, secondSpace);
@@ -747,14 +748,14 @@ export async function getProcessDetails(provider: string, name: string) {
         // Pattern: [program:name]
         // If name has group (group:name), search for program:name
         const cleanName = name.includes(':') ? name.split(':')[1] : name;
-        
+
         // Command to find file and read relevant lines
         // We look for command, directory, user, stdout_logfile, stderr_logfile
         // We search in /etc/supervisor/conf.d/ and /etc/supervisor/supervisord.conf
         // We use grep to find the file containing the section, then cat it.
         // We use 'head -n 1' to just take the first matching file.
         const configCmd = `grep -r -l "\\[program:${cleanName}\\]" /etc/supervisor/conf.d/ /etc/supervisor/supervisord.conf 2>/dev/null | head -n 1 | xargs -I {} cat {}`;
-        
+
         const configRes = await executeQuickCommand(serverId, configCmd);
         const config = {
             command: '',
@@ -793,7 +794,7 @@ export async function getProcessDetails(provider: string, name: string) {
         if (state === 'RUNNING') pmStatus = 'online';
         else if (state === 'FATAL' || state === 'BACKOFF') pmStatus = 'errored';
         else if (state === 'STARTING') pmStatus = 'launching';
-        
+
         return {
             name: name,
             pm_id: name, // Use name as ID

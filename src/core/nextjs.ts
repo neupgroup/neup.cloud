@@ -3,6 +3,8 @@
  * Unified command definitions for Next.js applications
  */
 
+import { sanitizeAppName } from './universal';
+
 export interface CommandDefinition {
     title: string;
     description: string;
@@ -28,6 +30,7 @@ export interface CommandContext {
  * Simply add a new object to this array to add a new command!
  */
 export const getCommands = (context: CommandContext): CommandDefinition[] => {
+    const sanitizedAppName = sanitizeAppName(context.appName);
     const portsStr = context.preferredPorts?.join(' ') || '';
 
     const portFinderScript = portsStr ? `
@@ -90,13 +93,13 @@ fi
 
 sudo mkdir -p /etc/supervisor/conf.d/
 
-CONF_FILE="/etc/supervisor/conf.d/${context.appName}.conf"
+CONF_FILE="/etc/supervisor/conf.d/${sanitizedAppName}.conf"
 LOG_OUT="${context.appLocation}/terminal.output.log"
 LOG_ERR="${context.appLocation}/terminal.error.log"
 USER_NAME=$(whoami)
 
 cat <<EOF | sudo tee $CONF_FILE
-[program:${context.appName}]
+[program:${sanitizedAppName}]
 command=npm start -- -p $CHOSEN_PORT
 directory=${context.appLocation}
 user=$USER_NAME
@@ -111,7 +114,7 @@ EOF
 
 sudo supervisorctl reread
 sudo supervisorctl update
-sudo supervisorctl restart ${context.appName}
+sudo supervisorctl restart ${sanitizedAppName}
 `
             }
         },
@@ -137,13 +140,13 @@ fi
 
 sudo mkdir -p /etc/supervisor/conf.d/
 
-CONF_FILE="/etc/supervisor/conf.d/${context.appName}.conf"
+CONF_FILE="/etc/supervisor/conf.d/${sanitizedAppName}.conf"
 LOG_OUT="${context.appLocation}/terminal.output.log"
 LOG_ERR="${context.appLocation}/terminal.error.log"
 USER_NAME=$(whoami)
 
 cat <<EOF | sudo tee $CONF_FILE
-[program:${context.appName}]
+[program:${sanitizedAppName}]
 command=npm run dev
 directory=${context.appLocation}
 user=$USER_NAME
@@ -158,7 +161,7 @@ EOF
 
 sudo supervisorctl reread
 sudo supervisorctl update
-sudo supervisorctl restart ${context.appName}
+sudo supervisorctl restart ${sanitizedAppName}
 `
             }
         },
@@ -171,8 +174,8 @@ sudo supervisorctl restart ${context.appName}
             status: 'published',
             type: 'destructive',
             command: {
-                mainCommand: `sudo supervisorctl stop ${context.appName}
-sudo rm /etc/supervisor/conf.d/${context.appName}.conf
+                mainCommand: `sudo supervisorctl stop ${sanitizedAppName}
+sudo rm /etc/supervisor/conf.d/${sanitizedAppName}.conf
 sudo supervisorctl reread
 sudo supervisorctl update`
             }

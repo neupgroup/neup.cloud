@@ -4,6 +4,7 @@
 import { executeQuickCommand } from '../commands/actions';
 import { getApplication } from './actions';
 import { cookies } from 'next/headers';
+import { sanitizeAppName } from '@/core/universal';
 
 export type AppStatusResult = {
     processStatus: 'running' | 'stopped' | 'error' | 'unknown';
@@ -43,7 +44,8 @@ export async function checkApplicationStatus(applicationId: string): Promise<App
     if (pm2Result.exitCode === 0) {
         try {
             const processes = JSON.parse(pm2Result.output);
-            const appProcess = processes.find((p: any) => p.name === app.name);
+            const sanitizedName = sanitizeAppName(app.name);
+            const appProcess = processes.find((p: any) => p.name === sanitizedName);
 
             if (appProcess) {
                 if (appProcess.pm2_env.status === 'online') {
