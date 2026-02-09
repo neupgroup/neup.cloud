@@ -163,15 +163,20 @@ export function CommandSetForm({ initialData, userId, onSubmit, title, subtitle 
     }
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 pb-20">
+        <div className="max-w-4xl mx-auto space-y-6 pb-24">
             {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                    <ChevronLeft className="h-4 w-4" />
+            <div className="flex flex-col gap-4 mb-2">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-fit -ml-2 text-muted-foreground hover:text-foreground"
+                    onClick={() => router.back()}
+                >
+                    <ChevronLeft className="mr-1 h-4 w-4" /> Back to Command Set
                 </Button>
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-                    <p className="text-muted-foreground">{subtitle}</p>
+                    <p className="text-muted-foreground mt-1">{subtitle}</p>
                 </div>
             </div>
 
@@ -201,9 +206,9 @@ export function CommandSetForm({ initialData, userId, onSubmit, title, subtitle 
                 </Card>
 
                 <div className="space-y-4 pt-2">
-                    <div className="flex items-center justify-between px-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
                         <Label className="text-lg">Commands Sequence</Label>
-                        <Button size="sm" variant="secondary" onClick={handleAddDraftCommand} disabled={isSubmitting}>
+                        <Button size="sm" variant="secondary" onClick={handleAddDraftCommand} disabled={isSubmitting} className="w-full sm:w-auto">
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Add Step
                         </Button>
@@ -229,37 +234,38 @@ export function CommandSetForm({ initialData, userId, onSubmit, title, subtitle 
                                 >
                                     {/* Header (Always Visible) */}
                                     <div
-                                        className="flex items-center gap-2 p-4 cursor-pointer select-none relative"
+                                        className="flex items-start p-4 cursor-pointer select-none relative gap-3"
                                         onClick={() => toggleDraft(draft.tempId)}
                                     >
                                         {/* Drag Handle */}
-                                        <div className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground transition-colors p-1 -ml-2 mr-1">
+                                        <div className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-foreground transition-colors pt-1">
                                             <GripVertical className="h-5 w-5" />
                                         </div>
 
-                                        <div className="flex flex-col items-center gap-1 mr-2">
-                                            <div className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-xs font-semibold shrink-0">
-                                                {idx + 1}
-                                            </div>
-                                        </div>
-
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className={cn("font-medium", !draft.title && "text-muted-foreground italic")}>
+                                        <div className="flex-1 min-w-0 grid gap-1.5">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <div className="flex items-center justify-center h-5 w-5 rounded-full bg-muted text-[10px] font-semibold shrink-0">
+                                                    {idx + 1}
+                                                </div>
+                                                <span className={cn("font-medium break-words whitespace-normal", !draft.title && "text-muted-foreground italic")}>
                                                     {draft.title || `Command step ${idx + 1}`}
                                                 </span>
                                                 {/* Preview Flags */}
-                                                {draft.isSkippable && <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-muted-foreground">Optional</span>}
-                                                {draft.isRepeatable && <span className="text-[10px] border px-1.5 py-0.5 rounded text-muted-foreground">Repeats</span>}
+                                                {(draft.isSkippable || draft.isRepeatable) && (
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {draft.isSkippable && <span className="text-[10px] bg-secondary px-1.5 py-0.5 rounded text-muted-foreground">Optional</span>}
+                                                        {draft.isRepeatable && <span className="text-[10px] border px-1.5 py-0.5 rounded text-muted-foreground">Repeats</span>}
+                                                    </div>
+                                                )}
                                             </div>
                                             {!isOpen && (
-                                                <p className="text-xs text-muted-foreground font-mono mt-1 opacity-75 line-clamp-3 whitespace-pre-wrap word-break-break-all">
+                                                <p className="text-xs text-muted-foreground font-mono opacity-75 line-clamp-2 break-all whitespace-pre-wrap pl-7">
                                                     {draft.command || "No command entered"}
                                                 </p>
                                             )}
                                         </div>
 
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-1 shrink-0 ml-2">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -270,7 +276,7 @@ export function CommandSetForm({ initialData, userId, onSubmit, title, subtitle 
                                                 <X className="h-4 w-4" />
                                             </Button>
 
-                                            <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200 ml-2", isOpen && "rotate-180")} />
+                                            <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
                                         </div>
                                     </div>
 
@@ -310,7 +316,7 @@ export function CommandSetForm({ initialData, userId, onSubmit, title, subtitle 
                                                     <p className="text-[10px] text-muted-foreground">Supported: &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;a href="/"&gt; (internal only), new lines</p>
                                                 </div>
 
-                                                <div className="flex items-center gap-6 pt-2 pb-2">
+                                                <div className="flex flex-wrap items-center gap-6 pt-2 pb-2">
                                                     <div className="flex items-center space-x-2">
                                                         <Checkbox
                                                             id={`skip-${draft.tempId}`}

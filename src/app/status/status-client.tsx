@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { cn } from "@/lib/utils";
 
 import {
     Card,
@@ -170,27 +171,37 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
             />
             {/* Date/Time Controls */}
             {serverId && (
-                <div className="flex items-center gap-2 bg-card p-1 rounded-md border shadow-sm w-fit">
-                    <Button variant="ghost" size="icon" onClick={handlePreviousTime}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="px-2 text-sm font-medium min-w-[200px] text-center">
-                        {format(startTime, "MMM d, h:mm a")} - {format(new Date(endTime), "MMM d, h:mm a")}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
+                    {/* Date Navigator */}
+                    <div className="flex items-center gap-1 bg-card p-1 rounded-md border shadow-sm w-full sm:w-auto justify-between sm:justify-start">
+                        <Button variant="ghost" size="icon" onClick={handlePreviousTime} className="h-8 w-8">
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="px-2 text-xs sm:text-sm font-medium text-center truncate">
+                            {format(startTime, "MMM d, h:mm a")} - {format(new Date(endTime), "MMM d, h:mm a")}
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={handleNextTime} disabled={isCurrentTime} className="h-8 w-8">
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={handleNextTime} disabled={isCurrentTime}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <div className="h-4 w-px bg-border mx-1" />
-                    <Select value={timeFrame} onValueChange={(v: any) => setTimeFrame(v)}>
-                        <SelectTrigger className="w-[140px] border-0 focus:ring-0 shadow-none bg-transparent">
-                            <SelectValue placeholder="Time Frame" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {Object.entries(TIME_FRAMES).map(([key, { label }]) => (
-                                <SelectItem key={key} value={key}>{label}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+
+                    {/* Timeframe Tabs */}
+                    <div className="flex items-center p-1 bg-muted/50 rounded-lg border w-full sm:w-auto">
+                        {Object.entries(TIME_FRAMES).map(([key, { label }]) => (
+                            <button
+                                key={key}
+                                onClick={() => setTimeFrame(key as any)}
+                                className={cn(
+                                    "flex-1 sm:flex-none px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                                    timeFrame === key
+                                        ? "bg-background text-foreground shadow-sm"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                                )}
+                            >
+                                {key.toUpperCase()}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             )}
             {!serverId ? (

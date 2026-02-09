@@ -151,23 +151,30 @@ export default function Home() {
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-4 w-64" />
           </div>
-          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-32 shrink-0" />
         </div>
 
+        {/* Status Cards Skeleton (Mirroring line 207 grid) */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-32 rounded-xl" />
           ))}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-xl" />
-          ))}
+        {/* Server Switcher Skeleton (Mirroring line 318 grid) */}
+        <div className="space-y-4">
+          <div className="flex justify-end">
+            <Skeleton className="h-8 w-24" />
+          </div>
+          <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 rounded-xl" />
+            ))}
+          </div>
         </div>
 
         <div className="space-y-4">
-          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-7 w-40" />
           <Skeleton className="h-[300px] rounded-[2rem]" />
         </div>
       </div>
@@ -367,16 +374,16 @@ export default function Home() {
             {logsLoading || loading ? (
               // Skeleton Loader
               Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="p-6 flex items-center justify-between gap-4">
+                <div key={i} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                   <div className="flex items-center gap-4 min-w-0">
-                    <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
-                    <div className="space-y-2 min-w-0">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-48" />
+                    <Skeleton className="h-10 w-10 shrink-0 rounded-2xl" />
+                    <div className="space-y-2 min-w-0 flex-1">
+                      <Skeleton className="h-4 w-3/4 max-w-[200px]" />
+                      <Skeleton className="h-3 w-full max-w-[300px]" />
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <Skeleton className="h-5 w-16 rounded-full" />
+                  <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-2 shrink-0 ml-14 sm:ml-0">
+                    <Skeleton className="h-5 w-16 rounded-md" />
                     <Skeleton className="h-3 w-20" />
                   </div>
                 </div>

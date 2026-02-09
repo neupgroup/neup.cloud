@@ -7,7 +7,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { getCommandSet, CommandSet } from '../actions';
 import { executeCommand } from '@/app/commands/actions';
 import { getServers } from '@/app/servers/actions';
-import { Loader2, Play, CheckCircle2, XCircle, ChevronRight, Terminal as TerminalIcon, Edit, AlertCircle, RefreshCw, SkipForward, ChevronDown } from 'lucide-react';
+import { Loader2, Play, CheckCircle2, XCircle, ChevronRight, Terminal as TerminalIcon, Edit, AlertCircle, RefreshCw, SkipForward, ChevronDown, ChevronLeft } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -222,13 +222,21 @@ export default function RunCommandSetPage() {
 
     return (
         <div className="container max-w-4xl py-8 space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-fit -ml-2 text-muted-foreground hover:text-foreground"
+                    onClick={() => router.push('/commands')}
+                >
+                    <ChevronLeft className="mr-1 h-4 w-4" /> Back to Commands
+                </Button>
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">{commandSet.name}</h1>
-                    <p className="text-muted-foreground">{commandSet.description || "No description provided."}</p>
+                    <p className="text-muted-foreground mt-1">{commandSet.description || "No description provided."}</p>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => router.push(`/commands/set/${id}/edit`)}>
+                <div>
+                    <Button variant="outline" size="sm" onClick={() => router.push(`/commands/set/${id}/edit`)}>
                         <Edit className="mr-2 h-4 w-4" /> Edit Set
                     </Button>
                 </div>
@@ -259,10 +267,10 @@ export default function RunCommandSetPage() {
                                 className="py-4 px-6 cursor-pointer hover:bg-muted/5 transition-colors"
                                 onClick={() => toggleStep(cmd.id)}
                             >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4 flex-1">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
                                         {/* Status Icon */}
-                                        <div className="shrink-0">
+                                        <div className="shrink-0 mt-1 sm:mt-0">
                                             {isRunningStep ? (
                                                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
                                             ) : isCompleted ? (
@@ -278,38 +286,32 @@ export default function RunCommandSetPage() {
                                             )}
                                         </div>
 
-                                        <div className="flex-1 min-w-0">
-                                            <CardTitle className={cn("text-base font-semibold flex items-center gap-2", (isCompleted || isSkipped) && "text-muted-foreground")}>
-                                                {cmd.title || `Step ${index + 1}`}
+                                        <div className="flex-1 min-w-0 grid gap-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <CardTitle className={cn("text-base font-semibold break-words whitespace-normal", (isCompleted || isSkipped) && "text-muted-foreground")}>
+                                                    {cmd.title || `Step ${index + 1}`}
+                                                </CardTitle>
                                                 {/* Optional badges */}
                                                 {cmd.isSkippable && <Badge variant="secondary" className="text-[10px] h-5">Optional</Badge>}
                                                 {cmd.isRepeatable && <Badge variant="outline" className="text-[10px] h-5">Allow Repeats</Badge>}
-                                            </CardTitle>
+                                            </div>
 
                                             {/* Description Component */}
                                             {cmd.description ? (
-                                                <div className="line-clamp-1 text-sm text-muted-foreground">
-                                                    {/* We use line-clamp for closed state preview? No, let's keep it clean. */}
-                                                    {/* RichTextDescription is shown below if needed, or in expanded state? */}
-                                                    {/* Requirement was "collapsible cards". Usually description is always visible? 
-                                                        Let's keep description visible always if it's short, or truncated? 
-                                                        Let's keep the existing logic but inside the header area. 
-                                                        Actually, let's hide complexity unless open. 
-                                                        Let's show a truncated preview if closed, full if open? 
-                                                        Or just show it.*/}
-                                                    <span className="line-clamp-1">{cmd.description.replace(/<[^>]+>/g, '')}</span>
+                                                <div className="line-clamp-2 text-sm text-muted-foreground break-words">
+                                                    {cmd.description.replace(/<[^>]+>/g, '')}
                                                 </div>
                                             ) : (
-                                                <CardDescription className="line-clamp-1">{cmd.command}</CardDescription>
+                                                <CardDescription className="line-clamp-1 break-all font-mono text-xs">{cmd.command}</CardDescription>
                                             )}
                                         </div>
                                     </div>
 
                                     {/* Actions & Chevron Container */}
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 mt-2 sm:mt-0">
 
                                         {/* Action Buttons Container */}
-                                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex items-center gap-2 ml-auto sm:ml-0" onClick={(e) => e.stopPropagation()}>
                                             {!isLocked && !isRunningStep && (
                                                 <>
                                                     {/* Standard Run for Current Step */}
@@ -343,7 +345,7 @@ export default function RunCommandSetPage() {
                                             )}
                                         </div>
 
-                                        <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200", isOpen && "transform rotate-180")} />
+                                        <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200 ml-2 sm:ml-0", isOpen && "transform rotate-180")} />
                                     </div>
                                 </div>
                             </CardHeader>
@@ -356,11 +358,11 @@ export default function RunCommandSetPage() {
                                         {/* Full Description & Command Details (if open) */}
                                         <div>
                                             <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">Command</h4>
-                                            <div className="bg-muted p-2 rounded-md border font-mono text-sm overflow-x-auto">
+                                            <div className="bg-muted p-2 rounded-md border font-mono text-sm whitespace-pre-wrap break-all">
                                                 {cmd.command}
                                             </div>
                                             {cmd.description && (
-                                                <div className="mt-2 text-sm text-foreground">
+                                                <div className="mt-2 text-sm text-foreground break-words">
                                                     <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">Description</h4>
                                                     <RichTextDescription text={cmd.description} />
                                                 </div>

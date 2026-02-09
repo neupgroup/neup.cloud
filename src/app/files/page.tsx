@@ -29,12 +29,7 @@ export default async function FilesPage() {
   return (
     <div className="grid gap-6">
       <PageTitle
-        title={
-          <span className="flex items-center gap-2">
-            <FolderKanban className="w-8 h-8" />
-            File Manager
-          </span>
-        }
+        title="File Manager"
         description="Browse and manage system files"
         serverName={serverName}
       />

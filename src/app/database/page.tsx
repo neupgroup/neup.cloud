@@ -45,12 +45,7 @@ export default async function DatabasePage() {
     return (
         <div className="grid gap-8 animate-in fade-in duration-500 pb-10">
             <PageTitle
-                title={
-                    <span className="flex items-center gap-2">
-                        <Database className="w-8 h-8 text-primary" />
-                        Database Management
-                    </span>
-                }
+                title="Databases"
                 description="Manage database engines and instances"
                 serverName={serverName}
             />

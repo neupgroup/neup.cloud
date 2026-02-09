@@ -99,11 +99,16 @@ export function RunningProcessesCard({ serverId }: RunningProcessesCardProps) {
                 <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
                     {[...Array(3)].map((_, i) => (
                         <div key={i} className="p-4 border-b border-border last:border-0">
-                            <div className="space-y-3">
-                                <Skeleton className="h-4 w-1/3" />
-                                <div className="flex gap-4">
-                                    <Skeleton className="h-3 w-16" />
-                                    <Skeleton className="h-3 w-16" />
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="space-y-3 flex-1">
+                                    <div className="flex items-center gap-3">
+                                        <Skeleton className="h-2.5 w-2.5 rounded-full" />
+                                        <Skeleton className="h-4 w-1/3 max-w-[150px]" />
+                                    </div>
+                                    <div className="flex gap-4 pl-5">
+                                        <Skeleton className="h-3 w-16" />
+                                        <Skeleton className="h-3 w-16" />
+                                    </div>
                                 </div>
                             </div>
                         </div>

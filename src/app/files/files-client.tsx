@@ -870,12 +870,12 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
           <DialogHeader><DialogTitle>Item Details</DialogTitle></DialogHeader>
           {detailsState && (
             <div className="grid gap-2 text-sm">
-              <div className="grid grid-cols-3"><span className="font-semibold">Name:</span> <span className="col-span-2">{detailsState.name}</span></div>
-              <div className="grid grid-cols-3"><span className="font-semibold">Type:</span> <span className="col-span-2">{detailsState.type}</span></div>
-              <div className="grid grid-cols-3"><span className="font-semibold">Size:</span> <span className="col-span-2">{formatBytes(detailsState.size)}</span></div>
-              <div className="grid grid-cols-3"><span className="font-semibold">Permissions:</span> <span className="col-span-2 font-mono">{detailsState.permissions}</span></div>
-              <div className="grid grid-cols-3"><span className="font-semibold">Modified:</span> <span className="col-span-2">{detailsState.lastModified}</span></div>
-              {detailsState.linkTarget && <div className="grid grid-cols-3"><span className="font-semibold">Symlink Target:</span> <span className="col-span-2">{detailsState.linkTarget}</span></div>}
+              <div className="grid grid-cols-3"><span className="font-semibold text-muted-foreground">Name:</span> <span className="col-span-2 break-all font-medium">{detailsState.name}</span></div>
+              <div className="grid grid-cols-3"><span className="font-semibold text-muted-foreground">Type:</span> <span className="col-span-2 capitalize">{detailsState.type}</span></div>
+              <div className="grid grid-cols-3"><span className="font-semibold text-muted-foreground">Size:</span> <span className="col-span-2">{formatBytes(detailsState.size)}</span></div>
+              <div className="grid grid-cols-3"><span className="font-semibold text-muted-foreground">Permissions:</span> <span className="col-span-2 font-mono">{detailsState.permissions}</span></div>
+              <div className="grid grid-cols-3"><span className="font-semibold text-muted-foreground">Modified:</span> <span className="col-span-2">{detailsState.lastModified}</span></div>
+              {detailsState.linkTarget && <div className="grid grid-cols-3"><span className="font-semibold text-muted-foreground">Symlink Target:</span> <span className="col-span-2 break-all">{detailsState.linkTarget}</span></div>}
             </div>
           )}
         </DialogContent>
@@ -891,7 +891,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
         </div>
       )}
 
-      <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground p-1">
+      <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground p-1">
         <span className="font-semibold text-foreground">Path:</span>
         <button
           onClick={() => router.push(pathname + '?' + createQueryString('path', '/'))}
@@ -1112,7 +1112,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
         <DialogContent className="sm:max-w-4xl h-[60vh] flex flex-col gap-0 p-0 overflow-hidden">
           <div className="px-6 py-4 border-b">
-            <DialogTitle>
+            <DialogTitle className="break-all">
               {uploadType ? `Upload ${uploadType === 'file' ? 'Files' : 'Folder'}` : `Upload to ${currentPath === '/' ? 'Root' : currentPath}`}
             </DialogTitle>
             <DialogDescription>

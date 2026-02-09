@@ -174,11 +174,24 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
     const backHref = `/files?path=${encodeURIComponent(parentPath)}${rootMode ? '&rootMode=true' : ''}`;
 
     return (
-        <div className="container mx-auto p-4 py-6 max-w-6xl min-h-screen flex flex-col gap-6">
-            <PageTitleBack
-                title={path.split('/').pop() || 'Unknown File'}
-                description={
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">
+        <div className="space-y-6 pb-24">
+            {/* Responsive Header */}
+            <div className="flex flex-col gap-4">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-fit -ml-2 text-muted-foreground hover:text-foreground"
+                    onClick={() => router.push(backHref)}
+                >
+                    <ArrowLeft className="mr-1 h-4 w-4" /> Back to Files
+                </Button>
+
+                <div className="flex flex-col gap-2">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight break-all">
+                        {path.split('/').pop() || 'Unknown File'}
+                    </h1>
+
+                    <div className="flex items-center gap-x-1 gap-y-1 text-sm text-muted-foreground flex-wrap">
                         <span className="font-semibold text-foreground mr-1">Location:</span>
                         <Button
                             variant="link"
@@ -193,13 +206,13 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
 
                             return (
                                 <React.Fragment key={index}>
-                                    <span className="text-muted-foreground/40 mx-1">&gt;</span>
+                                    <span className="text-muted-foreground/40 mx-0.5">&gt;</span>
                                     {isLast ? (
-                                        <span className="text-foreground">{segment}</span>
+                                        <span className="text-foreground break-all">{segment}</span>
                                     ) : (
                                         <Button
                                             variant="link"
-                                            className="p-0 h-auto text-muted-foreground font-normal hover:text-primary"
+                                            className="p-0 h-auto text-muted-foreground font-normal hover:text-primary max-w-[150px] truncate"
                                             onClick={() => router.push(`/files?path=${encodeURIComponent(segmentPath)}${rootMode ? '&rootMode=true' : ''}`)}
                                         >
                                             {segment}
@@ -209,9 +222,8 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
                             );
                         })}
                     </div>
-                }
-                backHref={backHref}
-            />
+                </div>
+            </div>
 
             <div className="flex-1 flex flex-col gap-4">
                 {/* Root Mode Indicator */}
@@ -226,11 +238,12 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
                 {renderContent()}
 
                 {!isBinary && (
-                    <div className="flex justify-between items-center pb-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pb-8">
                         <Button
                             onClick={handleRootModeToggle}
                             variant="outline"
                             size="lg"
+                            className="w-full sm:w-auto"
                         >
                             {rootMode ? (
                                 <><ShieldOff className="mr-2 h-4 w-4" /> Turn Root Off</>
@@ -238,7 +251,7 @@ export default function ViewerClient({ serverId }: { serverId: string }) {
                                 <><Shield className="mr-2 h-4 w-4" /> Turn Root On</>
                             )}
                         </Button>
-                        <Button onClick={handleSave} disabled={saving} size="lg">
+                        <Button onClick={handleSave} disabled={saving} size="lg" className="w-full sm:w-auto">
                             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                             Save Changes
                         </Button>

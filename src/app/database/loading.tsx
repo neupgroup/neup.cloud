@@ -7,13 +7,8 @@ export default function Loading() {
     return (
         <div className="grid gap-8 animate-in fade-in duration-500 pb-10">
             <PageTitle
-                title={
-                    <span className="flex items-center gap-2">
-                        <Database className="w-8 h-8 text-muted-foreground/20" />
-                        <Skeleton className="h-8 w-48" />
-                    </span>
-                }
-                description={<Skeleton className="h-4 w-96 mt-2" />}
+                title="Databases"
+                description="Manage database engines and instances"
             />
 
             {/* Stats Cards Skeleton */}

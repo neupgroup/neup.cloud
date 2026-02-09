@@ -32,8 +32,8 @@ import {
 function StartupList({ services, onDisable, onAddClick }: { services: StartupService[], onDisable: (name: string) => void, onAddClick: () => void }) {
     return (
         <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
-             {/* Add Service Row */}
-             <div
+            {/* Add Service Row */}
+            <div
                 onClick={onAddClick}
                 className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 cursor-pointer flex items-center justify-between border-b border-border"
             >
@@ -51,7 +51,7 @@ function StartupList({ services, onDisable, onAddClick }: { services: StartupSer
             </div>
 
             {services.length === 0 ? (
-                 <div className="p-8 text-center text-muted-foreground">
+                <div className="p-8 text-center text-muted-foreground">
                     <p>No enabled startup services found.</p>
                 </div>
             ) : (
@@ -82,7 +82,7 @@ function StartupList({ services, onDisable, onAddClick }: { services: StartupSer
                             className="text-muted-foreground hover:text-destructive"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                if(confirm(`Are you sure you want to disable ${service.unitFile}? It will no longer start automatically.`)) {
+                                if (confirm(`Are you sure you want to disable ${service.unitFile}? It will no longer start automatically.`)) {
                                     onDisable(service.unitFile);
                                 }
                             }}
@@ -101,12 +101,12 @@ function LoadingSkeleton() {
     return (
         <div className="space-y-6">
             <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
-                 <div className="p-4 min-w-0 w-full border-b border-border">
+                <div className="p-4 min-w-0 w-full border-b border-border">
                     <div className="space-y-2">
                         <Skeleton className="h-5 w-40" />
                         <Skeleton className="h-4 w-60" />
                     </div>
-                 </div>
+                </div>
                 {[...Array(5)].map((_, i) => (
                     <div key={i} className={cn(
                         "p-4 min-w-0 w-full flex items-center gap-4",
@@ -127,14 +127,14 @@ function LoadingSkeleton() {
     )
 }
 
-function AddServiceDialog({ onAdd, isOpen, setIsOpen }: { 
-    onAdd: (data: any) => Promise<void>, 
-    isOpen: boolean, 
-    setIsOpen: (open: boolean) => void 
+function AddServiceDialog({ onAdd, isOpen, setIsOpen }: {
+    onAdd: (data: any) => Promise<void>,
+    isOpen: boolean,
+    setIsOpen: (open: boolean) => void
 }) {
     const [mode, setMode] = useState<'existing' | 'custom'>('existing');
     const [name, setName] = useState('');
-    
+
     // Custom fields
     const [description, setDescription] = useState('');
     const [command, setCommand] = useState('');
@@ -170,20 +170,20 @@ function AddServiceDialog({ onAdd, isOpen, setIsOpen }: {
                         Enable an existing service or create a new one.
                     </DialogDescription>
                 </DialogHeader>
-                
+
                 <Tabs value={mode} onValueChange={(v) => setMode(v as any)} className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="existing">Existing Service</TabsTrigger>
                         <TabsTrigger value="custom">Custom Program</TabsTrigger>
                     </TabsList>
-                    
+
                     <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                         <TabsContent value="existing" className="space-y-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="name">Service Name</Label>
-                                <Input 
-                                    id="name" 
-                                    placeholder="e.g. nginx, mysql" 
+                                <Input
+                                    id="name"
+                                    placeholder="e.g. nginx, mysql"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     required={mode === 'existing'}
@@ -195,9 +195,9 @@ function AddServiceDialog({ onAdd, isOpen, setIsOpen }: {
                         <TabsContent value="custom" className="space-y-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="custom-name">Service Name</Label>
-                                <Input 
-                                    id="custom-name" 
-                                    placeholder="e.g. my-app" 
+                                <Input
+                                    id="custom-name"
+                                    placeholder="e.g. my-app"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     required={mode === 'custom'}
@@ -205,9 +205,9 @@ function AddServiceDialog({ onAdd, isOpen, setIsOpen }: {
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="command">Command to Run</Label>
-                                <Input 
-                                    id="command" 
-                                    placeholder="e.g. /usr/bin/python3 /root/app.py" 
+                                <Input
+                                    id="command"
+                                    placeholder="e.g. /usr/bin/python3 /root/app.py"
                                     value={command}
                                     onChange={(e) => setCommand(e.target.value)}
                                     required={mode === 'custom'}
@@ -216,16 +216,16 @@ function AddServiceDialog({ onAdd, isOpen, setIsOpen }: {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
                                     <Label htmlFor="user">User</Label>
-                                    <Input 
-                                        id="user" 
+                                    <Input
+                                        id="user"
                                         value={user}
                                         onChange={(e) => setUser(e.target.value)}
                                     />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="dir">Working Directory</Label>
-                                    <Input 
-                                        id="dir" 
+                                    <Input
+                                        id="dir"
                                         value={directory}
                                         onChange={(e) => setDirectory(e.target.value)}
                                     />
@@ -233,9 +233,9 @@ function AddServiceDialog({ onAdd, isOpen, setIsOpen }: {
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="desc">Description (Optional)</Label>
-                                <Input 
-                                    id="desc" 
-                                    placeholder="My custom application" 
+                                <Input
+                                    id="desc"
+                                    placeholder="My custom application"
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                 />
@@ -361,9 +361,6 @@ export default function StartupClient({ serverId }: { serverId: string }) {
                         className="pl-9"
                     />
                 </div>
-                <div className="text-sm text-muted-foreground">
-                    Total: {filteredServices.length}
-                </div>
             </div>
 
             {isLoading ? (
@@ -373,17 +370,17 @@ export default function StartupClient({ serverId }: { serverId: string }) {
                     <p>Error loading startup services: {error}</p>
                 </Card>
             ) : (
-                <StartupList 
-                    services={filteredServices} 
-                    onDisable={handleDisable} 
-                    onAddClick={() => setIsAddDialogOpen(true)} 
+                <StartupList
+                    services={filteredServices}
+                    onDisable={handleDisable}
+                    onAddClick={() => setIsAddDialogOpen(true)}
                 />
             )}
 
-            <AddServiceDialog 
-                isOpen={isAddDialogOpen} 
-                setIsOpen={setIsAddDialogOpen} 
-                onAdd={handleAdd} 
+            <AddServiceDialog
+                isOpen={isAddDialogOpen}
+                setIsOpen={setIsAddDialogOpen}
+                onAdd={handleAdd}
             />
         </div>
     );
