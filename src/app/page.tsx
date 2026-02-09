@@ -33,6 +33,7 @@ import { useAuth } from "@/firebase/provider";
 import { onAuthStateChanged } from "firebase/auth";
 import { SystemHealthCard } from "@/components/system-health-card";
 import { ServerNameLink } from "@/components/server-name-link";
+import { RunningProcessesCard } from "@/components/running-processes-card";
 
 export default function Home() {
   const router = useRouter();
@@ -365,6 +366,11 @@ export default function Home() {
             </Button>
           ))}
         </div>
+      )}
+
+      {/* Running Processes Section */}
+      {serverId && (
+        <RunningProcessesCard serverId={serverId} />
       )}
 
       {serverId && (logsLoading || activityLogs.length > 0) && (
