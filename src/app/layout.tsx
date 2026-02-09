@@ -343,7 +343,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
 
 function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: boolean, toggleMobileMenu: () => void }) {
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center border-b bg-background">
+    <header className="sticky top-0 z-40 flex h-16 items-center border-b bg-background shadow-sm">
       <div className="mx-auto flex w-full max-w-[1440px] items-center px-4 sm:px-6 md:px-8">
         <div className="flex items-center gap-4 md:hidden">
           <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
