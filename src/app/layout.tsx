@@ -121,7 +121,7 @@ function NavLink({
 
 function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData }: { currentPath: string, onLinkClick?: () => void, isServerSelected: boolean, serverData: any }) {
   const navLinks = [
-    { href: "/dashboard", label: "Dashboard", icon: Home },
+    { href: "/", label: "Dashboard", icon: Home },
   ];
 
   const domainLinks = [
@@ -354,7 +354,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
 
 function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: boolean, toggleMobileMenu: () => void }) {
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center border-b bg-background shadow-md">
+    <header className="sticky top-0 z-40 flex h-16 items-center border-b bg-background">
       <div className="mx-auto flex w-full max-w-[1440px] items-center px-4 sm:px-6 md:px-8">
         <div className="flex items-center gap-4 md:hidden">
           <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
@@ -372,18 +372,18 @@ function Header({ isMobileMenuOpen, toggleMobileMenu }: { isMobileMenuOpen: bool
         <div className="ml-auto">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="secondary" size="icon" className="rounded-full">
+              <Button variant="ghost" size="icon" className="rounded-full">
                 <CircleUser className="h-5 w-5" />
                 <span className="sr-only">Toggle user menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="rounded-sm border-muted">
+              <DropdownMenuLabel className="text-xs uppercase tracking-widest font-bold">My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Support</DropdownMenuItem>
+              <DropdownMenuItem className="text-xs font-semibold">Settings</DropdownMenuItem>
+              <DropdownMenuItem className="text-xs font-semibold">Support</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Logout</DropdownMenuItem>
+              <DropdownMenuItem className="text-xs font-bold text-destructive">Logout</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -435,14 +435,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <title>Neup.Cloud | Modern Infrastructure Control</title>
         <meta name="description" content="The future of cloud infrastructure." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased">
+      <body className="font-body antialiased bg-[#fafafa]">
         <FirebaseClientProvider>
-          <div className="min-h-screen w-full bg-background text-foreground">
+          <div className="min-h-screen w-full bg-[#fafafa] text-foreground">
             <Header isMobileMenuOpen={isMobileMenuOpen} toggleMobileMenu={toggleMobileMenu} />
 
             {/* Mobile Menu */}
@@ -457,18 +459,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </ScrollArea>
             </div>
 
-            <div className="mx-auto grid w-full max-w-[1440px] lg:grid-cols-[280px_1fr]">
+            <div className="mx-auto grid w-full max-w-[1440px] lg:grid-cols-[260px_1fr]">
               {/* Sidebar */}
-              <aside className="hidden h-[calc(100vh-4rem)] flex-col border-r bg-card lg:sticky lg:top-16 lg:flex">
+              <aside className="hidden h-[calc(100vh-4rem)] flex-col border-r bg-background lg:sticky lg:top-16 lg:flex">
                 <ScrollArea className="flex-1">
-                  <div className="p-6 md:p-8">
+                  <div className="p-6">
                     <MainNavContent currentPath={pathname} isServerSelected={isServerSelected} serverData={serverData} />
                   </div>
                 </ScrollArea>
               </aside>
 
               {/* Main Content */}
-              <main className="min-h-[calc(100vh-4rem)] bg-white p-6 md:p-8">
+              <main className="min-h-[calc(100vh-4rem)] p-6 md:p-10">
                 <div className="w-full">{children}</div>
               </main>
             </div>

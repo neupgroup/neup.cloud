@@ -1,8 +1,7 @@
 'use server';
 
-import { collection, getDocs, limit, orderBy, query, where, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
-import { getServer } from '@/app/servers/actions';
 
 const { firestore } = initializeFirebase();
 
@@ -36,12 +35,6 @@ export async function getRecentActivity(serverId?: string): Promise<ActivityLog[
 
         const snapshot = await getDocs(q);
 
-        // Fetch server names concurrently if needed
-        // For optimization, we might store serverName in logs in future, 
-        // but for now let's try to map it quickly or just show ID/command.
-        // Actually, fetching server details for each log might be slow if many distinct servers.
-        // Let's assume we just return the raw data and maybe map singular selected server name on client.
-
         const logs: ActivityLog[] = snapshot.docs.map(doc => {
             const data = doc.data();
             return {
@@ -51,7 +44,6 @@ export async function getRecentActivity(serverId?: string): Promise<ActivityLog[
                 status: data.status,
                 runAt: data.runAt?.toMillis() || Date.now(),
                 serverId: data.serverId,
-                // serverName: ... we can fetch this if needed
             };
         });
 
