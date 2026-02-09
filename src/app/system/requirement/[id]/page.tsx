@@ -312,78 +312,79 @@ export default function RequirementDetailPage() {
                 </div>
             </div>
 
-            {/* Uninstall Section - Show if any step is installed or failed (partial install) */}
+            {/* Uninstall Section - Show if any step is installed or failed (partial install) and uninstall commands exist */}
+            {config.steps.some(s => s.uninstallCommand) && (
+                <div className="space-y-4 pt-8">
+                    <div className="flex items-center gap-2 px-1 text-destructive">
+                        <Trash2 className="h-5 w-5" />
+                        <h3 className="text-xl font-semibold">Uninstall Steps</h3>
+                    </div>
 
-            <div className="space-y-4 pt-8">
-                <div className="flex items-center gap-2 px-1 text-destructive">
-                    <Trash2 className="h-5 w-5" />
-                    <h3 className="text-xl font-semibold">Uninstall Steps</h3>
-                </div>
+                    <div className="rounded-lg border border-destructive/20 bg-card text-card-foreground shadow-sm overflow-hidden">
+                        {config.steps.slice().reverse().map((step, rIndex) => {
+                            if (!step.uninstallCommand) return null;
+                            const index = config.steps.length - 1 - rIndex;
+                            const status = stepStatus[index] || 'pending';
+                            const isGone = status === 'pending';
+                            const isChecking = status === 'checking';
 
-                <div className="rounded-lg border border-destructive/20 bg-card text-card-foreground shadow-sm overflow-hidden">
-                    {config.steps.slice().reverse().map((step, rIndex) => {
-                        if (!step.uninstallCommand) return null;
-                        const index = config.steps.length - 1 - rIndex;
-                        const status = stepStatus[index] || 'pending';
-                        const isGone = status === 'pending';
-                        const isChecking = status === 'checking';
-
-                        return (
-                            <div
-                                key={index}
-                                className={cn(
-                                    "flex items-center gap-4 p-4 border-b last:border-0 transition-all border-destructive/10",
-                                    isGone ? "bg-muted/50 opacity-60" : "bg-destructive/5"
-                                )}
-                            >
-                                <div className="shrink-0">
-                                    {isChecking ? (
-                                        <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center">
-                                            <Loader2 className="h-5 w-5 text-destructive animate-spin" />
-                                        </div>
-                                    ) : isGone ? (
-                                        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center border">
-                                            <CheckCircle2 className="h-5 w-5 text-muted-foreground" />
-                                        </div>
-                                    ) : (
-                                        <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center border border-destructive/20">
-                                            <Trash2 className="h-5 w-5 text-destructive/70" />
-                                        </div>
+                            return (
+                                <div
+                                    key={index}
+                                    className={cn(
+                                        "flex items-center gap-4 p-4 border-b last:border-0 transition-all border-destructive/10",
+                                        isGone ? "bg-muted/50 opacity-60" : "bg-destructive/5"
                                     )}
-                                </div>
+                                >
+                                    <div className="shrink-0">
+                                        {isChecking ? (
+                                            <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center">
+                                                <Loader2 className="h-5 w-5 text-destructive animate-spin" />
+                                            </div>
+                                        ) : isGone ? (
+                                            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center border">
+                                                <CheckCircle2 className="h-5 w-5 text-muted-foreground" />
+                                            </div>
+                                        ) : (
+                                            <div className="h-10 w-10 rounded-full bg-white flex items-center justify-center border border-destructive/20">
+                                                <Trash2 className="h-5 w-5 text-destructive/70" />
+                                            </div>
+                                        )}
+                                    </div>
 
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="text-base font-medium text-destructive/90 mb-1">
-                                        Revert: {step.name}
-                                    </h4>
-                                    <p className="text-sm text-destructive/70">
-                                        Removes configurations and packages.
-                                    </p>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="text-base font-medium text-destructive/90 mb-1">
+                                            Revert: {step.name}
+                                        </h4>
+                                        <p className="text-sm text-destructive/70">
+                                            Removes configurations and packages.
+                                        </p>
+                                    </div>
                                 </div>
+                            );
+                        })}
+
+                        {/* Uninstall Action Item */}
+                        <div
+                            onClick={!isUninstalling ? handleUninstall : undefined}
+                            className={cn(
+                                "flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-destructive/10 transition-all hover:bg-destructive/10 cursor-pointer bg-destructive/5",
+                                (isUninstalling) && "opacity-70 cursor-not-allowed hover:bg-destructive/5"
+                            )}
+                        >
+                            <div className="space-y-1 text-center sm:text-left flex-1">
+                                <h3 className="font-medium text-destructive flex items-center justify-center sm:justify-start gap-2">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    {isUninstalling ? "Wiping Application..." : "Uninstall Application"}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Completely remove {config.title}. This action is destructive.
+                                </p>
                             </div>
-                        );
-                    })}
-
-                    {/* Uninstall Action Item */}
-                    <div
-                        onClick={!isUninstalling ? handleUninstall : undefined}
-                        className={cn(
-                            "flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-destructive/10 transition-all hover:bg-destructive/10 cursor-pointer bg-destructive/5",
-                            (isUninstalling) && "opacity-70 cursor-not-allowed hover:bg-destructive/5"
-                        )}
-                    >
-                        <div className="space-y-1 text-center sm:text-left flex-1">
-                            <h3 className="font-medium text-destructive flex items-center justify-center sm:justify-start gap-2">
-                                <AlertTriangle className="h-4 w-4" />
-                                {isUninstalling ? "Wiping Application..." : "Uninstall Application"}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                                Completely remove {config.title}. This action is destructive.
-                            </p>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

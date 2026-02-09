@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import {
     Card,
@@ -70,6 +71,7 @@ const TIME_FRAMES = {
 
 export default function StatusClient({ serverId, serverName }: { serverId?: string, serverName?: string }) {
     const { toast } = useToast();
+    const router = useRouter();
     const [statusData, setStatusData] = useState<StatusData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isToggling, setIsToggling] = useState(false);
@@ -100,6 +102,12 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
 
     const handleToggleTracking = async () => {
         if (!serverId) return;
+
+        if (!statusData?.isTracking) {
+            router.push('/system/requirement/system-logger');
+            return;
+        }
+
         setIsToggling(true);
 
         let result;
@@ -207,14 +215,15 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
                                 <CardTitle className="font-headline">Status Monitoring</CardTitle>
                                 <CardDescription>
                                     {statusData?.isTracking
-                                        ? "Historical usage monitoring is active."
-                                        : "Usage monitoring is not running."}
+                                        ? "System performance logger is active and recording data."
+                                        : "Performance logger is not currently active on this server."}
                                 </CardDescription>
                             </div>
-                            <Button onClick={handleToggleTracking} disabled={isToggling} variant={statusData?.isTracking ? 'destructive' : 'default'}>
-                                {isToggling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                {statusData?.isTracking ? "Stop Monitoring" : "Start Monitoring"}
-                            </Button>
+                            {!statusData?.isTracking && (
+                                <Button onClick={handleToggleTracking} variant="default">
+                                    Configure Monitoring
+                                </Button>
+                            )}
                         </CardHeader>
                     </Card>
 

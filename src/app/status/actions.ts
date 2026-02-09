@@ -87,22 +87,15 @@ export async function stopStatusTracking(serverId: string) {
     if (!server) return { error: 'Server not found.' };
     if (!server.username || !server.privateKey) return { error: 'Server SSH configuration is missing.' };
 
-    const command = `
-        if [ -f ~/${PID_FILE} ]; then
-            kill $(cat ~/${PID_FILE}) && rm ~/${PID_FILE}
-            echo "Process stopped."
-        else
-            echo "PID file not found."
-        fi
-    `;
+    const command = `sudo systemctl stop neup-logger`;
 
     try {
         const result = await runCommandOnServer(server.publicIp, server.username, server.privateKey, command);
         revalidatePath('/status');
-        if (result.code !== 0 && !result.stdout.includes("Process stopped")) {
-            return { error: result.stderr || 'Failed to stop the process.' };
+        if (result.code !== 0) {
+            return { error: result.stderr || 'Failed to stop the service.' };
         }
-        return { success: true, message: result.stdout };
+        return { success: true };
     } catch (e: any) {
         return { error: `Failed to stop tracking: ${e.message}` };
     }
@@ -132,7 +125,7 @@ export async function getStatus(
     const startSec = Math.floor(startTs / 1000);
     const endSec = Math.floor(endTs / 1000);
 
-    const checkPidCmd = `if [ -f ~/${PID_FILE} ]; then cat ~/${PID_FILE}; else echo "not_found"; fi`;
+    const checkPidCmd = `if pgrep -x neup-logger > /dev/null; then echo "active"; else echo "inactive"; fi`;
 
 
     let intervalSec = 0;
@@ -200,7 +193,7 @@ export async function getStatus(
             runCommandOnServer(server.publicIp, server.username, server.privateKey, readNetCmd),
         ]);
 
-        const isTracking = pidResult.stdout.trim() !== 'not_found';
+        const isTracking = pidResult.stdout.trim() === 'active';
 
         const cpuHistory = cpuResult.stdout.trim().split('\n').filter(Boolean).map(line => {
             const [timestamp, usage] = line.split(' ');

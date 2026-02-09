@@ -193,34 +193,83 @@ fi`,
         ]
     },
     {
-        id: 'ufw',
-        title: 'UFW Firewall',
-        description: 'The Uncomplicated Firewall (UFW) is a frontend for iptables and is particularly well-suited for host-based firewalls.',
-        icon: 'Shield',
+        id: 'system-logger',
+        title: 'System Performance Logger',
+        description: 'Enables high-resolution performance monitoring and historical data collection. Essential for real-time server health tracking.',
+        icon: 'Activity',
         steps: [
             {
-                name: 'Install UFW',
-                description: 'Install the UFW package.',
-                icon: 'Download',
-                checkCommand: 'ufw --version',
-                installCommand: 'sudo apt-get update && sudo apt-get install -y ufw',
-                uninstallCommand: 'sudo apt-get purge -y ufw && sudo apt-get autoremove -y'
+                name: 'Install Logging Script',
+                description: 'Deploy the background monitoring script to your home directory.',
+                icon: 'FileCode',
+                checkCommand: '[ -f ~/.status/logger.sh ]',
+                installCommand: `mkdir -p ~/.status && cat << 'EOF' > ~/.status/logger.sh
+#!/bin/bash
+STATUS_DIR=".status"
+CPU_LOG="cpu.usage"
+RAM_LOG="ram.usage"
+NET_LOG="network.usage"
+
+mkdir -p ~/$STATUS_DIR
+cd ~/$STATUS_DIR
+
+# Detect Interface
+IFACE=$(ip route | grep default | awk '{print $5}' | head -n1)
+if [ -z "$IFACE" ]; then IFACE=$(ls /sys/class/net | grep -v lo | head -n1); fi
+
+get_net_bytes() {
+    grep "$IFACE" /proc/net/dev | sed 's/:/ /' | awk '{print $2, $10}'
+}
+
+read PREV_RX PREV_TX <<< $(get_net_bytes)
+
+while true; do
+    cpu_info=$(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\\([0-9.]*\\)%* id.*/\\1/" | awk '{print 100 - $1}')
+    echo "$(date +%s) $cpu_info" >> $CPU_LOG
+    ram_info=$(free -m | grep Mem | awk '{print $2, $3, $4}')
+    echo "$(date +%s) $ram_info" >> $RAM_LOG
+    read CURR_RX CURR_TX <<< $(get_net_bytes)
+    DIFF_RX=$((CURR_RX - PREV_RX))
+    DIFF_TX=$((CURR_TX - PREV_TX))
+    if [ $DIFF_RX -lt 0 ]; then DIFF_RX=0; fi
+    if [ $DIFF_TX -lt 0 ]; then DIFF_TX=0; fi
+    echo "$(date +%s) $DIFF_RX $DIFF_TX" >> $NET_LOG
+    PREV_RX=$CURR_RX
+    PREV_TX=$CURR_TX
+    sleep 60
+done
+EOF
+chmod +x ~/.status/logger.sh`
             },
             {
-                name: 'Allow SSH',
-                description: 'Ensure SSH access is allowed before enabling the firewall to prevent lockout.',
-                icon: 'Lock',
-                checkCommand: 'sudo ufw status verbose | grep -q "22/tcp.*ALLOW"',
-                installCommand: 'sudo ufw allow ssh',
-                uninstallCommand: 'sudo ufw delete allow ssh || true'
+                name: 'Configure System Service',
+                description: 'Setup a systemd service to ensure the logger starts on boot and restarts on failure.',
+                icon: 'Settings',
+                checkCommand: '[ -f /etc/systemd/system/neup-logger.service ]',
+                installCommand: `cat << EOF | sudo tee /etc/systemd/system/neup-logger.service
+[Unit]
+Description=Neup.Cloud System Performance Logger
+After=network.target
+
+[Service]
+Type=simple
+User=$(whoami)
+WorkingDirectory=$HOME
+ExecStart=/bin/bash -c "exec -a neup-logger /bin/bash $HOME/.status/logger.sh"
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload`
             },
             {
-                name: 'Enable Firewall',
-                description: 'Enable and start the firewall service.',
-                icon: 'Power',
-                checkCommand: 'sudo ufw status | grep -q "Status: active"',
-                installCommand: 'echo "y" | sudo ufw enable',
-                uninstallCommand: 'sudo ufw disable'
+                name: 'Enable and Start',
+                description: 'Activate the monitoring service.',
+                icon: 'Play',
+                checkCommand: 'sudo systemctl is-active neup-logger && sudo systemctl is-enabled neup-logger',
+                installCommand: 'sudo systemctl enable neup-logger && sudo systemctl start neup-logger'
             }
         ]
     }
