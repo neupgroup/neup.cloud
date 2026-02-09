@@ -72,30 +72,94 @@ echo "Selected Port: $CHOSEN_PORT"
         // Start Command (Production)
         {
             title: 'Start',
-            description: 'Start the application in production mode',
+            description: 'Start the application in production mode using Supervisor',
             icon: 'PlayCircle',
             status: 'published',
             type: 'success',
             command: {
                 preCommand: portFinderScript,
-                mainCommand: `cd ${context.appLocation} && 
-                pm2 delete ${context.appName} || true && 
-                PORT=$CHOSEN_PORT pm2 start npm --name "${context.appName}" -- start -- -p $CHOSEN_PORT`
+                mainCommand: `
+# Ensure Supervisor is installed
+if ! command -v supervisorctl &> /dev/null; then
+    echo "Supervisor not found. Installing..."
+    sudo DEBIAN_FRONTEND=noninteractive apt-get update
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y supervisor
+    sudo systemctl enable supervisor
+    sudo systemctl start supervisor
+fi
+
+sudo mkdir -p /etc/supervisor/conf.d/
+
+CONF_FILE="/etc/supervisor/conf.d/${context.appName}.conf"
+LOG_OUT="${context.appLocation}/terminal.output.log"
+LOG_ERR="${context.appLocation}/terminal.error.log"
+USER_NAME=$(whoami)
+
+cat <<EOF | sudo tee $CONF_FILE
+[program:${context.appName}]
+command=npm start -- -p $CHOSEN_PORT
+directory=${context.appLocation}
+user=$USER_NAME
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+stderr_logfile=$LOG_ERR
+stdout_logfile=$LOG_OUT
+environment=PORT="$CHOSEN_PORT",NODE_ENV="production"
+EOF
+
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl restart ${context.appName}
+`
             }
         },
 
         // Dev Command (Development)
         {
             title: 'Dev',
-            description: 'Start the application in development mode overrides the production port',
+            description: 'Start the application in development mode using Supervisor',
             icon: 'Terminal',
             status: 'published',
             type: 'normal',
             command: {
                 preCommand: portFinderScript,
-                mainCommand: `cd ${context.appLocation} && 
-                npm install && 
-                PORT=$CHOSEN_PORT pm2 start npm --name "${context.appName}" -- run dev -- -p $CHOSEN_PORT`
+                mainCommand: `
+# Ensure Supervisor is installed
+if ! command -v supervisorctl &> /dev/null; then
+    echo "Supervisor not found. Installing..."
+    sudo DEBIAN_FRONTEND=noninteractive apt-get update
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y supervisor
+    sudo systemctl enable supervisor
+    sudo systemctl start supervisor
+fi
+
+sudo mkdir -p /etc/supervisor/conf.d/
+
+CONF_FILE="/etc/supervisor/conf.d/${context.appName}.conf"
+LOG_OUT="${context.appLocation}/terminal.output.log"
+LOG_ERR="${context.appLocation}/terminal.error.log"
+USER_NAME=$(whoami)
+
+cat <<EOF | sudo tee $CONF_FILE
+[program:${context.appName}]
+command=npm run dev
+directory=${context.appLocation}
+user=$USER_NAME
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+stderr_logfile=$LOG_ERR
+stdout_logfile=$LOG_OUT
+environment=PORT="$CHOSEN_PORT"
+EOF
+
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl restart ${context.appName}
+`
             }
         },
 
@@ -107,8 +171,10 @@ echo "Selected Port: $CHOSEN_PORT"
             status: 'published',
             type: 'destructive',
             command: {
-                mainCommand: `pm2 stop ${context.appName} && 
-                pm2 delete ${context.appName}`
+                mainCommand: `sudo supervisorctl stop ${context.appName}
+sudo rm /etc/supervisor/conf.d/${context.appName}.conf
+sudo supervisorctl reread
+sudo supervisorctl update`
             }
         }
     ];

@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, RefreshCw, Terminal, Activity, cpu, hardDrive, Clock, FileCode, Play, Square, Trash2, Loader2, Cpu, HardDrive } from "lucide-react";
-import { getProcessDetails, restartApplicationProcess } from "../../actions"; // Adjust import path
+import { ArrowLeft, RefreshCw, Terminal, Activity, Clock, FileCode, Play, Square, Trash2, Loader2, Cpu, HardDrive } from "lucide-react";
+import { getProcessDetails, restartApplicationProcess, restartSupervisorProcess } from "../../actions"; // Adjust import path
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -49,7 +49,7 @@ export default function ProcessDetailsPage() {
         setProvider(prov);
         setAppName(name);
 
-        if (prov !== 'pm2') {
+        if (prov !== 'pm2' && prov !== 'supervisor') {
             setError(`Provider '${prov}' is not currently supported.`);
             setLoading(false);
             return;
@@ -79,8 +79,13 @@ export default function ProcessDetailsPage() {
         if (!processData) return;
         setActionLoading('restart');
         try {
-            // We use pm_id for restart as it's safer
-            const result = await restartApplicationProcess(await getServerId(), processData.pm_id);
+            let result;
+            if (provider === 'supervisor') {
+                 result = await restartSupervisorProcess(await getServerId(), processData.name);
+            } else {
+                 result = await restartApplicationProcess(await getServerId(), processData.pm_id);
+            }
+
             if (result.error) {
                 toast({ variant: 'destructive', title: 'Restart Failed', description: result.error });
             } else {

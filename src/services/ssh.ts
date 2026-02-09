@@ -49,14 +49,40 @@ export async function runCommandOnServer(
 
         let finalCommand = processedCommand;
         if (!skipSwap) {
-            // Wrapper script to manage swap file with sudo using user-defined spec
+            // Use a unique swap file name to avoid collisions between concurrent commands
+            // Using /tmp is safer for temporary files, but sometimes /tmp is small (tmpfs).
+            // Using /var/tmp or just a root file with unique name.
+            // We use a timestamp and random suffix.
+            const uniqueId = `${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+            
+            // Wrapper script to manage swap file with sudo
+            // We check if fallocate works, otherwise dd (slower but more compatible)
+            // We only add swap if we can create it.
             finalCommand = `
-                SWAP_FILE="/command_swapfile";
-                sudo fallocate -l 4G "$SWAP_FILE" || true;
-                sudo chmod 600 "$SWAP_FILE" || true;
-                sudo mkswap "$SWAP_FILE" || true;
-                sudo swapon "$SWAP_FILE" || true;
-                trap "sudo swapoff \"$SWAP_FILE\" 2>/dev/null; sudo rm -f \"$SWAP_FILE\" 2>/dev/null" EXIT;
+                SWAP_FILE="/swapfile_cmd_${uniqueId}";
+                
+                # Try to create swap
+                if sudo fallocate -l 1G "$SWAP_FILE" 2>/dev/null || sudo dd if=/dev/zero of="$SWAP_FILE" bs=1M count=1024 status=none; then
+                    sudo chmod 600 "$SWAP_FILE";
+                    if sudo mkswap "$SWAP_FILE" >/dev/null 2>&1; then
+                        if sudo swapon "$SWAP_FILE" >/dev/null 2>&1; then
+                            HAS_SWAP=1
+                        fi
+                    fi
+                fi
+
+                # Clean up function
+                cleanup() {
+                    if [ "$HAS_SWAP" = "1" ]; then
+                        sudo swapoff "$SWAP_FILE" 2>/dev/null
+                        sudo rm -f "$SWAP_FILE" 2>/dev/null
+                    else
+                        # Just remove if it exists (failed mount)
+                        sudo rm -f "$SWAP_FILE" 2>/dev/null
+                    fi
+                }
+                trap cleanup EXIT
+
                 ${processedCommand}
             `;
         }

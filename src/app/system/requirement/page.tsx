@@ -1,9 +1,19 @@
 'use client';
 
 import { PageTitle } from '@/components/page-header';
-import { Card } from "@/components/ui/card";
-import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowRight } from "lucide-react";
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { requirements } from '@/requirements/list';
+import * as Icons from 'lucide-react';
+
+const Icon = ({ name, className }: { name: string, className?: string }) => {
+    // @ts-ignore
+    const LucideIcon = Icons[name];
+    if (!LucideIcon) return <Icons.HelpCircle className={className} />;
+    return <LucideIcon className={className} />;
+};
 
 interface RequirementItem {
     name: string;
@@ -20,108 +30,58 @@ const mockRequirements: RequirementItem[] = [
     { name: 'Virtualization', details: 'KVM support enabled', status: 'warning' },
 ];
 
-const swapScript = `# 1. Define the swap file path
-SWAP_FILE="/command_swapfile"
-
-# 2. Allocate 4GB of space
-sudo fallocate -l 4G "$SWAP_FILE"
-
-# 3. specific permissions (security requirement for swap)
-sudo chmod 600 "$SWAP_FILE"
-
-# 4. specific the file as swap space
-sudo mkswap "$SWAP_FILE"
-
-# 5. Enable the swap file
-sudo swapon "$SWAP_FILE"`;
-
-const requiredPackages = [
-    { name: 'nginx-core', description: 'High performance web server' },
-    { name: 'postgresql-14', description: 'Object-relational SQL database' },
-    { name: 'nodejs', description: 'JavaScript runtime environment' },
-    { name: 'docker-ce', description: 'Containerization platform' },
-    { name: 'ufw', description: 'Uncomplicated Firewall' },
-    { name: 'certbot', description: 'SSL Certificate automation' },
-    { name: 'git', description: 'Version control system' },
-    { name: 'curl', description: 'Command line tool for transferring data' },
-    { name: 'unzip', description: 'Archive extraction utility' }
-];
-
 export default function RequirementsPage() {
     return (
-        <div className="space-y-6">
+        <div className="space-y-8 animate-in fade-in duration-500">
             <PageTitle
                 title="System Requirements"
-                description="Verify system requirements, configuration and prerequisites."
+                description="Manage core system dependencies and configurations."
             />
 
-            <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-6">
-                    <section className="space-y-4">
-                        <h3 className="text-lg font-medium">Core Requirements</h3>
-                        <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
-                            {mockRequirements.map((req, index) => (
-                                <div key={req.name} className={cn(
-                                    "p-4 min-w-0 w-full transition-colors hover:bg-muted/50",
-                                    index !== mockRequirements.length - 1 && "border-b border-border"
-                                )}>
-                                    <div className="flex items-start gap-4">
-                                        <div className="pt-0.5">
-                                            {req.status === 'met' && <CheckCircle2 className="h-5 w-5 text-green-500" />}
-                                            {req.status === 'not_met' && <XCircle className="h-5 w-5 text-red-500" />}
-                                            {req.status === 'warning' && <AlertCircle className="h-5 w-5 text-yellow-500" />}
-                                        </div>
-                                        <div className="flex-1 space-y-1">
-                                            <p className="text-sm font-medium text-foreground leading-none">
-                                                {req.name}
-                                            </p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {req.details}
-                                            </p>
-                                        </div>
+            <div className="grid gap-6 md:grid-cols-3">
+                {requirements.map((req) => (
+                    <Link key={req.id} href={`/system/requirement/${req.id}`} className="group">
+                        <Card className="h-full transition-all hover:shadow-md hover:border-primary/50">
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <div className="p-2 rounded-lg bg-muted group-hover:bg-background transition-colors text-blue-500">
+                                        <Icon name={req.icon} className="h-6 w-6" />
+                                    </div>
+                                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                </div>
+                                <CardTitle className="mt-4">{req.title}</CardTitle>
+                                <CardDescription>{req.description}</CardDescription>
+                            </CardHeader>
+                        </Card>
+                    </Link>
+                ))}
+            </div>
+
+            <section className="space-y-4 pt-4">
+                <h3 className="text-lg font-medium">Core System Checks</h3>
+                <Card className="rounded-lg border bg-card text-card-foreground shadow-sm">
+                     <CardContent className="p-0">
+                        <div className="divide-y divide-border">
+                            {mockRequirements.map((req) => (
+                                <div key={req.name} className="flex items-center justify-between p-4">
+                                    <div className="space-y-1">
+                                        <p className="font-medium leading-none">{req.name}</p>
+                                        <p className="text-sm text-muted-foreground">{req.details}</p>
+                                    </div>
+                                    <div className={cn(
+                                        "px-2 py-1 rounded text-xs font-medium capitalize",
+                                        req.status === 'met' ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                                        req.status === 'warning' ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
+                                        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                    )}>
+                                        {req.status.replace('_', ' ')}
                                     </div>
                                 </div>
                             ))}
-                        </Card>
-                    </section>
-
-                    <section className="space-y-4">
-                        <h3 className="text-lg font-medium">Required Packages</h3>
-                        <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm p-0 overflow-hidden">
-                            <div className="divide-y divide-border">
-                                {requiredPackages.map((pkg) => (
-                                    <div key={pkg.name} className="p-4 hover:bg-muted/50 transition-colors">
-                                        <div className="flex justify-between items-start">
-                                            <div className="font-mono text-sm font-medium bg-muted px-2 py-0.5 rounded text-foreground">
-                                                {pkg.name}
-                                            </div>
-                                        </div>
-                                        <p className="text-sm text-muted-foreground mt-1">
-                                            {pkg.description}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-                        </Card>
-                    </section>
-                </div>
-
-                <div className="space-y-6">
-                    <section className="space-y-4">
-                        <h3 className="text-lg font-medium">Swap Space Configuration</h3>
-                        <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm p-4">
-                            <p className="text-sm text-muted-foreground mb-4">
-                                Run the following commands to configure 4GB of swap space. This is critical for system stability.
-                            </p>
-                            <div className="relative rounded-md bg-muted p-4 overflow-x-auto">
-                                <pre className="text-sm font-mono leading-relaxed text-foreground">
-                                    {swapScript}
-                                </pre>
-                            </div>
-                        </Card>
-                    </section>
-                </div>
-            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </section>
         </div>
     );
 }

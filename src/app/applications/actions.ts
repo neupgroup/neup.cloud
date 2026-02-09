@@ -1,4 +1,3 @@
-
 'use server';
 
 import { addDoc, collection, deleteDoc, doc, getDocs, getDoc, updateDoc } from 'firebase/firestore';
@@ -445,7 +444,13 @@ export async function getRunningProcesses() {
     const delimiter = "---NEUP_CLOUD_SPLIT---";
     // Check if dump file exists and has content (-s).
     // Use || echo "[]" as absolute fallback.
-    const command = `pm2 jlist && echo "${delimiter}" && (if [ -s ~/.pm2/dump.pm2 ]; then cat ~/.pm2/dump.pm2; else echo "[]"; fi)`;
+    const command = `
+        if command -v pm2 &> /dev/null; then
+            pm2 jlist && echo "${delimiter}" && (if [ -s ~/.pm2/dump.pm2 ]; then cat ~/.pm2/dump.pm2; else echo "[]"; fi)
+        else
+            echo "[]${delimiter}[]"
+        fi
+    `;
 
     const result = await executeQuickCommand(serverId, command);
 
@@ -492,6 +497,84 @@ export async function getRunningProcesses() {
     }
 }
 
+// Get Supervisor Processes
+export async function getSupervisorProcesses() {
+    const cookieStore = await cookies();
+    const serverId = cookieStore.get('selected_server')?.value;
+    if (!serverId) throw new Error("No server selected");
+
+    // Command to list supervisor processes
+    // Check multiple locations for supervisorctl
+    const command = `
+    if command -v supervisorctl &> /dev/null; then 
+        sudo supervisorctl status
+    elif [ -f /usr/bin/supervisorctl ]; then
+        sudo /usr/bin/supervisorctl status
+    elif [ -f /usr/local/bin/supervisorctl ]; then
+        sudo /usr/local/bin/supervisorctl status
+    else
+        echo "SUPERVISORCTL_NOT_FOUND"
+    fi`;
+
+    const result = await executeQuickCommand(serverId, command);
+
+    if (result.error) {
+        console.warn("Error fetching supervisor list:", result.error);
+        return [];
+    }
+
+    try {
+        const output = (result.output || "").trim();
+        if (output === "SUPERVISORCTL_NOT_FOUND") return { error: "SUPERVISOR_NOT_INSTALLED" };
+
+        const lines = output.split('\n');
+        const processes = [];
+
+        for (const line of lines) {
+            if (!line) continue;
+            
+            // Robust parsing: Name (no spaces) + Spaces + State (no spaces) + Optional Spaces + Optional Description
+            const match = line.match(/^(\S+)\s+(\S+)(?:\s+(.*))?$/);
+            
+            if (match) {
+                const name = match[1];
+                const state = match[2];
+                const description = match[3] || "";
+
+                // Parse PID and Uptime from description if possible
+                let pid = null;
+                let uptime = null;
+
+                const pidMatch = description.match(/pid (\d+)/);
+                if (pidMatch) {
+                    pid = parseInt(pidMatch[1], 10);
+                }
+
+                const uptimeMatch = description.match(/uptime (\S+)/);
+                if (uptimeMatch) {
+                    uptime = uptimeMatch[1];
+                }
+
+                processes.push({
+                    name,
+                    state,
+                    description,
+                    pid,
+                    uptime,
+                    source: 'supervisor',
+                    isPermanent: true
+                });
+            }
+        }
+
+        return processes;
+
+    } catch (e) {
+        console.error("Failed to process supervisor output:", e);
+        return [];
+    }
+}
+
 export async function restartApplicationProcess(serverId: string, pmId: string | number) {
     if (!serverId) return { error: "Server not selected" };
 
@@ -504,6 +587,58 @@ export async function restartApplicationProcess(serverId: string, pmId: string |
     }
 
     // Re-fetch list to verify? The UI will likely re-fetch.
+    return { success: true, output: result.output };
+}
+
+export async function restartSupervisorProcess(serverId: string, name: string) {
+    if (!serverId) return { error: "Server not selected" };
+
+    const result = await executeQuickCommand(serverId, `sudo supervisorctl restart ${name}`);
+
+    if (result.error) {
+        return { error: result.error };
+    }
+
+    return { success: true, output: result.output };
+}
+
+export async function resetSupervisorConfiguration(serverId: string) {
+    if (!serverId) return { error: "Server not selected" };
+
+    const result = await executeQuickCommand(serverId, `sudo supervisorctl reread && sudo supervisorctl update`);
+
+    if (result.error) {
+        return { error: result.error };
+    }
+
+    return { success: true, output: result.output };
+}
+
+export async function purgeSupervisor(serverId: string) {
+    if (!serverId) return { error: "Server not selected" };
+
+    const command = `
+sudo systemctl stop supervisor || true
+sudo systemctl disable supervisor || true
+sudo apt-get purge -y supervisor
+sudo rm -rf /etc/supervisor
+sudo rm -rf /var/log/supervisor
+sudo rm -rf /var/run/supervisor*
+sudo rm -rf /usr/lib/systemd/system/supervisor.service
+sudo rm -rf /lib/systemd/system/supervisor.service
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+which supervisord || echo "Supervisor removed"
+    `.trim();
+
+    // Using executeCommand instead of QuickCommand because this is a major operation
+    // and we want to see it in history/logs, and it might take a moment.
+    const result = await executeCommand(serverId, command, "Purge Supervisor", command);
+
+    if (result.error) {
+        return { error: result.error };
+    }
+
     return { success: true, output: result.output };
 }
 
@@ -557,6 +692,129 @@ export async function getProcessDetails(provider: string, name: string) {
     const cookieStore = await cookies();
     const serverId = cookieStore.get('selected_server')?.value;
     if (!serverId) throw new Error("No server selected");
+
+    if (provider === 'supervisor') {
+        // 1. Get Status
+        const statusCmd = `sudo supervisorctl status ${name}`;
+        const statusRes = await executeQuickCommand(serverId, statusCmd);
+        if (statusRes.error || !statusRes.output) return null;
+
+        const line = statusRes.output.trim();
+        // Match: "name state description"
+        // e.g. "worker RUNNING pid 123, uptime..."
+        const match = line.match(/^(\S+)\s+(\S+)\s+(.*)$/);
+        if (!match) return null;
+
+        const state = match[2]; // RUNNING, STOPPED, FATAL, etc.
+        const description = match[3];
+        let pid = 0;
+        
+        const pidMatch = description.match(/pid (\d+)/);
+        if (pidMatch) pid = parseInt(pidMatch[1], 10);
+
+        // 2. Get Resource Usage (if running)
+        let cpu = 0;
+        let memory = 0;
+        let startTime = 0;
+
+        if (pid > 0) {
+            // %cpu, rss (in KB), lstart (start time)
+            const psCmd = `ps -p ${pid} -o %cpu,rss,lstart --no-headers`;
+            const psRes = await executeQuickCommand(serverId, psCmd);
+            
+            if (!psRes.error && psRes.output) {
+                // Output format: " 0.0  1234 Mon Jan 1 10:00:00 2024"
+                // Trim and split by whitespace
+                // First 2 parts are numbers, rest is date
+                const trimmed = psRes.output.trim();
+                const firstSpace = trimmed.indexOf(' ');
+                const secondSpace = trimmed.indexOf(' ', firstSpace + 1);
+                
+                if (firstSpace > -1 && secondSpace > -1) {
+                    const cpuStr = trimmed.substring(0, firstSpace);
+                    const memStr = trimmed.substring(firstSpace + 1, secondSpace);
+                    const dateStr = trimmed.substring(secondSpace + 1);
+
+                    cpu = parseFloat(cpuStr) || 0;
+                    memory = (parseInt(memStr) || 0) * 1024; // KB to Bytes
+                    startTime = new Date(dateStr).getTime();
+                }
+            }
+        }
+
+        // 3. Get Config Details
+        // We try to grep the config file that defines this program
+        // Pattern: [program:name]
+        // If name has group (group:name), search for program:name
+        const cleanName = name.includes(':') ? name.split(':')[1] : name;
+        
+        // Command to find file and read relevant lines
+        // We look for command, directory, user, stdout_logfile, stderr_logfile
+        // We search in /etc/supervisor/conf.d/ and /etc/supervisor/supervisord.conf
+        // We use grep to find the file containing the section, then cat it.
+        // We use 'head -n 1' to just take the first matching file.
+        const configCmd = `grep -r -l "\\[program:${cleanName}\\]" /etc/supervisor/conf.d/ /etc/supervisor/supervisord.conf 2>/dev/null | head -n 1 | xargs -I {} cat {}`;
+        
+        const configRes = await executeQuickCommand(serverId, configCmd);
+        const config = {
+            command: '',
+            directory: '',
+            user: '',
+            stdout_logfile: '',
+            stderr_logfile: ''
+        };
+
+        if (!configRes.error && configRes.output) {
+            // Parse the ini-like content loosely
+            // We only care about the section for our program
+            const lines = configRes.output.split('\n');
+            let inSection = false;
+            for (const l of lines) {
+                const trimmed = l.trim();
+                if (trimmed.startsWith(`[program:${cleanName}]`)) {
+                    inSection = true;
+                    continue;
+                }
+                if (trimmed.startsWith('[') && trimmed !== `[program:${cleanName}]`) {
+                    inSection = false;
+                }
+                if (inSection) {
+                    if (trimmed.startsWith('command=')) config.command = trimmed.substring(8).trim();
+                    if (trimmed.startsWith('directory=')) config.directory = trimmed.substring(10).trim();
+                    if (trimmed.startsWith('user=')) config.user = trimmed.substring(5).trim();
+                    if (trimmed.startsWith('stdout_logfile=')) config.stdout_logfile = trimmed.substring(15).trim();
+                    if (trimmed.startsWith('stderr_logfile=')) config.stderr_logfile = trimmed.substring(15).trim();
+                }
+            }
+        }
+
+        // Map status to PM2-like status for UI compatibility
+        let pmStatus = 'stopped';
+        if (state === 'RUNNING') pmStatus = 'online';
+        else if (state === 'FATAL' || state === 'BACKOFF') pmStatus = 'errored';
+        else if (state === 'STARTING') pmStatus = 'launching';
+        
+        return {
+            name: name,
+            pm_id: name, // Use name as ID
+            pm2_env: {
+                status: pmStatus,
+                pm_uptime: startTime,
+                restart_time: 0, // Hard to get without parsing logs
+                pm_exec_path: config.command || 'N/A',
+                pm_cwd: config.directory || 'N/A',
+                exec_interpreter: 'supervisor',
+                instances: 1,
+                node_version: 'N/A',
+                pm_out_log_path: config.stdout_logfile || 'N/A',
+                pm_err_log_path: config.stderr_logfile || 'N/A'
+            },
+            monit: {
+                cpu: cpu,
+                memory: memory
+            }
+        };
+    }
 
     if (provider !== 'pm2') {
         throw new Error(`Provider ${provider} not supported`);

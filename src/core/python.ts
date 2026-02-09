@@ -57,13 +57,37 @@ echo "Selected Port: $CHOSEN_PORT"
         // Start Command (Production)
         {
             title: 'Start',
-            description: 'Start the Python application',
+            description: 'Start the Python application using Supervisor',
             icon: 'PlayCircle',
             status: 'published',
             type: 'success',
             command: {
                 preCommand: portFinderScript,
-                mainCommand: `cd ${context.appLocation} && PORT=$CHOSEN_PORT pm2 start ${entryFile} --name "${context.appName}" --interpreter python3`
+                mainCommand: `
+CONF_FILE="/etc/supervisor/conf.d/${context.appName}.conf"
+LOG_OUT="${context.appLocation}/terminal.output.log"
+LOG_ERR="${context.appLocation}/terminal.error.log"
+USER_NAME=$(whoami)
+
+cat <<EOF | sudo tee $CONF_FILE
+[program:${context.appName}]
+command=python3 ${entryFile}
+directory=${context.appLocation}
+user=$USER_NAME
+autostart=true
+autorestart=true
+startsecs=3
+stopasgroup=true
+killasgroup=true
+stderr_logfile=$LOG_ERR
+stdout_logfile=$LOG_OUT
+environment=PORT="$CHOSEN_PORT"
+EOF
+
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl restart ${context.appName}
+`
             }
         },
 
@@ -75,7 +99,10 @@ echo "Selected Port: $CHOSEN_PORT"
             status: 'published',
             type: 'destructive',
             command: {
-                mainCommand: `pm2 stop ${context.appName}`
+                mainCommand: `sudo supervisorctl stop ${context.appName}
+sudo rm /etc/supervisor/conf.d/${context.appName}.conf
+sudo supervisorctl reread
+sudo supervisorctl update`
             }
         },
 
@@ -87,7 +114,7 @@ echo "Selected Port: $CHOSEN_PORT"
             status: 'published',
             type: 'normal',
             command: {
-                mainCommand: `pm2 restart "${context.appName}"`
+                mainCommand: `sudo supervisorctl restart "${context.appName}"`
             }
         },
     ];
