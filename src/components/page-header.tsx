@@ -3,6 +3,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { ServerNameLink } from '@/components/server-name-link';
 
 interface PageTitleProps {
     title: React.ReactNode;
@@ -14,7 +15,7 @@ interface PageTitleProps {
 
 export function PageTitle({ title, description, serverName, className, children }: PageTitleProps) {
     const displayDescription = serverName && description ? (
-        <>{description} on <span className="text-foreground">{serverName}</span></>
+        <>{description} on <ServerNameLink name={serverName} /></>
     ) : description;
 
     return (
@@ -34,7 +35,7 @@ interface PageTitleBackProps extends PageTitleProps {
 
 export function PageTitleBack({ title, description, serverName, backHref, className, children }: PageTitleBackProps) {
     const displayDescription = serverName && description ? (
-        <>{description} on <span className="text-foreground">{serverName}</span></>
+        <>{description} on <ServerNameLink name={serverName} /></>
     ) : description;
 
     return (
@@ -61,7 +62,7 @@ interface PageTitleWithComponentProps extends PageTitleProps {
 
 export function PageTitleWithComponent({ title, description, serverName, className, actionComponent, children }: PageTitleWithComponentProps) {
     const displayDescription = serverName && description ? (
-        <>{description} on <span className="text-foreground">{serverName}</span></>
+        <>{description} on <ServerNameLink name={serverName} /></>
     ) : description;
 
     return (
@@ -82,7 +83,7 @@ interface PageTitleBackWithComponentProps extends PageTitleBackProps {
 
 export function PageTitleBackWithComponent({ title, description, serverName, backHref, className, actionComponent, children }: PageTitleBackWithComponentProps) {
     const displayDescription = serverName && description ? (
-        <>{description} on <span className="text-foreground">{serverName}</span></>
+        <>{description} on <ServerNameLink name={serverName} /></>
     ) : description;
 
     return (
