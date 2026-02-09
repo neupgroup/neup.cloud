@@ -155,7 +155,8 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
             {/* Page Title */}
             <PageTitleWithComponent
                 title="Server Status"
-                description={serverName ? `Showing status for server: ${serverName}` : "No server selected. Please select a server to view its status."}
+                description="Historical and real-time performance indicators"
+                serverName={serverName}
                 actionComponent={undefined}
             />
             {/* Date/Time Controls */}

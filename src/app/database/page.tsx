@@ -51,15 +51,8 @@ export default async function DatabasePage() {
                         Database Management
                     </span>
                 }
-                description={
-                    serverName ? (
-                        <span>
-                            Manage database engines and instances on <span className="font-semibold text-foreground">{serverName}</span>
-                        </span>
-                    ) : (
-                        "No server selected. Please select a server to manage databases."
-                    )
-                }
+                description="Manage database engines and instances"
+                serverName={serverName}
             />
 
             {!serverId ? (

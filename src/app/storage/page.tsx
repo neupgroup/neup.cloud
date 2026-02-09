@@ -39,15 +39,8 @@ export default async function StoragePage() {
                         Storage Management
                     </span>
                 }
-                description={
-                    serverName ? (
-                        <span>
-                            Showing storage for server: <span className="font-semibold text-foreground">{serverName}</span>
-                        </span>
-                    ) : (
-                        "No server selected. Please select a server to view its storage."
-                    )
-                }
+                description="Monitor and manage disk space"
+                serverName={serverName}
             />
 
             {!serverId ? (

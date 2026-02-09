@@ -35,15 +35,8 @@ export default async function FilesPage() {
             File Manager
           </span>
         }
-        description={
-          serverName ? (
-            <span>
-              Browsing files for server: <span className="font-semibold text-foreground">{serverName}</span>
-            </span>
-          ) : (
-            "No server selected. Please select a server to manage its files."
-          )
-        }
+        description="Browse and manage system files"
+        serverName={serverName}
       />
 
       {!serverId ? (

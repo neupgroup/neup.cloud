@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useServerName } from '@/hooks/use-server-name';
 
 const FRAMEWORKS = [
   {
@@ -59,6 +60,7 @@ export default function CreateApplicationPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const serverName = useServerName();
 
   // Application Basics
   const [appName, setAppName] = useState('');
@@ -234,7 +236,7 @@ export default function CreateApplicationPage() {
 
   return (
     <div className="container max-w-3xl py-8 space-y-8 animate-in fade-in duration-500">
-      <PageTitleBack title="Deploy New Application" backHref="/applications" />
+      <PageTitleBack title="Deploy New Application" backHref="/applications" serverName={serverName} />
 
       <form onSubmit={onSubmit} className="space-y-8">
 

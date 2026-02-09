@@ -17,6 +17,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PageTitle } from '@/components/page-header';
 
 export default function WebServicesPage() {
     const router = useRouter();
@@ -61,8 +62,6 @@ export default function WebServicesPage() {
         fetchServer();
     }, [router, toast]);
 
-
-
     if (loading) {
         return (
             <div className="flex h-[50vh] items-center justify-center">
@@ -82,10 +81,11 @@ export default function WebServicesPage() {
 
     return (
         <div className="grid gap-8 animate-in fade-in duration-500 pb-10">
-            <div>
-                <h1 className="text-3xl font-bold font-headline tracking-tight">Web Services</h1>
-                <p className="text-muted-foreground">Manage web server and proxy configurations for {server.name}</p>
-            </div>
+            <PageTitle
+                title="Web Services"
+                description="Manage web server and proxy configurations"
+                serverName={server.name}
+            />
 
             {/* Configure Server Card */}
             <Card className="hover:bg-muted/50 transition-colors cursor-pointer">

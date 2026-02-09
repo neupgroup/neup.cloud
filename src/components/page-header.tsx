@@ -7,18 +7,23 @@ import { cn } from '@/lib/utils';
 interface PageTitleProps {
     title: React.ReactNode;
     description?: React.ReactNode;
+    serverName?: string | null;
     className?: string;
     children?: React.ReactNode;
 }
 
-export function PageTitle({ title, description, className, children }: PageTitleProps) {
+export function PageTitle({ title, description, serverName, className, children }: PageTitleProps) {
+    const displayDescription = serverName && description ? (
+        <>{description} on <span className="text-foreground">{serverName}</span></>
+    ) : description;
+
     return (
         <div className={cn("space-y-1.5", className)}>
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold font-headline tracking-tight">{title}</h1>
                 {children}
             </div>
-            {description && <div className="text-muted-foreground text-lg">{description}</div>}
+            {displayDescription && <div className="text-muted-foreground text-lg">{displayDescription}</div>}
         </div>
     );
 }
@@ -27,7 +32,11 @@ interface PageTitleBackProps extends PageTitleProps {
     backHref: string;
 }
 
-export function PageTitleBack({ title, description, backHref, className, children }: PageTitleBackProps) {
+export function PageTitleBack({ title, description, serverName, backHref, className, children }: PageTitleBackProps) {
+    const displayDescription = serverName && description ? (
+        <>{description} on <span className="text-foreground">{serverName}</span></>
+    ) : description;
+
     return (
         <div className={cn("space-y-2", className)}>
             <Button variant="ghost" className="pl-0 hover:bg-transparent text-muted-foreground hover:text-foreground hover:underline" asChild>
@@ -40,7 +49,7 @@ export function PageTitleBack({ title, description, backHref, className, childre
                     <h1 className="text-3xl font-bold font-headline tracking-tight">{title}</h1>
                     {children}
                 </div>
-                {description && <div className="text-muted-foreground text-lg">{description}</div>}
+                {displayDescription && <div className="text-muted-foreground text-lg">{displayDescription}</div>}
             </div>
         </div>
     );
@@ -50,7 +59,11 @@ interface PageTitleWithComponentProps extends PageTitleProps {
     actionComponent: React.ReactNode;
 }
 
-export function PageTitleWithComponent({ title, description, className, actionComponent, children }: PageTitleWithComponentProps) {
+export function PageTitleWithComponent({ title, description, serverName, className, actionComponent, children }: PageTitleWithComponentProps) {
+    const displayDescription = serverName && description ? (
+        <>{description} on <span className="text-foreground">{serverName}</span></>
+    ) : description;
+
     return (
         <div className={cn("space-y-1.5", className)}>
             <div className="flex items-center gap-3">
@@ -58,7 +71,7 @@ export function PageTitleWithComponent({ title, description, className, actionCo
                 {actionComponent}
                 {children && <div className="ml-auto">{children}</div>}
             </div>
-            {description && <div className="text-muted-foreground text-lg">{description}</div>}
+            {displayDescription && <div className="text-muted-foreground text-lg">{displayDescription}</div>}
         </div>
     );
 }
@@ -67,7 +80,11 @@ interface PageTitleBackWithComponentProps extends PageTitleBackProps {
     actionComponent: React.ReactNode;
 }
 
-export function PageTitleBackWithComponent({ title, description, backHref, className, actionComponent, children }: PageTitleBackWithComponentProps) {
+export function PageTitleBackWithComponent({ title, description, serverName, backHref, className, actionComponent, children }: PageTitleBackWithComponentProps) {
+    const displayDescription = serverName && description ? (
+        <>{description} on <span className="text-foreground">{serverName}</span></>
+    ) : description;
+
     return (
         <div className={cn("space-y-2", className)}>
             <Button variant="ghost" className="pl-0 hover:bg-transparent text-muted-foreground hover:text-foreground hover:underline" asChild>
@@ -81,7 +98,7 @@ export function PageTitleBackWithComponent({ title, description, backHref, class
                     {actionComponent}
                     {children && <div className="ml-auto">{children}</div>}
                 </div>
-                {description && <div className="text-muted-foreground text-lg">{description}</div>}
+                {displayDescription && <div className="text-muted-foreground text-lg">{displayDescription}</div>}
             </div>
         </div>
     );

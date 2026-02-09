@@ -65,7 +65,8 @@ export default async function HistoryPage() {
     <div className="space-y-6">
       <PageTitle
         title="Command History"
-        description={serverName ? `Showing logs for server: ${serverName}` : "Please select a server to view history"}
+        description="Review past command executions"
+        serverName={serverName}
       />
 
       {!serverId ? (

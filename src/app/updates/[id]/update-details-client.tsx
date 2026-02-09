@@ -98,6 +98,7 @@ export function UpdateDetailsClient({ serverId, serverName, id }: { serverId: st
             <div className="space-y-6">
                 <PageTitleBack
                     title="Package Details"
+                    serverName={serverName}
                     backHref="/updates"
                 />
                 <Alert variant="destructive">
@@ -114,6 +115,7 @@ export function UpdateDetailsClient({ serverId, serverName, id }: { serverId: st
             <PageTitleBack
                 title={packageName}
                 description={isSystemUpdate ? "System Update Available" : "Installed Package"}
+                serverName={serverName}
                 backHref="/updates"
             />
 

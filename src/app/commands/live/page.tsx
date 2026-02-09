@@ -5,9 +5,10 @@ import ClientTerminal from './client';
 export default async function LiveConsolePage() {
     const cookieStore = await cookies();
     const serverId = cookieStore.get('selected_server')?.value;
-    let serverName = 'Mock Server';
+    const cookieServerName = cookieStore.get('selected_server_name')?.value;
+    let serverName = cookieServerName || 'Mock Server';
 
-    if (serverId) {
+    if (serverId && !cookieServerName) {
         const server = await getServer(serverId);
         if (server) {
             serverName = server.name;

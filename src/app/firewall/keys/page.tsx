@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 export default async function KeysPage() {
     const cookieStore = await cookies();
     const serverId = cookieStore.get('selected_server')?.value;
+    const serverName = cookieStore.get('selected_server_name')?.value;
 
     return (
         <div className="space-y-6">
@@ -21,7 +22,8 @@ export default async function KeysPage() {
                         SSH Keys
                     </span>
                 }
-                description="Manage SSH keys for secure access to your instance."
+                description="Manage SSH keys for secure access"
+                serverName={serverName}
             />
 
             <KeysList serverId={serverId} />

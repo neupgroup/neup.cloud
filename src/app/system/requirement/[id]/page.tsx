@@ -11,6 +11,7 @@ import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Loader2, CheckCircle2, XCircle, Trash2, AlertTriangle } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
+import { useServerName } from '@/hooks/use-server-name';
 
 const Icon = ({ name, className }: { name: string, className?: string }) => {
     // @ts-ignore
@@ -62,6 +63,7 @@ export default function RequirementDetailPage() {
     const id = params.id as string;
 
     const config = requirements.find(r => r.id === id);
+    const serverName = useServerName();
 
     const [stepStatus, setStepStatus] = useState<Record<number, 'pending' | 'checking' | 'completed' | 'failed'>>({});
     const [isLoading, setIsLoading] = useState(false);
@@ -191,6 +193,7 @@ export default function RequirementDetailPage() {
             <PageTitleBack
                 title={`${config.title} Requirement`}
                 description={config.description}
+                serverName={serverName}
                 backHref="/system/requirement"
             />
 

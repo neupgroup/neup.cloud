@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { getApplications } from "./actions";
 import { ApplicationCard } from "./application-card";
 import { ApplicationCardSkeleton } from "./application-card-skeleton";
+import { PageTitle } from "@/components/page-header";
+import { useServerName } from "@/hooks/use-server-name";
 
 export type Application = {
   id: string;
@@ -30,6 +32,7 @@ export default function AppsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const serverName = useServerName();
 
   const fetchApplications = async () => {
     setIsLoading(true);
@@ -52,18 +55,13 @@ export default function AppsPage() {
     fetchApplications();
   }, []);
 
-
-
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold font-headline tracking-tight">Applications</h1>
-          <p className="text-muted-foreground">
-            Deploy and manage your applications.
-          </p>
-        </div>
-      </div>
+      <PageTitle
+        title="Applications"
+        description="Deploy and manage your applications"
+        serverName={serverName}
+      />
 
       <div className="grid grid-cols-1 gap-6">
         <Link href="/applications/deploy">

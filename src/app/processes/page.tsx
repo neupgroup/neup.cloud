@@ -25,7 +25,8 @@ export default async function ProcessesPage() {
     <div className="space-y-6">
       <PageTitle
         title="Processes"
-        description={serverName ? `Showing running processes for server: ${serverName}` : "Running processes information"}
+        description="Showing running processes"
+        serverName={serverName}
       />
 
       {!serverId ? (

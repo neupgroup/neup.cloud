@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import Cookies from "universal-cookie";
 import { useToast } from "@/hooks/use-toast";
+import { useServerName } from "@/hooks/use-server-name";
 
 export default function RunningApplicationsPage() {
     const { toast } = useToast();
@@ -19,6 +20,7 @@ export default function RunningApplicationsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null); // 'restart-id'
+    const serverName = useServerName();
 
     const getServerId = () => {
         const cookies = new Cookies(null, { path: '/' });
@@ -95,6 +97,7 @@ export default function RunningApplicationsPage() {
                 <PageTitle
                     title="Running Processes"
                     description="Overview of all processes currently managed by Supervisor."
+                    serverName={serverName}
                 />
                 <Button variant="outline" onClick={fetchProcesses} disabled={loading} className="gap-2">
                     <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
@@ -151,7 +154,7 @@ export default function RunningApplicationsPage() {
                         {processes.map((proc: any, index: number) => {
                             const state = getProcessState(proc);
                             const uniqueId = proc.name;
-                            
+
                             const dotColor = {
                                 green: 'bg-green-500',
                                 blue: 'bg-blue-500',
@@ -179,25 +182,25 @@ export default function RunningApplicationsPage() {
 
                                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
                                                 <div className="flex items-center gap-4 shrink-0 w-full text-xs">
-                                                {proc.pid ? (
+                                                    {proc.pid ? (
+                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                            <Hash className="h-3.5 w-3.5" />
+                                                            <span className="font-mono">PID: {proc.pid}</span>
+                                                        </div>
+                                                    ) : null}
                                                     <div className="flex items-center gap-1.5 shrink-0">
-                                                        <Hash className="h-3.5 w-3.5" />
-                                                        <span className="font-mono">PID: {proc.pid}</span>
+                                                        <CircleDot className="h-3.5 w-3.5" />
+                                                        <span className="capitalize">{proc.state}</span>
                                                     </div>
-                                                ) : null}
-                                                <div className="flex items-center gap-1.5 shrink-0">
-                                                    <CircleDot className="h-3.5 w-3.5" />
-                                                    <span className="capitalize">{proc.state}</span>
-                                                </div>
-                                                {proc.uptime ? (
-                                                    <div className="flex items-center gap-1.5 shrink-0">
-                                                        <Activity className="h-3.5 w-3.5" />
-                                                        <span className="font-medium">{proc.uptime}</span>
-                                                    </div>
-                                                ) : null}
-                                                {!proc.pid && !proc.uptime && (
-                                                    <span className="font-mono text-xs">{proc.description}</span>
-                                                )}
+                                                    {proc.uptime ? (
+                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                            <Activity className="h-3.5 w-3.5" />
+                                                            <span className="font-medium">{proc.uptime}</span>
+                                                        </div>
+                                                    ) : null}
+                                                    {!proc.pid && !proc.uptime && (
+                                                        <span className="font-mono text-xs">{proc.description}</span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

@@ -86,7 +86,8 @@ export function PackagesClient({ serverId, serverName }: { serverId: string, ser
         <div className="space-y-6">
             <PageTitleWithComponent
                 title="Packages"
-                description={`Manage software on ${serverName} (${installedPackages.length} installed)`}
+                description={`Software library (${installedPackages.length} installed)`}
+                serverName={serverName}
                 actionComponent={<div />}
             />
 

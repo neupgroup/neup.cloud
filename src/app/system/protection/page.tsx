@@ -16,10 +16,12 @@ import {
 } from './actions';
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useServerName } from "@/hooks/use-server-name";
 
 export default function ProtectionPage() {
     const { toast } = useToast();
     const [serverId, setServerId] = useState<string | null>(null);
+    const serverName = useServerName();
 
     // SSH Protection State
     const [isSshLoading, setIsSshLoading] = useState(false);
@@ -152,7 +154,8 @@ export default function ProtectionPage() {
         <div className="space-y-6">
             <PageTitle
                 title="System Protection"
-                description="Manage critical system protection mechanisms."
+                description="Manage critical system protection mechanisms"
+                serverName={serverName}
             />
 
             <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">

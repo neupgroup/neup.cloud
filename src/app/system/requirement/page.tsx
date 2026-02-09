@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { requirements } from '@/requirements/list';
 import * as Icons from 'lucide-react';
+import { useServerName } from '@/hooks/use-server-name';
 
 const Icon = ({ name, className }: { name: string, className?: string }) => {
     // @ts-ignore
@@ -31,11 +32,13 @@ const mockRequirements: RequirementItem[] = [
 ];
 
 export default function RequirementsPage() {
+    const serverName = useServerName();
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <PageTitle
                 title="System Requirements"
-                description="Manage core system dependencies and configurations."
+                description="Manage core system dependencies and configurations"
+                serverName={serverName}
             />
 
             <div className="grid gap-6 md:grid-cols-3">
@@ -60,7 +63,7 @@ export default function RequirementsPage() {
             <section className="space-y-4 pt-4">
                 <h3 className="text-lg font-medium">Core System Checks</h3>
                 <Card className="rounded-lg border bg-card text-card-foreground shadow-sm">
-                     <CardContent className="p-0">
+                    <CardContent className="p-0">
                         <div className="divide-y divide-border">
                             {mockRequirements.map((req) => (
                                 <div key={req.name} className="flex items-center justify-between p-4">
@@ -71,8 +74,8 @@ export default function RequirementsPage() {
                                     <div className={cn(
                                         "px-2 py-1 rounded text-xs font-medium capitalize",
                                         req.status === 'met' ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                                        req.status === 'warning' ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
-                                        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                            req.status === 'warning' ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
+                                                "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                                     )}>
                                         {req.status.replace('_', ' ')}
                                     </div>

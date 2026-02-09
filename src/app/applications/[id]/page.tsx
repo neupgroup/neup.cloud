@@ -1,4 +1,5 @@
 
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getApplication } from '../actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +25,8 @@ import * as Go from '@/core/go';
 
 export default async function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
+    const cookieStore = await cookies();
+    const serverName = cookieStore.get('selected_server_name')?.value;
     const application = await getApplication(id) as any;
 
     if (!application) {
@@ -93,6 +96,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
                         </span>
                     }
                     description="Application details and management"
+                    serverName={serverName}
                     backHref="/applications"
                 >
                     <Badge variant="outline" className="text-sm py-1 px-3 border-primary/20 bg-primary/5">

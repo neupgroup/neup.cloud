@@ -157,7 +157,8 @@ export function HistoryClient({ initialLogs, serverId, serverName }: { initialLo
       {/* Page Title with Reload Action */}
       <PageTitleWithComponent
         title="Command History"
-        description={serverName ? `Showing logs for server: ${serverName}` : "Running command history"}
+        description="Review past command executions"
+        serverName={serverName}
         actionComponent={
           <Button
             variant="ghost"

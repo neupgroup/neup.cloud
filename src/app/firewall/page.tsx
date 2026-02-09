@@ -2,11 +2,16 @@ import { PageTitle } from "@/components/page-header";
 import { ShieldAlert } from "lucide-react";
 import { Metadata } from "next";
 
+import { cookies } from "next/headers";
+
 export const metadata: Metadata = {
     title: 'Firewall | Neup.Cloud',
 };
 
-export default function FirewallPage() {
+export default async function FirewallPage() {
+    const cookieStore = await cookies();
+    const serverName = cookieStore.get('selected_server_name')?.value;
+
     return (
         <div className="space-y-6">
             <PageTitle
@@ -16,7 +21,8 @@ export default function FirewallPage() {
                         Firewall
                     </span>
                 }
-                description="Manage your server's network security and access rules."
+                description="Manage your server's network security and access rules"
+                serverName={serverName}
             />
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

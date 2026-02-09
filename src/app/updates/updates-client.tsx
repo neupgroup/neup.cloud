@@ -163,7 +163,8 @@ export function UpdatesClient({ serverId, serverName }: { serverId: string, serv
         <div className="space-y-8">
             <PageTitleWithComponent
                 title="System Updates"
-                description={`Manage package updates for ${serverName}`}
+                description="Manage system package updates"
+                serverName={serverName}
                 actionComponent={<div />}
             />
 

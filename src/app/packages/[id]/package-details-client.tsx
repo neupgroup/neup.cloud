@@ -139,6 +139,7 @@ export function PackageDetailsClient({ serverId, serverName, packageName }: { se
             <div className="space-y-6">
                 <PageTitleBackWithComponent
                     title="Package Error"
+                    serverName={serverName}
                     backHref="/packages"
                     actionComponent={<div />}
                 />
@@ -157,6 +158,7 @@ export function PackageDetailsClient({ serverId, serverName, packageName }: { se
             <PageTitleBackWithComponent
                 title={packageName}
                 description="Manage versions and installation"
+                serverName={serverName}
                 backHref="/packages"
                 actionComponent={<div />}
             />

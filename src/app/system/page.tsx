@@ -9,11 +9,13 @@ import { getSystemUptime } from '@/app/servers/actions';
 import { useToast } from "@/hooks/use-toast";
 import Cookies from "universal-cookie";
 import { SystemHealthCard } from '@/components/system-health-card';
+import { useServerName } from '@/hooks/use-server-name';
 
 export default function SystemPage() {
     const { toast } = useToast();
     const [isRebooting, setIsRebooting] = useState(false);
     const [uptime, setUptime] = useState<string | null>(null);
+    const serverName = useServerName();
 
     // Fetch uptime
     useEffect(() => {
@@ -71,7 +73,8 @@ export default function SystemPage() {
         <div className="space-y-8">
             <PageTitle
                 title="System Overview"
-                description="View system status and general configuration."
+                description="View system status and general configuration"
+                serverName={serverName}
             />
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

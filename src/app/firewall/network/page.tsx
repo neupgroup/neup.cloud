@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 export default async function NetworkRulesPage() {
     const cookieStore = await cookies();
     const serverId = cookieStore.get('selected_server')?.value;
+    const serverName = cookieStore.get('selected_server_name')?.value;
 
     return (
         <div className="space-y-6">
@@ -25,6 +26,8 @@ export default async function NetworkRulesPage() {
                         Network Details
                     </span>
                 }
+                description="Manage individual port access and firewall policies"
+                serverName={serverName}
             />
 
             {!serverId ? (

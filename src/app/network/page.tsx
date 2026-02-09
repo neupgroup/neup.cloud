@@ -25,7 +25,8 @@ export default async function NetworkPage() {
     <div className="space-y-6">
       <PageTitle
         title="Network"
-        description={serverName ? `Showing network usage for server: ${serverName}` : "Network status information"}
+        description="Network status and performance"
+        serverName={serverName}
       />
 
       {!serverId ? (

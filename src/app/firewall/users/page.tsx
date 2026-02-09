@@ -15,11 +15,12 @@ export const metadata: Metadata = {
 export default async function UsersPage() {
     const cookieStore = await cookies();
     const serverId = cookieStore.get('selected_server')?.value;
+    const serverName = cookieStore.get('selected_server_name')?.value;
 
     if (!serverId) {
         return (
             <div className="space-y-6">
-                <PageTitle title="Instance Users" description="Manage system accounts." />
+                <PageTitle title="Instance Users" description="Manage system accounts" serverName={serverName} />
                 <Card className="text-center p-8">
                     <CardHeader>
                         <CardTitle>No Server Selected</CardTitle>
@@ -44,7 +45,8 @@ export default async function UsersPage() {
                         Instance Users
                     </span>
                 }
-                description="Manage system accounts and user access for this instance."
+                description="Manage system accounts and user access for this instance"
+                serverName={serverName}
             />
 
             {error ? (

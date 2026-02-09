@@ -24,7 +24,8 @@ export default async function StartupPage() {
     <div className="space-y-6">
       <PageTitle
         title="Startup Programs"
-        description={serverName ? `Showing startup programs for server: ${serverName}` : "System startup programs information"}
+        description="View and manage system startup scripts"
+        serverName={serverName}
       />
 
       {!serverId ? (
