@@ -96,7 +96,7 @@ USER_NAME=$(whoami)
 
 cat <<EOF | sudo tee $CONF_FILE
 [program:${context.appName}]
-command=node ${entryFile}
+command=node ${context.appLocation}/${entryFile}
 directory=${context.appLocation}
 user=$USER_NAME
 autostart=true

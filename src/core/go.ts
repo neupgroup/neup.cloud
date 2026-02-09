@@ -88,7 +88,7 @@ USER_NAME=$(whoami)
 
 cat <<EOF | sudo tee $CONF_FILE
 [program:${context.appName}]
-command=./${binaryName}
+command=${context.appLocation}/${binaryName}
 directory=${context.appLocation}
 user=$USER_NAME
 autostart=true

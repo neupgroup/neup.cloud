@@ -71,7 +71,7 @@ USER_NAME=$(whoami)
 
 cat <<EOF | sudo tee $CONF_FILE
 [program:${context.appName}]
-command=python3 ${entryFile}
+command=python3 ${context.appLocation}/${entryFile}
 directory=${context.appLocation}
 user=$USER_NAME
 autostart=true
