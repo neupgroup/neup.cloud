@@ -12,7 +12,8 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { HeartPulse, Server, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Activity, HeartPulse, Server, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { startStatusTracking, stopStatusTracking, getStatus, type StatusData } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { PageTitleWithComponent } from '@/components/page-header';
@@ -204,180 +205,196 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
                     </Button>
                 </Card>
             ) : isLoading ? (
-                <div className="flex justify-center items-center h-48">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <div className="grid gap-6">
+                    {[1, 2, 3].map((i) => (
+                        <Card key={i}>
+                            <CardHeader className="space-y-2">
+                                <Skeleton className="h-6 w-1/3" />
+                                <Skeleton className="h-4 w-1/4" />
+                            </CardHeader>
+                            <CardContent className="h-[250px] w-full pt-0">
+                                <Skeleton className="h-full w-full rounded-md" />
+                            </CardContent>
+                        </Card>
+                    ))}
                 </div>
             ) : (
                 <div className="grid gap-6">
-                    <Card>
-                        <CardHeader className="flex flex-row justify-between items-center">
-                            <div>
-                                <CardTitle className="font-headline">Status Monitoring</CardTitle>
-                                <CardDescription>
-                                    {statusData?.isTracking
-                                        ? "System performance logger is active and recording data."
-                                        : "Performance logger is not currently active on this server."}
-                                </CardDescription>
-                            </div>
-                            {!statusData?.isTracking && (
-                                <Button onClick={handleToggleTracking} variant="default">
-                                    Configure Monitoring
+                    {!statusData?.isTracking ? (
+                        <Card className="border-primary/20 bg-primary/5 py-8">
+                            <CardHeader className="flex flex-col items-center text-center space-y-4">
+                                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+                                    <Activity className="h-8 w-8 text-primary animate-pulse" />
+                                </div>
+                                <div className="space-y-2">
+                                    <CardTitle className="text-2xl font-headline text-primary">Status Monitoring Required</CardTitle>
+                                    <CardDescription className="text-base text-primary/70 max-w-md">
+                                        Performance logging is not currently active. Enable the system logger to start recording real-time performance metrics and history.
+                                    </CardDescription>
+                                </div>
+                                <Button
+                                    onClick={handleToggleTracking}
+                                    size="lg"
+                                    className="mt-4 px-8 shadow-xl hover:shadow-primary/20 transition-all active:scale-95"
+                                >
+                                    Enable Monitoring
                                 </Button>
-                            )}
-                        </CardHeader>
-                    </Card>
+                            </CardHeader>
+                        </Card>
+                    ) : (
+                        <div className="grid gap-6">
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <CardTitle className="font-headline">CPU Usage History</CardTitle>
+                                            <CardDescription>
+                                                Average for selected period: <span className="font-semibold text-foreground">{avgCpu}%</span>
+                                            </CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="h-[250px] w-full">
+                                    {statusData && statusData.cpuHistory.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={statusData.cpuHistory} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                                                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                                <Tooltip content={<CustomTooltip unit="%" />} />
+                                                <Area type="monotone" dataKey="usage" name="CPU" strokeWidth={2} stroke="hsl(var(--primary))" fill="url(#colorCpu)" />
+                                                <XAxis
+                                                    dataKey="timestamp"
+                                                    stroke="hsl(var(--muted-foreground))"
+                                                    fontSize={12}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickFormatter={(value) => {
+                                                        const date = new Date(value);
+                                                        if (isNaN(date.getTime())) return "";
+                                                        return format(date, timeFrame === '1h' ? "h:mm a" : "MMM d");
+                                                    }}
+                                                    interval="preserveStartEnd"
+                                                    minTickGap={30}
+                                                />
+                                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="flex justify-center items-center h-full text-muted-foreground">No CPU data available for this period.</div>
+                                    )}
+                                </CardContent>
+                            </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <CardTitle className="font-headline">CPU Usage History</CardTitle>
-                                    <CardDescription>
-                                        Average for selected period: <span className="font-semibold text-foreground">{avgCpu}%</span>
-                                    </CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="h-[250px] w-full">
-                            {statusData && statusData.cpuHistory.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={statusData.cpuHistory} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                                                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                                        <Tooltip content={<CustomTooltip unit="%" />} />
-                                        <Area type="monotone" dataKey="usage" name="CPU" strokeWidth={2} stroke="hsl(var(--primary))" fill="url(#colorCpu)" />
-                                        <XAxis
-                                            dataKey="timestamp"
-                                            stroke="hsl(var(--muted-foreground))"
-                                            fontSize={12}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tickFormatter={(value) => {
-                                                const date = new Date(value);
-                                                if (isNaN(date.getTime())) return "";
-                                                return format(date, timeFrame === '1h' ? "h:mm a" : "MMM d");
-                                            }}
-                                            interval="preserveStartEnd"
-                                            minTickGap={30}
-                                        />
-                                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`} />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="flex justify-center items-center h-full text-muted-foreground">No CPU data available for this period.</div>
-                            )}
-                        </CardContent>
-                    </Card>
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <CardTitle className="font-headline">RAM Usage History</CardTitle>
+                                            <CardDescription>
+                                                Average for selected period: <span className="font-semibold text-foreground">{avgRamPercent}% ({avgRam}MB)</span>
+                                            </CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="h-[250px] w-full">
+                                    {statusData && statusData.ramHistory.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={statusData.ramHistory} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="colorRamUsed" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.8} />
+                                                        <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="colorRamTotal" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.2} />
+                                                        <stop offset="95%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.05} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                                <Tooltip content={<CustomTooltip unit="MB" />} />
+                                                <Area type="monotone" dataKey="total" name="Total RAM" strokeWidth={1} stroke="hsl(var(--muted-foreground))" fill="url(#colorRamTotal)" fillOpacity={0.3} />
+                                                <Area type="monotone" dataKey="used" name="Used RAM" strokeWidth={2} stroke="hsl(var(--accent))" fill="url(#colorRamUsed)" />
+                                                <XAxis
+                                                    dataKey="timestamp"
+                                                    stroke="hsl(var(--muted-foreground))"
+                                                    fontSize={12}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickFormatter={(value) => {
+                                                        const date = new Date(value);
+                                                        if (isNaN(date.getTime())) return "";
+                                                        return format(date, timeFrame === '1h' ? "h:mm a" : "MMM d");
+                                                    }}
+                                                    interval="preserveStartEnd"
+                                                    minTickGap={30}
+                                                />
+                                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}MB`} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.1)]} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="flex justify-center items-center h-full text-muted-foreground">No RAM data available for this period.</div>
+                                    )}
+                                </CardContent>
+                            </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <CardTitle className="font-headline">RAM Usage History</CardTitle>
-                                    <CardDescription>
-                                        Average for selected period: <span className="font-semibold text-foreground">{avgRamPercent}% ({avgRam}MB)</span>
-                                    </CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="h-[250px] w-full">
-                            {statusData && statusData.ramHistory.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={statusData.ramHistory} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="colorRamUsed" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.8} />
-                                                <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
-                                            </linearGradient>
-                                            <linearGradient id="colorRamTotal" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.2} />
-                                                <stop offset="95%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.05} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                                        <Tooltip content={<CustomTooltip unit="MB" />} />
-                                        <Area type="monotone" dataKey="total" name="Total RAM" strokeWidth={1} stroke="hsl(var(--muted-foreground))" fill="url(#colorRamTotal)" fillOpacity={0.3} />
-                                        <Area type="monotone" dataKey="used" name="Used RAM" strokeWidth={2} stroke="hsl(var(--accent))" fill="url(#colorRamUsed)" />
-                                        <XAxis
-                                            dataKey="timestamp"
-                                            stroke="hsl(var(--muted-foreground))"
-                                            fontSize={12}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tickFormatter={(value) => {
-                                                const date = new Date(value);
-                                                if (isNaN(date.getTime())) return "";
-                                                return format(date, timeFrame === '1h' ? "h:mm a" : "MMM d");
-                                            }}
-                                            interval="preserveStartEnd"
-                                            minTickGap={30}
-                                        />
-                                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}MB`} domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.1)]} />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="flex justify-center items-center h-full text-muted-foreground">No RAM data available for this period.</div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <CardTitle className="font-headline">Network Traffic</CardTitle>
-                                    <CardDescription>
-                                        Bandwidth usage (Incoming/Outgoing) per minute
-                                    </CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="h-[250px] w-full">
-                            {statusData && statusData.networkHistory && statusData.networkHistory.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={statusData.networkHistory} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="colorNetRx" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8} />
-                                                <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
-                                            </linearGradient>
-                                            <linearGradient id="colorNetTx" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8} />
-                                                <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                                        <Tooltip content={<CustomTooltip unit="MB" />} />
-                                        <Area type="monotone" dataKey="incoming" name="Incoming" strokeWidth={2} stroke="hsl(var(--chart-1))" fill="url(#colorNetRx)" />
-                                        <Area type="monotone" dataKey="outgoing" name="Outgoing" strokeWidth={2} stroke="hsl(var(--chart-2))" fill="url(#colorNetTx)" />
-                                        <XAxis
-                                            dataKey="timestamp"
-                                            stroke="hsl(var(--muted-foreground))"
-                                            fontSize={12}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tickFormatter={(value) => {
-                                                const date = new Date(value);
-                                                if (isNaN(date.getTime())) return "";
-                                                return format(date, timeFrame === '1h' ? "h:mm a" : "MMM d");
-                                            }}
-                                            interval="preserveStartEnd"
-                                            minTickGap={30}
-                                        />
-                                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}MB`} />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="flex justify-center items-center h-full text-muted-foreground">No Network data available for this period.</div>
-                            )}
-                        </CardContent>
-                    </Card>
-
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <CardTitle className="font-headline">Network Traffic</CardTitle>
+                                            <CardDescription>
+                                                Bandwidth usage (Incoming/Outgoing) per minute
+                                            </CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="h-[250px] w-full">
+                                    {statusData && statusData.networkHistory && statusData.networkHistory.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={statusData.networkHistory} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="colorNetRx" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8} />
+                                                        <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="colorNetTx" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8} />
+                                                        <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                                <Tooltip content={<CustomTooltip unit="MB" />} />
+                                                <Area type="monotone" dataKey="incoming" name="Incoming" strokeWidth={2} stroke="hsl(var(--chart-1))" fill="url(#colorNetRx)" />
+                                                <Area type="monotone" dataKey="outgoing" name="Outgoing" strokeWidth={2} stroke="hsl(var(--chart-2))" fill="url(#colorNetTx)" />
+                                                <XAxis
+                                                    dataKey="timestamp"
+                                                    stroke="hsl(var(--muted-foreground))"
+                                                    fontSize={12}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickFormatter={(value) => {
+                                                        const date = new Date(value);
+                                                        if (isNaN(date.getTime())) return "";
+                                                        return format(date, timeFrame === '1h' ? "h:mm a" : "MMM d");
+                                                    }}
+                                                    interval="preserveStartEnd"
+                                                    minTickGap={30}
+                                                />
+                                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}MB`} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="flex justify-center items-center h-full text-muted-foreground">No Network data available for this period.</div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

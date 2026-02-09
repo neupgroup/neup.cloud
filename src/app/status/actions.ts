@@ -125,7 +125,7 @@ export async function getStatus(
     const startSec = Math.floor(startTs / 1000);
     const endSec = Math.floor(endTs / 1000);
 
-    const checkPidCmd = `if pgrep -x neup-logger > /dev/null; then echo "active"; else echo "inactive"; fi`;
+    const checkPidCmd = `if pgrep -f neup-logger > /dev/null; then echo "active"; else echo "inactive"; fi`;
 
 
     let intervalSec = 0;
