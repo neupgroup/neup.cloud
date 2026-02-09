@@ -159,5 +159,37 @@ fi`,
                 uninstallCommand: 'echo "Environment variables will be removed with the package"'
             }
         ]
+    },
+    {
+        id: 'nginx',
+        title: 'Nginx Web Server',
+        description: 'High-performance HTTP server and reverse proxy. Essential for serving web applications and handling SSL/TLS.',
+        icon: 'Globe',
+        steps: [
+            {
+                name: 'Install Nginx',
+                description: 'Install Nginx from official repositories.',
+                icon: 'Download',
+                checkCommand: 'nginx -v',
+                installCommand: 'sudo apt-get update && sudo apt-get install -y nginx',
+                uninstallCommand: 'sudo apt-get purge -y nginx && sudo apt-get autoremove -y'
+            },
+            {
+                name: 'Verify Service',
+                description: 'Ensure Nginx is running and enabled.',
+                icon: 'Activity',
+                checkCommand: 'sudo systemctl is-active nginx',
+                installCommand: 'sudo systemctl start nginx && sudo systemctl enable nginx',
+                uninstallCommand: 'sudo systemctl stop nginx || true'
+            },
+            {
+                name: 'Firewall Configuration',
+                description: 'Allow HTTP and HTTPS traffic through ufw.',
+                icon: 'ShieldCheck',
+                checkCommand: 'sudo ufw status | grep -q "Nginx Full"',
+                installCommand: 'sudo ufw allow "Nginx Full"',
+                uninstallCommand: 'sudo ufw delete allow "Nginx Full" || true'
+            }
+        ]
     }
 ];
