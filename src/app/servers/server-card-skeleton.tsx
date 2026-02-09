@@ -11,24 +11,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function ServerCardSkeleton() {
   return (
-    <Card className="flex flex-col">
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <Skeleton className="h-6 w-32 mb-2" />
-            <Skeleton className="h-4 w-48" />
+    <div className="flex flex-col gap-2 p-4">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2 w-full">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-5 w-16 rounded-full" />
           </div>
-          <Skeleton className="h-8 w-8" />
+          <div className="flex items-center gap-4 pl-6">
+            <Skeleton className="h-3 w-32" />
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-3 w-20" />
+          </div>
         </div>
-      </CardHeader>
-      <CardContent className="flex-grow space-y-4">
-        <div className="text-sm text-muted-foreground space-y-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-4 w-20" />
-        </div>
-      </CardContent>
-    </Card>
+        <Skeleton className="h-8 w-8 rounded-md" />
+      </div>
+    </div>
   );
 }

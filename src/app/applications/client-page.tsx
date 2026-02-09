@@ -63,32 +63,38 @@ export default function AppsPage() {
         serverName={serverName}
       />
 
-      <div className="grid grid-cols-1 gap-6">
-        <Link href="/applications/deploy">
-          <Card
-            className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed hover:border-primary hover:bg-muted/50 cursor-pointer transition-colors"
-          >
-            <PlusCircle className="h-10 w-10 text-muted-foreground mb-2" />
-            <h3 className="text-lg font-semibold">Deploy New Application</h3>
-            <p className="text-muted-foreground text-sm">Deploy a new application to your infrastructure.</p>
-          </Card>
+      <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
+        {/* Deploy New App Item */}
+        <Link href="/applications/deploy" className="block p-4 border-b border-border hover:bg-muted/50 transition-colors group">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <PlusCircle className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-medium text-foreground">Deploy New Application</h3>
+              <p className="text-sm text-muted-foreground">Deploy a new application to your infrastructure</p>
+            </div>
+          </div>
         </Link>
+
         {isLoading ? (
-          <>
+          <div className="p-4 space-y-4">
             <ApplicationCardSkeleton />
             <ApplicationCardSkeleton />
-          </>
+          </div>
         ) : error ? (
-          <Card className="text-center p-6 text-destructive">Error loading applications: {error.message}</Card>
+          <div className="p-6 text-center text-destructive">Error loading applications: {error.message}</div>
         ) : (
-          applications.map((app) => (
-            <ApplicationCard key={app.id} application={app} />
+          applications.map((app, index) => (
+            <div key={app.id} className={index !== applications.length - 1 ? "border-b border-border" : ""}>
+              <ApplicationCard application={app} />
+            </div>
           ))
         )}
         {!isLoading && !error && applications.length === 0 && (
-          <Card className="text-center p-8 text-muted-foreground">You haven't deployed any applications yet.</Card>
+          <div className="p-8 text-center text-muted-foreground">You haven't deployed any applications yet.</div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
