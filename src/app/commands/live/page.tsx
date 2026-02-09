@@ -1,6 +1,11 @@
 import { cookies } from 'next/headers';
 import { getServer } from '@/app/servers/actions';
 import ClientTerminal from './client';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: "Live Terminal, Neup.Cloud",
+};
 
 export default async function LiveConsolePage() {
     const cookieStore = await cookies();
