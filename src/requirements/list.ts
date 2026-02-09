@@ -191,5 +191,37 @@ fi`,
                 uninstallCommand: 'sudo ufw delete allow "Nginx Full" || true'
             }
         ]
+    },
+    {
+        id: 'ufw',
+        title: 'UFW Firewall',
+        description: 'The Uncomplicated Firewall (UFW) is a frontend for iptables and is particularly well-suited for host-based firewalls.',
+        icon: 'Shield',
+        steps: [
+            {
+                name: 'Install UFW',
+                description: 'Install the UFW package.',
+                icon: 'Download',
+                checkCommand: 'ufw --version',
+                installCommand: 'sudo apt-get update && sudo apt-get install -y ufw',
+                uninstallCommand: 'sudo apt-get purge -y ufw && sudo apt-get autoremove -y'
+            },
+            {
+                name: 'Allow SSH',
+                description: 'Ensure SSH access is allowed before enabling the firewall to prevent lockout.',
+                icon: 'Lock',
+                checkCommand: 'sudo ufw status verbose | grep -q "22/tcp.*ALLOW"',
+                installCommand: 'sudo ufw allow ssh',
+                uninstallCommand: 'sudo ufw delete allow ssh || true'
+            },
+            {
+                name: 'Enable Firewall',
+                description: 'Enable and start the firewall service.',
+                icon: 'Power',
+                checkCommand: 'sudo ufw status | grep -q "Status: active"',
+                installCommand: 'echo "y" | sudo ufw enable',
+                uninstallCommand: 'sudo ufw disable'
+            }
+        ]
     }
 ];
