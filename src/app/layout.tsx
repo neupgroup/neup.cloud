@@ -336,17 +336,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
         ))}
       </div>
 
-      <div className="space-y-2">
-        <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
-          Root
-        </div>
-        {rootLinks.map(({ href, label, icon: Icon }) => (
-          <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
-            <Icon className="h-4 w-4" />
-            <span>{label}</span>
-          </NavLink>
-        ))}
-      </div>
+
     </nav>
   );
 }
