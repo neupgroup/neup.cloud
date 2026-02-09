@@ -272,5 +272,27 @@ sudo systemctl daemon-reload`
                 installCommand: 'sudo systemctl enable neup-logger && sudo systemctl start neup-logger'
             }
         ]
+    },
+    {
+        id: 'uncrashable',
+        title: 'Uncrashable',
+        description: 'Hardens the server against total lockups and ensures SSH priority even under heavy load.',
+        icon: 'ShieldAlert',
+        steps: [
+            {
+                name: 'SSH Immunity',
+                description: 'Protects the SSH process from being killed by the OOM (Out-of-Memory) killer.',
+                icon: 'Shield',
+                checkCommand: '[ -f /etc/systemd/system/ssh.service.d/override.conf ] && grep -q "OOMScoreAdjust=-1000" /etc/systemd/system/ssh.service.d/override.conf',
+                installCommand: `sudo mkdir -p /etc/systemd/system/ssh.service.d && echo -e "[Service]\nOOMScoreAdjust=-1000" | sudo tee /etc/systemd/system/ssh.service.d/override.conf && sudo systemctl daemon-reload && sudo systemctl restart ssh`
+            },
+            {
+                name: 'Emergency RAM Buffer (5%)',
+                description: 'Reserves 5% of system RAM for kernel and emergency admin operations to prevent total system freezes.',
+                icon: 'Zap',
+                checkCommand: '[ -f /etc/sysctl.d/99-emergency-buffer.conf ]',
+                installCommand: `TOTAL_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}') && FIVE_PERCENT=$((TOTAL_KB * 5 / 100)) && echo "vm.min_free_kbytes = $FIVE_PERCENT" | sudo tee /etc/sysctl.d/99-emergency-buffer.conf && sudo sysctl -p /etc/sysctl.d/99-emergency-buffer.conf`
+            }
+        ]
     }
 ];
