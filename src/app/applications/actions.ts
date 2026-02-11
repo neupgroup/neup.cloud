@@ -368,24 +368,32 @@ export async function performGitOperation(
 
     // Helper to wrap command with key creation and cleanup
     const wrapWithKey = (cmdGenerator: (keyPath: string) => string) => {
-        if (!keyFilePath || !privateKey) return cmdGenerator(''); // Should fail if private but no key, but maybe user set up agent
-
-        // Escape newlines in private key for echo
-        // Ensure we preserve newlines in the key file
-        const echoKey = `cat <<EOF > "${keyFilePath}"
-${privateKey}
-EOF
-chmod 600 "${keyFilePath}"
-`;
-
-        const coreCmd = cmdGenerator(keyFilePath);
+        if (!privateKey) return cmdGenerator('');
 
         return `
-${echoKey}
+# Safety & Cleanup Wrapper
+set -euo pipefail
 
-${coreCmd}
+# Define cleanup function
+CLEANUP_PATHS=""
+cleanup() {
+    for path in $CLEANUP_PATHS; do
+        [ -e "$path" ] && rm -rf "$path"
+    done
+}
+trap cleanup EXIT
 
-rm -f "${keyFilePath}"
+# Create Key
+KEY_PATH="$(mktemp)"
+CLEANUP_PATHS="$CLEANUP_PATHS $KEY_PATH"
+
+cat <<EOF > "$KEY_PATH"
+${privateKey}
+EOF
+chmod 600 "$KEY_PATH"
+
+# Execute Command
+${cmdGenerator('"$KEY_PATH"')}
 `;
     };
 
@@ -700,10 +708,27 @@ export async function getProcessDetails(provider: string, name: string) {
         const statusRes = await executeQuickCommand(serverId, statusCmd);
         if (statusRes.error || !statusRes.output) return null;
 
-        const line = statusRes.output.trim();
-        // Match: "name state description"
-        // e.g. "worker RUNNING pid 123, uptime..."
-        const match = line.match(/^(\S+)\s+(\S+)\s+(.*)$/);
+        const output = (statusRes.output || "").trim();
+        if (!output || output.includes("No such process")) return null;
+
+        // Split lines and find the one starting with the name
+        const lines = output.split('\n');
+        let match = null;
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            // Regex to match standard supervisor status line
+            const m = trimmed.match(/^(\S+)\s+(\S+)\s+(.*)$/);
+            if (m) {
+                const procName = m[1];
+                // Check if it matches the requested name (allowing for group:name format)
+                if (procName === name || procName.endsWith(`:${name}`)) {
+                    match = m;
+                    break;
+                }
+            }
+        }
+
         if (!match) return null;
 
         const state = match[2]; // RUNNING, STOPPED, FATAL, etc.
