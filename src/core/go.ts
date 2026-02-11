@@ -35,7 +35,8 @@ export const getCommands = (context: CommandContext): CommandDefinition[] => {
     // For Go, entryFile might be main.go, or the directory '.'
     const entryFile = context.entryFile || '.';
     // We'll use the sanitizedAppName as the binary name
-    const binaryName = sanitizedAppName;
+    // User request: use the same name for the build as well (preserve case/length if possible)
+    const binaryName = context.appName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-\.]/g, '');
 
     const portFinderScript = portsStr ? `
 find_port() {
