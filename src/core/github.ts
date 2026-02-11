@@ -26,8 +26,11 @@ export interface GitCommandContext {
 }
 
 /**
- * Clone Command (Public)
+ * ============================================================================
+ * PUBLIC COMMANDS
+ * ============================================================================
  */
+
 export const clonePublic = (context: GitCommandContext): CommandDefinition => ({
     title: 'Clone Repository',
     description: 'Clone the repository from GitHub',
@@ -35,27 +38,13 @@ export const clonePublic = (context: GitCommandContext): CommandDefinition => ({
     status: 'published',
     type: 'normal',
     command: {
-        mainCommand: getPublicCloneCommand(context.appLocation, context.repoUrl || '')
+        mainCommand: getPublicCloneCommand(
+            context.appLocation,
+            context.repoUrl!
+        )
     }
 });
 
-/**
- * Clone Command (Private)
- */
-export const clonePrivate = (context: GitCommandContext): CommandDefinition => ({
-    title: 'Clone Repository',
-    description: 'Clone the private repository using SSH key',
-    icon: 'GitBranch',
-    status: 'published',
-    type: 'normal',
-    command: {
-        mainCommand: getPrivateCloneCommand(context.appLocation, context.repoUrl || '', context.keyPath || '')
-    }
-});
-
-/**
- * Pull Command (Public)
- */
 export const pull = (context: GitCommandContext): CommandDefinition => ({
     title: 'Pull Changes',
     description: 'Pull latest changes from the repository',
@@ -63,27 +52,13 @@ export const pull = (context: GitCommandContext): CommandDefinition => ({
     status: 'published',
     type: 'normal',
     command: {
-        mainCommand: getPullCommand(context.appLocation, context.branch || 'main')
+        mainCommand: getPullCommand(
+            context.appLocation,
+            context.branch || 'main'
+        )
     }
 });
 
-/**
- * Pull Command (Private)
- */
-export const pullPrivate = (context: GitCommandContext): CommandDefinition => ({
-    title: 'Pull Changes',
-    description: 'Pull latest changes from private repository',
-    icon: 'Download',
-    status: 'published',
-    type: 'normal',
-    command: {
-        mainCommand: getPrivatePullCommand(context.appLocation, context.keyPath || '', context.branch || 'main')
-    }
-});
-
-/**
- * Pull Force Command (Public)
- */
 export const pullForce = (context: GitCommandContext): CommandDefinition => ({
     title: 'Force Pull',
     description: 'Force pull and overwrite local changes',
@@ -91,27 +66,13 @@ export const pullForce = (context: GitCommandContext): CommandDefinition => ({
     status: 'published',
     type: 'destructive',
     command: {
-        mainCommand: getPullForceCommand(context.appLocation, context.branch || 'main')
+        mainCommand: getPullForceCommand(
+            context.appLocation,
+            context.branch || 'main'
+        )
     }
 });
 
-/**
- * Pull Force Command (Private)
- */
-export const pullForcePrivate = (context: GitCommandContext): CommandDefinition => ({
-    title: 'Force Pull',
-    description: 'Force pull from private repository and overwrite local changes',
-    icon: 'Download',
-    status: 'published',
-    type: 'destructive',
-    command: {
-        mainCommand: getPrivatePullForceCommand(context.appLocation, context.keyPath || '', context.branch || 'main')
-    }
-});
-
-/**
- * Reset Command (Public)
- */
 export const reset = (context: GitCommandContext): CommandDefinition => ({
     title: 'Reset',
     description: 'Reset to a specific commit or branch',
@@ -119,137 +80,206 @@ export const reset = (context: GitCommandContext): CommandDefinition => ({
     status: 'published',
     type: 'destructive',
     command: {
-        mainCommand: getResetCommand(context.appLocation, context.targetRef || 'origin/main')
+        mainCommand: getResetCommand(
+            context.appLocation,
+            context.targetRef || 'origin/main'
+        )
     }
 });
 
 /**
- * Reset Command (Private)
+ * ============================================================================
+ * PRIVATE COMMANDS
+ * ============================================================================
  */
+
+export const clonePrivate = (context: GitCommandContext): CommandDefinition => ({
+    title: 'Clone Repository',
+    description: 'Clone private repository using SSH key',
+    icon: 'GitBranch',
+    status: 'published',
+    type: 'normal',
+    command: {
+        mainCommand: getPrivateCloneCommand(
+            context.appLocation,
+            context.repoUrl!,
+            context.keyPath || '/root/.ssh/id_ed25519'
+        )
+    }
+});
+
+export const pullPrivate = (context: GitCommandContext): CommandDefinition => ({
+    title: 'Pull Changes',
+    description: 'Pull latest changes from private repository',
+    icon: 'Download',
+    status: 'published',
+    type: 'normal',
+    command: {
+        mainCommand: getPrivatePullCommand(
+            context.appLocation,
+            context.keyPath || '/root/.ssh/id_ed25519',
+            context.branch || 'main'
+        )
+    }
+});
+
+export const pullForcePrivate = (context: GitCommandContext): CommandDefinition => ({
+    title: 'Force Pull',
+    description: 'Force pull from private repository',
+    icon: 'Download',
+    status: 'published',
+    type: 'destructive',
+    command: {
+        mainCommand: getPrivatePullForceCommand(
+            context.appLocation,
+            context.keyPath || '/root/.ssh/id_ed25519',
+            context.branch || 'main'
+        )
+    }
+});
+
 export const resetPrivate = (context: GitCommandContext): CommandDefinition => ({
     title: 'Reset',
-    description: 'Reset private repository to a specific commit or branch',
+    description: 'Reset private repository to a ref',
     icon: 'RotateCcw',
     status: 'published',
     type: 'destructive',
     command: {
-        mainCommand: getPrivateResetCommand(context.appLocation, context.keyPath || '', context.targetRef || 'origin/main')
+        mainCommand: getPrivateResetCommand(
+            context.appLocation,
+            context.keyPath || '/root/.ssh/id_ed25519',
+            context.targetRef || 'origin/main'
+        )
     }
 });
 
-// ============================================================================
-// Legacy Command Generators (for backward compatibility)
-// ============================================================================
+/**
+ * ============================================================================
+ * COMMAND GENERATORS (ROBUST + FAIL-FAST)
+ * ============================================================================
+ */
 
-export const getPublicCloneCommand = (appLocation: string, repoUrl: string) => {
-    return `
-# Public Clone Strategy
-# Ensure directory exists
-mkdir -p "${appLocation}"
+export const getPublicCloneCommand = (appLocation: string, repoUrl: string) => `
+set -e
 
-# Check if directory is empty
-if [ "$(ls -A ${appLocation})" ]; then
-    echo "Warning: Directory ${appLocation} is not empty."
-    # We proceed anyway as requested to "clone right there", effectively merging/overwriting
-    # But standard git clone fails if target dir not empty.
-    # Hence our "clone to temp and move" strategy is actually robust for this.
-    # But let's refine to be explicit about the workflow asked.
+if [ -z "${repoUrl}" ]; then
+  echo "❌ ERROR: Repository URL is missing"
+  exit 1
 fi
 
+mkdir -p "${appLocation}"
 cd "${appLocation}"
 
-# 1. Clone into a temporary unique directory inside the app location to avoid cross-device move errors
 TEMP_DIR="temp_clone_$(date +%s)"
-git clone "${repoUrl}" "$TEMP_DIR"
 
-# 2. Move all contents from temp dir to current dir (appLocation)
-# shopt -s dotglob enables matching hidden files with *
+cleanup() {
+  rm -rf "$TEMP_DIR"
+}
+trap cleanup EXIT
+
+echo "🚀 Cloning repository..."
+if ! git clone "${repoUrl}" "$TEMP_DIR"; then
+  echo "❌ Git clone failed"
+  exit 1
+fi
+
 shopt -s dotglob
 cp -rf "$TEMP_DIR"/* .
 shopt -u dotglob
 
-# 3. Clean up the temp directory
-rm -rf "$TEMP_DIR"
+echo "✅ Clone completed successfully"
 `;
-};
 
-export const getPrivateCloneCommand = (appLocation: string, repoUrl: string, keyPath: string = '/root/.ssh/id_ed25519') => {
-    return `
-# Private Clone Strategy using SSH Key
-# Ensure Key Permissions
+export const getPrivateCloneCommand = (
+    appLocation: string,
+    repoUrl: string,
+    keyPath: string
+) => `
+set -e
+
+if [ ! -f "${keyPath}" ]; then
+  echo "❌ ERROR: SSH key not found at ${keyPath}"
+  exit 1
+fi
+
 chmod 600 "${keyPath}"
 
-# Ensure directory exists
 mkdir -p "${appLocation}"
-
 cd "${appLocation}"
 
-# Use GIT_SSH_COMMAND to force using the specific key
-export GIT_SSH_COMMAND="ssh -i ${keyPath} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
-
-# 1. Clone into a temporary unique directory inside
 TEMP_DIR="temp_clone_$(date +%s)"
-git clone "${repoUrl}" "$TEMP_DIR"
 
-# 2. Move contents
+cleanup() {
+  rm -rf "$TEMP_DIR"
+}
+trap cleanup EXIT
+
+export GIT_SSH_COMMAND="ssh -i ${keyPath} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
+echo "🚀 Cloning private repository..."
+if ! git clone "${repoUrl}" "$TEMP_DIR"; then
+  echo "❌ Private git clone failed (check SSH key & repo access)"
+  exit 1
+fi
+
 shopt -s dotglob
 cp -rf "$TEMP_DIR"/* .
 shopt -u dotglob
 
-# 3. Clean up
-rm -rf "$TEMP_DIR"
+echo "✅ Private clone completed successfully"
 `;
-};
 
-export const getPullCommand = (appLocation: string, branch: string = 'main') => {
-    return `
+export const getPullCommand = (appLocation: string, branch: string) => `
+set -e
 cd "${appLocation}"
 git pull origin "${branch}"
 `;
-};
 
-export const getPrivatePullCommand = (appLocation: string, keyPath: string, branch: string = 'main') => {
-    return `
+export const getPrivatePullCommand = (
+    appLocation: string,
+    keyPath: string,
+    branch: string
+) => `
+set -e
 cd "${appLocation}"
-# Set SSH command for this operation
-export GIT_SSH_COMMAND="ssh -i ${keyPath} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+export GIT_SSH_COMMAND="ssh -i ${keyPath} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 git pull origin "${branch}"
 `;
-};
 
-export const getPullForceCommand = (appLocation: string, branch: string = 'main') => {
-    return `
+export const getPullForceCommand = (appLocation: string, branch: string) => `
+set -e
 cd "${appLocation}"
 git fetch --all
 git reset --hard "origin/${branch}"
-git pull origin "${branch}" --force
 `;
-};
 
-export const getPrivatePullForceCommand = (appLocation: string, keyPath: string, branch: string = 'main') => {
-    return `
+export const getPrivatePullForceCommand = (
+    appLocation: string,
+    keyPath: string,
+    branch: string
+) => `
+set -e
 cd "${appLocation}"
-export GIT_SSH_COMMAND="ssh -i ${keyPath} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+export GIT_SSH_COMMAND="ssh -i ${keyPath} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 git fetch --all
 git reset --hard "origin/${branch}"
-git pull origin "${branch}" --force
 `;
-};
 
-export const getResetCommand = (appLocation: string, targetRef: string) => {
-    // targetRef should be like 'origin/main' or 'HEAD' or a commit hash
-    return `
+export const getResetCommand = (appLocation: string, targetRef: string) => `
+set -e
 cd "${appLocation}"
 git fetch --all
 git reset --hard "${targetRef}"
 `;
-};
 
-export const getPrivateResetCommand = (appLocation: string, keyPath: string, targetRef: string) => {
-    return `
+export const getPrivateResetCommand = (
+    appLocation: string,
+    keyPath: string,
+    targetRef: string
+) => `
+set -e
 cd "${appLocation}"
-export GIT_SSH_COMMAND="ssh -i ${keyPath} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+export GIT_SSH_COMMAND="ssh -i ${keyPath} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 git fetch --all
 git reset --hard "${targetRef}"
 `;
-};
