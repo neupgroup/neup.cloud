@@ -400,6 +400,8 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log;
 
+    client_max_body_size 100M;
+
 ${locationBlocks}${defaultLocation}}
 `;
                 }
@@ -417,6 +419,8 @@ server {
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log;
 
+    client_max_body_size 100M;
+
 ${locationBlocks}${defaultLocation}}
 `;
             } else {
@@ -431,6 +435,8 @@ server {
 
     access_log /var/log/nginx/access.log;
     error_log /var/log/nginx/error.log;
+
+    client_max_body_size 100M;
 
 ${locationBlocks}${defaultLocation}}
 `;

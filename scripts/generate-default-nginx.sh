@@ -72,6 +72,9 @@ server {
     ssl_certificate     $CERT_PATH;
     ssl_certificate_key $KEY_PATH;
 
+    # Body Size Limit
+    client_max_body_size 100M;
+
     # TLS hardening
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_session_cache off;

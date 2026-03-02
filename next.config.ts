@@ -1,16 +1,8 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '10mb',
-    },
-  },
   typescript: {
     ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
   },
   images: {
     remotePatterns: [
@@ -36,7 +28,11 @@ const nextConfig: NextConfig = {
   },
   // Exclude server-only packages from webpack bundling
   serverExternalPackages: ['ssh2', 'node-ssh', 'cpu-features'],
-
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '100mb',
+    },
+  },
 };
 
 export default nextConfig;

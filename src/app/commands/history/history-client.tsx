@@ -20,7 +20,9 @@ import { getServerLogs } from '../../servers/[id]/actions';
 import { getSavedCommands } from '../actions';
 import { SavedCommand } from '../types';
 import { PageTitleWithComponent } from '@/components/page-header';
-import { cn } from '@/lib/utils'; // Included this
+import { cn } from '@/lib/utils';
+import { initializeFirebase } from '@/firebase';
+import { collection, query, where, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
 
 import type { ServerLog } from './page';
 
@@ -60,9 +62,38 @@ export function HistoryClient({ initialLogs, serverId, serverName }: { initialLo
 
   const [logs, setLogs] = useState(initialLogs);
   const [savedCommands, setSavedCommands] = useState<SavedCommand[]>([]);
-  const [isLoading, setIsLoading] = useState(true); // Start loading to fetch saved commands
+  const [isLoading, setIsLoading] = useState(false); // Changed to false as initialLogs are provided
 
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
+
+  // Setup Real-time Listener for Logs
+  useEffect(() => {
+    if (!serverId) return;
+
+    const { firestore } = initializeFirebase();
+    const logsQuery = query(
+      collection(firestore, "serverLogs"),
+      where("serverId", "==", serverId),
+      orderBy("runAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(logsQuery, (snapshot) => {
+      const newLogs = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          runAt: data.runAt instanceof Timestamp ? data.runAt.toDate().toISOString() : data.runAt,
+        } as ServerLog;
+      });
+      setLogs(newLogs);
+    }, (error) => {
+      console.error("Error listening to logs:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to listen for log updates.' });
+    });
+
+    return () => unsubscribe();
+  }, [serverId, toast]);
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
@@ -81,13 +112,10 @@ export function HistoryClient({ initialLogs, serverId, serverName }: { initialLo
   useEffect(() => {
     async function fetchData() {
       try {
-        // We need saved commands to map scripts to names
         const commands = await getSavedCommands();
         setSavedCommands(commands as SavedCommand[]);
       } catch (e) {
         console.error("Failed to fetch saved commands for history mapping", e);
-      } finally {
-        setIsLoading(false);
       }
     }
     fetchData();

@@ -83,6 +83,9 @@ export function generateNginxConfig(input: NginxConfigInput): string {
     listen [::]:${port};
     server_name ${domain};
 
+    # Body Size Limit
+    client_max_body_size 100M;
+
     # Logging
     access_log /var/log/nginx/${domain}.access.log;
     error_log /var/log/nginx/${domain}.error.log;
