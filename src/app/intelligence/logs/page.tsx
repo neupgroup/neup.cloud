@@ -1,26 +1,36 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { History, ReceiptText, ScrollText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ScrollText } from 'lucide-react';
 
 import { PageTitle } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { getCurrentIntelligenceAccountId } from '@/lib/intelligence/account';
-import { getIntelligenceLogs, parseLogContext } from '@/lib/intelligence/store';
+import { getPaginatedIntelligenceLogs, parseLogContext } from '@/lib/intelligence/store';
 
 export const metadata: Metadata = {
   title: 'Intelligence Logs, Neup.Cloud',
 };
 
-export default async function IntelligenceLogsPage() {
-  const logs = await getIntelligenceLogs(await getCurrentIntelligenceAccountId());
+export default async function IntelligenceLogsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const page = Number(resolvedSearchParams?.page || '1');
+  const {
+    logs,
+    currentPage,
+    totalPages,
+  } = await getPaginatedIntelligenceLogs(
+    await getCurrentIntelligenceAccountId(),
+    Number.isFinite(page) ? page : 1,
+    10
+  );
 
   return (
     <div className="grid gap-8">
@@ -31,38 +41,10 @@ export default async function IntelligenceLogsPage() {
             Intelligence Logs
           </span>
         }
-        description="A placeholder area for request history, responses, model usage, and balance changes."
+        description="Completed intelligence requests with compact summaries and expandable details."
       />
 
-      <Card className="border-primary/15 bg-gradient-to-br from-primary/5 via-background to-background">
-        <CardHeader className="space-y-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <History className="h-6 w-6" />
-          </div>
-          <CardTitle className="text-2xl font-headline">
-            Log history will appear here
-          </CardTitle>
-          <CardDescription className="max-w-2xl text-base">
-            This page shows completed intelligence requests. Logs appear only after a response finishes and usage is known.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 sm:flex-row">
-          <Button asChild>
-            <Link href="/intelligence/logs/recharge">Open Recharge</Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/intelligence/access">Manage Access</Link>
-          </Button>
-        </CardContent>
-      </Card>
-
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 font-headline">
-            <ReceiptText className="h-5 w-5 text-primary" />
-            Recent Logs
-          </CardTitle>
-        </CardHeader>
         <CardContent>
           {logs.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -72,61 +54,106 @@ export default async function IntelligenceLogsPage() {
             <div className="grid gap-4">
               {logs.map((log) => {
                 const parsedContext = parseLogContext(log.context);
+                const queryText = (parsedContext.query || log.query || '').trim();
+                const masterPrompt = parsedContext.masterPrompt.trim();
+                const contextText = parsedContext.displayContext.trim();
+                const responseText = (log.response || '').trim();
 
                 return (
-                  <Card key={log.id} className="border-border/70">
-                    <CardHeader className="gap-3">
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div className="space-y-1">
-                          <CardTitle className="font-headline">
-                            {log.prompt_id}
-                          </CardTitle>
-                          <CardDescription>
-                            Access ID: {log.access_id}
-                          </CardDescription>
+                  <details
+                    key={log.id}
+                    className="group rounded-xl border border-border/70 bg-card transition-colors hover:border-primary/30"
+                  >
+                    <summary className="cursor-pointer list-none p-5">
+                      <div className="grid gap-4">
+                        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                          <span><span className="font-medium text-foreground">account_id:</span> {log.account_id}</span>
+                          <span><span className="font-medium text-foreground">access_id:</span> {log.access_id}</span>
+                          {log.modal && <span><span className="font-medium text-foreground">model:</span> {log.modal}</span>}
+                          {log.inputTokens !== null && <span><span className="font-medium text-foreground">input token:</span> {log.inputTokens}</span>}
+                          {log.outputTokens !== null && <span><span className="font-medium text-foreground">output token:</span> {log.outputTokens}</span>}
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="secondary">Log {log.id}</Badge>
-                          <Badge variant="outline">{log.modal || 'Unknown model'}</Badge>
-                          {parsedContext.usageTokens !== null && (
-                            <Badge variant="outline">Cost {parsedContext.usageTokens} tokens</Badge>
+                        <div className="grid gap-2">
+                          <p className="text-sm font-medium text-foreground">Query</p>
+                          {queryText ? (
+                            <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm whitespace-pre-wrap text-muted-foreground">
+                              {queryText}
+                            </div>
+                          ) : (
+                            <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm text-muted-foreground">
+                              No query stored
+                            </div>
                           )}
-                          {parsedContext.estimatedCost !== null && (
-                            <Badge variant="outline">${parsedContext.estimatedCost}</Badge>
-                          )}
-                          {log.balance !== null && (
-                            <Badge variant="outline">Balance {log.balance}</Badge>
-                          )}
                         </div>
                       </div>
-                    </CardHeader>
-                    <CardContent className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-foreground">Query</p>
-                        <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm whitespace-pre-wrap text-muted-foreground">
-                          {log.query || 'No query stored'}
+                    </summary>
+                    <div className="grid gap-4 border-t border-border/70 px-5 pb-5 pt-4 md:grid-cols-2">
+                      {masterPrompt && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-foreground">Master Prompt</p>
+                          <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm whitespace-pre-wrap text-muted-foreground">
+                            {masterPrompt}
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-foreground">Response</p>
-                        <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm whitespace-pre-wrap text-muted-foreground">
-                          {log.response || 'No response stored'}
+                      )}
+                      {contextText && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-foreground">Context</p>
+                          <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm whitespace-pre-wrap text-muted-foreground">
+                            {contextText}
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <p className="text-sm font-medium text-foreground">Context</p>
-                        <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm whitespace-pre-wrap text-muted-foreground">
-                          {parsedContext.displayContext || 'No context stored'}
+                      )}
+                      {responseText && (
+                        <div className="space-y-2 md:col-span-2">
+                          <p className="text-sm font-medium text-foreground">Response</p>
+                          <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm whitespace-pre-wrap text-muted-foreground">
+                            {responseText}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      )}
+                    </div>
+                  </details>
                 );
               })}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          {currentPage > 1 ? (
+            <Button variant="outline" asChild>
+              <Link href={`/intelligence/logs?page=${currentPage - 1}`}>
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Previous
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="outline" disabled>
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Previous
+            </Button>
+          )}
+          <p className="text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </p>
+          {currentPage < totalPages ? (
+            <Button variant="outline" asChild>
+              <Link href={`/intelligence/logs?page=${currentPage + 1}`}>
+                Next
+                <ChevronRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="outline" disabled>
+              Next
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

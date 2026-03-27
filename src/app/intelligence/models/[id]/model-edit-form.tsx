@@ -36,7 +36,8 @@ export default function ModelEditForm({
     provider: string;
     model: string;
     description: string | null;
-    price: Record<string, unknown>;
+    inputPrice: number;
+    outputPrice: number;
   };
 }) {
   const [state, updateAction, isPending] = useActionState(updateIntelligenceModelAction, initialState);
@@ -100,14 +101,31 @@ export default function ModelEditForm({
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="price">Price JSON</Label>
-              <Textarea
-                id="price"
-                name="price"
-                defaultValue={JSON.stringify(initialValues.price, null, 2)}
-                className="min-h-40 font-mono"
-              />
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="input_price">Input Price</Label>
+                <Input
+                  id="input_price"
+                  name="input_price"
+                  type="number"
+                  min="0"
+                  step="0.000001"
+                  defaultValue={String(initialValues.inputPrice)}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="output_price">Output Price</Label>
+                <Input
+                  id="output_price"
+                  name="output_price"
+                  type="number"
+                  min="0"
+                  step="0.000001"
+                  defaultValue={String(initialValues.outputPrice)}
+                  required
+                />
+              </div>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">

@@ -70,8 +70,6 @@ export default async function IntelligenceAccessDetailPage({
     findMatchingModelId(models, access.fallbackModel);
   const requestUrl = new URL('http://localhost:25683/bridge/api.v1/intelligence/getResponse');
 
-  requestUrl.searchParams.set('accessid', access.prompt_id);
-
   if (access.primaryModel) {
     requestUrl.searchParams.set('model', access.primaryModel);
   }
@@ -90,6 +88,7 @@ export default async function IntelligenceAccessDetailPage({
     '  -X POST',
     '  -H "Content-Type: application/json"',
     `  -H "userid: ${access.account_id}"`,
+    `  -H "accessid: ${access.prompt_id}"`,
     '  -H "tokenKey: xxxxxxx"',
     '  -H "authcode: xxxxxxx"',
     `  -d '${requestBody}'`,

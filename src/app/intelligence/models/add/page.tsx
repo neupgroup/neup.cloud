@@ -83,12 +83,28 @@ export default function IntelligenceModelsAddPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="price">Price JSON</Label>
-              <Textarea
-                id="price"
-                name="price"
-                placeholder='{"inputPer1M":0.15,"outputPer1M":0.6}'
-                className="min-h-32 font-mono"
+              <Label htmlFor="input_price">Input Price</Label>
+              <Input
+                id="input_price"
+                name="input_price"
+                type="number"
+                min="0"
+                step="0.000001"
+                placeholder="0.15"
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="output_price">Output Price</Label>
+              <Input
+                id="output_price"
+                name="output_price"
+                type="number"
+                min="0"
+                step="0.000001"
+                placeholder="0.60"
+                required
               />
             </div>
 

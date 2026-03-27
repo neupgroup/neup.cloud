@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 const RESPONSE_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, userid, tokenKey, tokenkey, x-userid, x-tokenkey',
+  'Access-Control-Allow-Headers': 'Content-Type, userid, tokenKey, tokenkey, accessid, accessId, x-userid, x-tokenkey, x-accessid',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Cache-Control': 'no-store',
 };
@@ -44,6 +44,9 @@ interface IntelligenceAccessRow {
 
 interface BuiltPrompt {
   renderedPrompt: string;
+  masterPrompt: string;
+  context: string;
+  query: string;
   hasMasterPrompt: boolean;
   hasContext: boolean;
   hasQuery: boolean;
@@ -55,10 +58,18 @@ interface StoredModelConfig {
   provider: string;
   model: string;
   description: string | null;
+  inputPrice: number;
+  outputPrice: number;
   price: Record<string, unknown>;
 }
 
-function buildStoredContext(rawContext: string, metadata: Record<string, unknown>): string {
+function buildStoredContext(
+  rawContext: string,
+  metadata: Record<string, unknown> & {
+    masterPrompt?: string;
+    query?: string;
+  }
+): string {
   let requestContext: unknown = rawContext;
 
   if (rawContext.trim()) {
@@ -70,13 +81,12 @@ function buildStoredContext(rawContext: string, metadata: Record<string, unknown
   }
 
   return JSON.stringify({
-    requestContext,
+    context: requestContext,
     ...metadata,
   });
 }
 
 const RESERVED_QUERY_KEYS = new Set([
-  'accessid',
   'prompt',
   'model',
   'parameter',
@@ -104,7 +114,7 @@ function successResponse(response: string, status = 200) {
 function errorResponse(message: string, status = 400) {
   return NextResponse.json(
     {
-      status: 'pass',
+      status: 'fail',
       error: message,
     },
     {
@@ -199,6 +209,10 @@ function buildPrompt(
 
   const sections: string[] = [];
 
+  if (userQuery.trim()) {
+    sections.push(`Query:\n${userQuery.trim()}`);
+  }
+
   if (substitutedMasterPrompt) {
     sections.push(`Master Prompt:\n${substitutedMasterPrompt}`);
   }
@@ -207,16 +221,15 @@ function buildPrompt(
     sections.push(`Context:\n${context.trim()}`);
   }
 
-  if (userQuery.trim()) {
-    sections.push(`Query:\n${userQuery.trim()}`);
-  }
-
   if (Object.keys(parameters).length > 0 && substitutedMasterPrompt === baseMasterPrompt) {
     sections.push(`Parameters:\n${JSON.stringify(parameters, null, 2)}`);
   }
 
   return {
     renderedPrompt: sections.join('\n\n').trim(),
+    masterPrompt: substitutedMasterPrompt,
+    context: context.trim(),
+    query: userQuery.trim(),
     hasMasterPrompt: Boolean(substitutedMasterPrompt),
     hasContext: Boolean(context.trim()),
     hasQuery: Boolean(userQuery.trim()),
@@ -247,6 +260,8 @@ function normalizeStoredModelConfig(value: unknown): StoredModelConfig | null {
     provider,
     model,
     description: typeof record.description === 'string' ? record.description : null,
+    inputPrice: Number.isFinite(Number(record.inputPrice)) ? Number(record.inputPrice) : 0,
+    outputPrice: Number.isFinite(Number(record.outputPrice)) ? Number(record.outputPrice) : 0,
     price: record.price && typeof record.price === 'object' && !Array.isArray(record.price)
       ? (record.price as Record<string, unknown>)
       : {},
@@ -290,11 +305,21 @@ function readPriceNumber(source: Record<string, unknown>, keys: string[]): numbe
 }
 
 function estimateModelCost(
-  price: Record<string, unknown>,
+  modelConfig: { inputPrice: number; outputPrice: number; price: Record<string, unknown> },
   inputTokens: number,
   outputTokens: number,
   usageTokens: number
 ): number | null {
+  if (modelConfig.inputPrice > 0 || modelConfig.outputPrice > 0) {
+    return Number(
+      (
+        ((inputTokens / 1_000_000) * modelConfig.inputPrice) +
+        ((outputTokens / 1_000_000) * modelConfig.outputPrice)
+      ).toFixed(8)
+    );
+  }
+
+  const price = modelConfig.price;
   const inputPer1M = readPriceNumber(price, ['inputPer1M', 'input_per_1m', 'input']);
   const outputPer1M = readPriceNumber(price, ['outputPer1M', 'output_per_1m', 'output']);
   const flatPer1M = readPriceNumber(price, ['per1M', 'per_1m', 'totalPer1M']);
@@ -388,15 +413,12 @@ async function parseInput(request: NextRequest): Promise<ParsedInput> {
     request.headers.get('tokenKey') ||
     request.headers.get('x-tokenkey') ||
     '';
+  const accessIdentifier =
+    request.headers.get('accessid') ||
+    request.headers.get('accessId') ||
+    request.headers.get('x-accessid') ||
+    '';
 
-  const accessIdentifier = String(
-    parsedBody?.accessid ||
-    parsedBody?.accessId ||
-    queryParameters.get('accessid') ||
-    queryParameters.get('accessId') ||
-    queryParameters.get('prompt') ||
-    ''
-  ).trim();
   const requestedModel = String(parsedBody?.model || queryParameters.get('model') || '').trim();
   const userQuery = String(
     parsedBody?.query ||
@@ -422,7 +444,7 @@ async function parseInput(request: NextRequest): Promise<ParsedInput> {
   return {
     accountId: accountId.trim(),
     tokenKey: tokenKey.trim(),
-    accessIdentifier,
+    accessIdentifier: accessIdentifier.trim(),
     requestedModel,
     parameters,
     context,
@@ -469,6 +491,7 @@ async function findAccessRow(accountId: string, accessIdentifier: string): Promi
 async function finalizeRequestLog(input: {
   accessId: number;
   query: string;
+  masterPrompt: string;
   context: string;
   modal: string;
   responseText: string;
@@ -496,14 +519,16 @@ async function finalizeRequestLog(input: {
 
   await db.query(
     `
-      INSERT INTO "intelligenceLog" (access_id, query, response, context, modal, balance)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO "intelligenceLog" (access_id, query, response, context, modal, "inputTokens", "outputTokens", balance)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `,
     [
       input.accessId,
       input.query,
       input.responseText,
       buildStoredContext(input.context, {
+        masterPrompt: input.masterPrompt,
+        query: input.query,
         status: 'success',
         usageTokens: input.usageTokens,
         inputTokens: input.inputTokens,
@@ -511,6 +536,8 @@ async function finalizeRequestLog(input: {
         estimatedCost: input.estimatedCost,
       }),
       input.modal,
+      input.inputTokens,
+      input.outputTokens,
       remainingBalance,
     ]
   );
@@ -519,6 +546,7 @@ async function finalizeRequestLog(input: {
 async function logFailedRequest(input: {
   accessId: number;
   query: string;
+  masterPrompt: string;
   context: string;
   modal: string;
   errorMessage: string;
@@ -528,19 +556,23 @@ async function logFailedRequest(input: {
   const db = getIntelligenceDbPool();
   await db.query(
     `
-      INSERT INTO "intelligenceLog" (access_id, query, response, context, modal, balance)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO "intelligenceLog" (access_id, query, response, context, modal, "inputTokens", "outputTokens", balance)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `,
     [
       input.accessId,
       input.query,
       `ERROR: ${input.errorMessage}`,
       buildStoredContext(input.context, {
+        masterPrompt: input.masterPrompt,
+        query: input.query,
         status: 'error',
         usageTokens: 0,
         estimatedCost: null,
       }),
       input.modal,
+      0,
+      0,
       input.balance,
     ]
   );
@@ -564,7 +596,7 @@ async function handleRequest(request: NextRequest) {
   }
 
   if (!input.accessIdentifier) {
-    return errorResponse('Invalid request parameters. Missing accessid.', 400);
+    return errorResponse('Missing accessid header', 400);
   }
 
   const access = await findAccessRow(input.accountId, input.accessIdentifier);
@@ -610,7 +642,11 @@ async function handleRequest(request: NextRequest) {
               provider: primaryModelConfig?.provider || null,
               model: primaryModelConfig?.model || primaryModel,
               identifier: getModelIdentifier(primaryModelConfig, primaryModel),
-              price: primaryModelConfig?.price || {},
+              modelConfig: {
+                inputPrice: primaryModelConfig?.inputPrice || 0,
+                outputPrice: primaryModelConfig?.outputPrice || 0,
+                price: primaryModelConfig?.price || {},
+              },
               apiKey: access.primaryAccessTokenKey,
               source: 'primary' as const,
             }
@@ -620,7 +656,11 @@ async function handleRequest(request: NextRequest) {
               provider: fallbackModelConfig?.provider || null,
               model: fallbackModelConfig?.model || fallbackModel,
               identifier: getModelIdentifier(fallbackModelConfig, fallbackModel),
-              price: fallbackModelConfig?.price || {},
+              modelConfig: {
+                inputPrice: fallbackModelConfig?.inputPrice || 0,
+                outputPrice: fallbackModelConfig?.outputPrice || 0,
+                price: fallbackModelConfig?.price || {},
+              },
               apiKey: access.fallbackAccessTokenKey,
               source: 'fallback' as const,
             }
@@ -632,7 +672,11 @@ async function handleRequest(request: NextRequest) {
               provider: primaryModelConfig?.provider || null,
               model: primaryModelConfig?.model || primaryModel,
               identifier: getModelIdentifier(primaryModelConfig, primaryModel),
-              price: primaryModelConfig?.price || {},
+              modelConfig: {
+                inputPrice: primaryModelConfig?.inputPrice || 0,
+                outputPrice: primaryModelConfig?.outputPrice || 0,
+                price: primaryModelConfig?.price || {},
+              },
               apiKey: access.primaryAccessTokenKey,
               source: 'primary' as const,
             }
@@ -642,7 +686,11 @@ async function handleRequest(request: NextRequest) {
               provider: fallbackModelConfig?.provider || null,
               model: fallbackModelConfig?.model || fallbackModel,
               identifier: getModelIdentifier(fallbackModelConfig, fallbackModel),
-              price: fallbackModelConfig?.price || {},
+              modelConfig: {
+                inputPrice: fallbackModelConfig?.inputPrice || 0,
+                outputPrice: fallbackModelConfig?.outputPrice || 0,
+                price: fallbackModelConfig?.price || {},
+              },
               apiKey: access.fallbackAccessTokenKey,
               source: 'fallback' as const,
             }
@@ -662,7 +710,11 @@ async function handleRequest(request: NextRequest) {
       provider: string | null;
       model: string;
       identifier: string;
-      price: Record<string, unknown>;
+      modelConfig: {
+        inputPrice: number;
+        outputPrice: number;
+        price: Record<string, unknown>;
+      };
       apiKey: string;
       source: 'primary' | 'fallback';
     } =>
@@ -686,7 +738,7 @@ async function handleRequest(request: NextRequest) {
       });
 
       const estimatedCost = estimateModelCost(
-        candidate.price,
+        candidate.modelConfig,
         modelResult.inputTokens,
         modelResult.outputTokens,
         modelResult.usageTokens
@@ -696,8 +748,9 @@ async function handleRequest(request: NextRequest) {
         try {
           await finalizeRequestLog({
             accessId: access.id,
-            query: promptPayload.renderedPrompt,
-            context: input.context,
+            query: promptPayload.query,
+            masterPrompt: promptPayload.masterPrompt,
+            context: promptPayload.context,
             modal: candidate.identifier,
             responseText: modelResult.responseText,
             usageTokens: modelResult.usageTokens,
@@ -721,8 +774,9 @@ async function handleRequest(request: NextRequest) {
     try {
       await logFailedRequest({
         accessId: access.id,
-        query: promptPayload.renderedPrompt,
-        context: input.context,
+        query: promptPayload.query,
+        masterPrompt: promptPayload.masterPrompt,
+        context: promptPayload.context,
         modal: usableCandidates.map((candidate) => candidate.identifier).join(' -> '),
         errorMessage: lastErrorMessage,
         balance: Number(access.balance),

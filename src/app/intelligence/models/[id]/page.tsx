@@ -48,7 +48,8 @@ export default async function IntelligenceModelDetailPage({
           provider: model.provider,
           model: model.model,
           description: model.description,
-          price: model.price,
+          inputPrice: model.inputPrice,
+          outputPrice: model.outputPrice,
         }}
       />
     </div>

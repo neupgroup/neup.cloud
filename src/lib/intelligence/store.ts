@@ -15,6 +15,8 @@ export interface IntelligenceModelRecord {
   provider: string;
   model: string;
   description: string | null;
+  inputPrice: number;
+  outputPrice: number;
   price: Record<string, unknown>;
 }
 
@@ -24,6 +26,8 @@ export interface StoredModelConfig {
   provider: string;
   model: string;
   description: string | null;
+  inputPrice: number;
+  outputPrice: number;
   price: Record<string, unknown>;
 }
 
@@ -52,9 +56,19 @@ export interface IntelligenceLogRecord {
   response: string | null;
   context: string | null;
   modal: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
   balance: number | null;
   prompt_id: string;
   account_id: string;
+}
+
+export interface PaginatedIntelligenceLogsResult {
+  logs: IntelligenceLogRecord[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
 }
 
 interface IntelligenceModelRow {
@@ -63,6 +77,8 @@ interface IntelligenceModelRow {
   provider: string;
   model: string;
   description: string | null;
+  inputPrice: number | string | null;
+  outputPrice: number | string | null;
   price: unknown;
 }
 
@@ -98,6 +114,8 @@ interface IntelligenceLogRow {
   response: string | null;
   context: string | null;
   modal: string | null;
+  inputTokens: number | string | null;
+  outputTokens: number | string | null;
   balance: number | null;
   prompt_id: string;
   account_id: string;
@@ -166,30 +184,6 @@ function parseOptionalInteger(value: FormDataEntryValue | null): number | null {
   return Math.trunc(parsed);
 }
 
-function parseOptionalJsonObject(value: FormDataEntryValue | null): Record<string, unknown> {
-  const normalized = String(value || '').trim();
-
-  if (!normalized) {
-    return {};
-  }
-
-  try {
-    const parsed = JSON.parse(normalized);
-
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('Price JSON must be an object');
-    }
-
-    return parsed as Record<string, unknown>;
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Price JSON must be an object') {
-      throw error;
-    }
-
-    throw new Error('Price must be valid JSON');
-  }
-}
-
 function normalizeNumericId(value: number | string | null | undefined): number {
   const parsed = Number(value);
 
@@ -200,11 +194,36 @@ function normalizeNumericId(value: number | string | null | undefined): number {
   return parsed;
 }
 
+function normalizeOptionalNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function parseRequiredInteger(value: FormDataEntryValue | null, label: string): number {
   const parsed = parseOptionalInteger(value);
 
   if (parsed === null) {
     throw new Error(`${label} is required`);
+  }
+
+  return parsed;
+}
+
+function parseRequiredDecimal(value: FormDataEntryValue | null, label: string): number {
+  const normalized = String(value || '').trim();
+
+  if (!normalized) {
+    throw new Error(`${label} is required`);
+  }
+
+  const parsed = Number(normalized);
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`${label} must be a valid number`);
   }
 
   return parsed;
@@ -260,6 +279,8 @@ function normalizeStoredModelConfig(value: unknown): StoredModelConfig | null {
     provider,
     model,
     description: typeof record.description === 'string' ? record.description : null,
+    inputPrice: normalizeOptionalNumber(record.inputPrice) ?? 0,
+    outputPrice: normalizeOptionalNumber(record.outputPrice) ?? 0,
     price: normalizeModelPrice(record.price),
   };
 }
@@ -273,7 +294,7 @@ export async function getIntelligenceModels(): Promise<IntelligenceModelRecord[]
   const db = getIntelligenceDbPool();
   const result = await db.query<IntelligenceModelRow>(
     `
-      SELECT id, title, provider, model, description, price
+      SELECT id, title, provider, model, description, "inputPrice", "outputPrice", price
       FROM "intelligence_models"
       ORDER BY title ASC, provider ASC, model ASC
     `
@@ -285,6 +306,8 @@ export async function getIntelligenceModels(): Promise<IntelligenceModelRecord[]
     provider: row.provider,
     model: row.model,
     description: row.description,
+    inputPrice: normalizeOptionalNumber(row.inputPrice) ?? 0,
+    outputPrice: normalizeOptionalNumber(row.outputPrice) ?? 0,
     price: normalizeModelPrice(row.price),
   }));
 }
@@ -294,7 +317,7 @@ export async function getIntelligenceModelById(modelId: number): Promise<Intelli
   const db = getIntelligenceDbPool();
   const result = await db.query<IntelligenceModelRow>(
     `
-      SELECT id, title, provider, model, description, price
+      SELECT id, title, provider, model, description, "inputPrice", "outputPrice", price
       FROM "intelligence_models"
       WHERE id = $1
       LIMIT 1
@@ -314,6 +337,8 @@ export async function getIntelligenceModelById(modelId: number): Promise<Intelli
     provider: row.provider,
     model: row.model,
     description: row.description,
+    inputPrice: normalizeOptionalNumber(row.inputPrice) ?? 0,
+    outputPrice: normalizeOptionalNumber(row.outputPrice) ?? 0,
     price: normalizeModelPrice(row.price),
   };
 }
@@ -423,6 +448,8 @@ export async function getIntelligenceLogs(accountId: string): Promise<Intelligen
         il.response,
         il.context,
         il.modal,
+        il."inputTokens",
+        il."outputTokens",
         il.balance,
         ia.prompt_id,
         ia.account_id
@@ -440,7 +467,73 @@ export async function getIntelligenceLogs(accountId: string): Promise<Intelligen
     ...row,
     id: normalizeNumericId(row.id),
     access_id: normalizeNumericId(row.access_id),
+    inputTokens: normalizeOptionalNumber(row.inputTokens),
+    outputTokens: normalizeOptionalNumber(row.outputTokens),
   }));
+}
+
+export async function getPaginatedIntelligenceLogs(
+  accountId: string,
+  page: number,
+  pageSize: number
+): Promise<PaginatedIntelligenceLogsResult> {
+  await ensureIntelligenceTables();
+  const db = getIntelligenceDbPool();
+  const requestedPage = Math.max(1, Math.trunc(page || 1));
+  const normalizedPageSize = Math.max(1, Math.trunc(pageSize || 10));
+  const countResult = await db.query<{ count: string }>(
+    `
+      SELECT COUNT(*)::text AS count
+      FROM "intelligenceLog" il
+      INNER JOIN "intelligenceAccess" ia
+        ON ia.id = il.access_id
+      WHERE ia.account_id = $1
+    `,
+    [accountId]
+  );
+
+  const totalCount = Number(countResult.rows[0]?.count || 0);
+  const totalPages = Math.max(1, Math.ceil(totalCount / normalizedPageSize));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const offset = (currentPage - 1) * normalizedPageSize;
+  const logsResult = await db.query<IntelligenceLogRow>(
+    `
+      SELECT
+        il.id,
+        il.access_id,
+        il.query,
+        il.response,
+        il.context,
+        il.modal,
+        il."inputTokens",
+        il."outputTokens",
+        il.balance,
+        ia.prompt_id,
+        ia.account_id
+      FROM "intelligenceLog" il
+      INNER JOIN "intelligenceAccess" ia
+        ON ia.id = il.access_id
+      WHERE ia.account_id = $1
+      ORDER BY il.id DESC
+      LIMIT $2
+      OFFSET $3
+    `,
+    [accountId, normalizedPageSize, offset]
+  );
+
+  return {
+    logs: logsResult.rows.map((row) => ({
+      ...row,
+      id: normalizeNumericId(row.id),
+      access_id: normalizeNumericId(row.access_id),
+      inputTokens: normalizeOptionalNumber(row.inputTokens),
+      outputTokens: normalizeOptionalNumber(row.outputTokens),
+    })),
+    totalCount,
+    totalPages,
+    currentPage,
+    pageSize: normalizedPageSize,
+  };
 }
 
 export async function createAccessTokenRecord(input: {
@@ -465,19 +558,26 @@ export async function createIntelligenceModelRecord(input: {
   provider: string;
   model: string;
   description: string | null;
-  price: Record<string, unknown>;
+  inputPrice: number;
+  outputPrice: number;
 }): Promise<void> {
   await ensureIntelligenceTables();
   const db = getIntelligenceDbPool();
+  const price = {
+    inputPer1M: input.inputPrice,
+    outputPer1M: input.outputPrice,
+  };
 
   await db.query(
     `
-      INSERT INTO "intelligence_models" (title, provider, model, description, price)
-      VALUES ($1, $2, $3, $4, $5::jsonb)
+      INSERT INTO "intelligence_models" (title, provider, model, description, "inputPrice", "outputPrice", price)
+      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
       ON CONFLICT (provider, model)
       DO UPDATE SET
         title = EXCLUDED.title,
         description = EXCLUDED.description,
+        "inputPrice" = EXCLUDED."inputPrice",
+        "outputPrice" = EXCLUDED."outputPrice",
         price = EXCLUDED.price
     `,
     [
@@ -485,7 +585,9 @@ export async function createIntelligenceModelRecord(input: {
       input.provider.trim().toLowerCase(),
       input.model.trim(),
       input.description,
-      JSON.stringify(input.price),
+      input.inputPrice,
+      input.outputPrice,
+      JSON.stringify(price),
     ]
   );
 }
@@ -496,10 +598,15 @@ export async function updateIntelligenceModelRecord(input: {
   provider: string;
   model: string;
   description: string | null;
-  price: Record<string, unknown>;
+  inputPrice: number;
+  outputPrice: number;
 }): Promise<void> {
   await ensureIntelligenceTables();
   const db = getIntelligenceDbPool();
+  const price = {
+    inputPer1M: input.inputPrice,
+    outputPer1M: input.outputPrice,
+  };
 
   try {
     const result = await db.query(
@@ -510,15 +617,19 @@ export async function updateIntelligenceModelRecord(input: {
           provider = $2,
           model = $3,
           description = $4,
-          price = $5::jsonb
-        WHERE id = $6
+          "inputPrice" = $5,
+          "outputPrice" = $6,
+          price = $7::jsonb
+        WHERE id = $8
       `,
       [
         input.title,
         input.provider.trim().toLowerCase(),
         input.model.trim(),
         input.description,
-        JSON.stringify(input.price),
+        input.inputPrice,
+        input.outputPrice,
+        JSON.stringify(price),
         input.modelId,
       ]
     );
@@ -600,7 +711,7 @@ export async function createIntelligenceAccessRecord(input: {
   if (modelIds.length > 0) {
     const modelResult = await db.query<IntelligenceModelRow>(
       `
-        SELECT id, title, provider, model, description, price
+        SELECT id, title, provider, model, description, "inputPrice", "outputPrice", price
         FROM "intelligence_models"
         WHERE id = ANY($1::bigint[])
       `,
@@ -620,6 +731,8 @@ export async function createIntelligenceAccessRecord(input: {
           provider: row.provider,
           model: row.model,
           description: row.description,
+          inputPrice: normalizeOptionalNumber(row.inputPrice) ?? 0,
+          outputPrice: normalizeOptionalNumber(row.outputPrice) ?? 0,
           price: normalizeModelPrice(row.price),
         },
       ])
@@ -727,7 +840,7 @@ export async function updateIntelligenceAccessRecord(input: {
   if (modelIds.length > 0) {
     const modelResult = await db.query<IntelligenceModelRow>(
       `
-        SELECT id, title, provider, model, description, price
+        SELECT id, title, provider, model, description, "inputPrice", "outputPrice", price
         FROM "intelligence_models"
         WHERE id = ANY($1::bigint[])
       `,
@@ -747,6 +860,8 @@ export async function updateIntelligenceAccessRecord(input: {
           provider: row.provider,
           model: row.model,
           description: row.description,
+          inputPrice: normalizeOptionalNumber(row.inputPrice) ?? 0,
+          outputPrice: normalizeOptionalNumber(row.outputPrice) ?? 0,
           price: normalizeModelPrice(row.price),
         },
       ])
@@ -859,7 +974,8 @@ export function parseModelFormData(formData: FormData) {
     provider,
     model: parseRequiredString(formData.get('model'), 'Model'),
     description: parseOptionalString(formData.get('description')),
-    price: parseOptionalJsonObject(formData.get('price')),
+    inputPrice: parseRequiredDecimal(formData.get('input_price'), 'Input price'),
+    outputPrice: parseRequiredDecimal(formData.get('output_price'), 'Output price'),
   };
 }
 
@@ -897,6 +1013,8 @@ export function parseRechargeFormData(formData: FormData) {
 
 export function parseLogContext(context: string | null): {
   displayContext: string;
+  masterPrompt: string;
+  query: string;
   usageTokens: number | null;
   status: string | null;
   estimatedCost: number | null;
@@ -904,6 +1022,8 @@ export function parseLogContext(context: string | null): {
   if (!context) {
     return {
       displayContext: '',
+      masterPrompt: '',
+      query: '',
       usageTokens: null,
       status: null,
       estimatedCost: null,
@@ -913,12 +1033,17 @@ export function parseLogContext(context: string | null): {
   try {
     const parsed = JSON.parse(context);
     const usageTokens = Number(parsed?.usageTokens);
-    const displayContext = typeof parsed?.requestContext === 'string'
-      ? parsed.requestContext
-      : JSON.stringify(parsed?.requestContext ?? parsed);
+    const contextValue = parsed?.context ?? parsed?.requestContext;
+    const displayContext = typeof contextValue === 'string'
+      ? contextValue
+      : contextValue !== undefined
+        ? JSON.stringify(contextValue)
+        : '';
 
     return {
       displayContext,
+      masterPrompt: typeof parsed?.masterPrompt === 'string' ? parsed.masterPrompt : '',
+      query: typeof parsed?.query === 'string' ? parsed.query : '',
       usageTokens: Number.isFinite(usageTokens) ? usageTokens : null,
       status: typeof parsed?.status === 'string' ? parsed.status : null,
       estimatedCost: Number.isFinite(Number(parsed?.estimatedCost)) ? Number(parsed?.estimatedCost) : null,
@@ -926,6 +1051,8 @@ export function parseLogContext(context: string | null): {
   } catch {
     return {
       displayContext: context,
+      masterPrompt: '',
+      query: '',
       usageTokens: null,
       status: null,
       estimatedCost: null,

@@ -49,8 +49,20 @@ export async function ensureIntelligenceTables(): Promise<void> {
           provider TEXT NOT NULL,
           model TEXT NOT NULL,
           description TEXT,
+          "inputPrice" DOUBLE PRECISION NOT NULL DEFAULT 0,
+          "outputPrice" DOUBLE PRECISION NOT NULL DEFAULT 0,
           price JSONB NOT NULL DEFAULT '{}'::jsonb
         )
+      `);
+
+      await db.query(`
+        ALTER TABLE "intelligence_models"
+        ADD COLUMN IF NOT EXISTS "inputPrice" DOUBLE PRECISION NOT NULL DEFAULT 0
+      `);
+
+      await db.query(`
+        ALTER TABLE "intelligence_models"
+        ADD COLUMN IF NOT EXISTS "outputPrice" DOUBLE PRECISION NOT NULL DEFAULT 0
       `);
 
       await db.query(`
@@ -167,8 +179,20 @@ export async function ensureIntelligenceTables(): Promise<void> {
           response TEXT,
           context TEXT,
           modal TEXT,
+          "inputTokens" BIGINT,
+          "outputTokens" BIGINT,
           balance BIGINT
         )
+      `);
+
+      await db.query(`
+        ALTER TABLE "intelligenceLog"
+        ADD COLUMN IF NOT EXISTS "inputTokens" BIGINT
+      `);
+
+      await db.query(`
+        ALTER TABLE "intelligenceLog"
+        ADD COLUMN IF NOT EXISTS "outputTokens" BIGINT
       `);
     })().catch((error) => {
       schemaReadyPromise = null;

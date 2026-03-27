@@ -11,12 +11,22 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { getCurrentIntelligenceAccountId } from '@/lib/intelligence/account';
+import { getIntelligenceLogs, parseLogContext } from '@/lib/intelligence/store';
 
 export const metadata: Metadata = {
   title: 'Intelligence Billing, Neup.Cloud',
 };
 
-export default function IntelligenceBillingPage() {
+export default async function IntelligenceBillingPage() {
+  const logs = await getIntelligenceLogs(await getCurrentIntelligenceAccountId());
+  const totalCost = logs.reduce((sum, log) => {
+    const parsedContext = parseLogContext(log.context);
+    return sum + (parsedContext.estimatedCost || 0);
+  }, 0);
+  const totalInputTokens = logs.reduce((sum, log) => sum + (log.inputTokens || 0), 0);
+  const totalOutputTokens = logs.reduce((sum, log) => sum + (log.outputTokens || 0), 0);
+
   return (
     <div className="grid gap-8">
       <PageTitle
@@ -38,7 +48,7 @@ export default function IntelligenceBillingPage() {
             Billing intelligence lives here
           </CardTitle>
           <CardDescription className="max-w-2xl text-base">
-            Use this page later for invoice summaries, spending breakdowns, account-level billing notes, or cost recommendations.
+            This page now summarizes the overall estimated cost and token usage from completed intelligence logs.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row">
@@ -55,13 +65,22 @@ export default function IntelligenceBillingPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 font-headline">
             <Sparkles className="h-5 w-5 text-primary" />
-            Placeholder
+            Overall Cost
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No billing intelligence content is connected yet, but the route is ready to use.
-          </p>
+        <CardContent className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-border/70 p-4">
+            <p className="text-sm text-muted-foreground">Estimated Total Cost</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">${totalCost.toFixed(8)}</p>
+          </div>
+          <div className="rounded-xl border border-border/70 p-4">
+            <p className="text-sm text-muted-foreground">Input Tokens</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{totalInputTokens}</p>
+          </div>
+          <div className="rounded-xl border border-border/70 p-4">
+            <p className="text-sm text-muted-foreground">Output Tokens</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{totalOutputTokens}</p>
+          </div>
         </CardContent>
       </Card>
     </div>

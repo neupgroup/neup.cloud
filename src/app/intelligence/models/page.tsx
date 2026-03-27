@@ -84,11 +84,15 @@ export default async function IntelligenceModelsPage() {
                   </CardHeader>
                   <CardContent className="grid gap-3 text-sm text-muted-foreground">
                     <p>{model.description || 'No description provided.'}</p>
-                    <div>
-                      <p className="font-medium text-foreground">Price JSON</p>
-                      <pre className="mt-2 overflow-x-auto rounded-lg border border-border/60 bg-muted/30 p-3 text-xs">
-                        {JSON.stringify(model.price, null, 2)}
-                      </pre>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <div>
+                        <p className="font-medium text-foreground">Input Price</p>
+                        <p>{model.inputPrice}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">Output Price</p>
+                        <p>{model.outputPrice}</p>
+                      </div>
                     </div>
                     <div>
                       <Button variant="outline" asChild>
