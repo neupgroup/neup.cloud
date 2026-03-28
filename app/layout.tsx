@@ -410,6 +410,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isServerSelected, setIsServerSelected] = useState(false);
   const [serverData, setServerData] = useState<any>(null);
+  const isPlainRoute = pathname === '/pipeline/editor' || pathname.startsWith('/pipeline/editor/');
 
   useEffect(() => {
     const cookies = new Cookies(null, { path: '/' });
@@ -442,6 +443,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, [isMobileMenuOpen]);
 
+  useEffect(() => {
+    if (isPlainRoute) {
+      setIsMobileMenuOpen(false);
+    }
+  }, [isPlainRoute]);
+
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
@@ -456,34 +463,38 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased bg-[#fafafa]">
-        <div className="min-h-screen w-full bg-[#fafafa] text-foreground">
-          <Header isMobileMenuOpen={isMobileMenuOpen} toggleMobileMenu={toggleMobileMenu} />
+        {isPlainRoute ? (
+          <div className="min-h-screen w-full bg-[#f3f5f7] text-foreground">{children}</div>
+        ) : (
+          <div className="min-h-screen w-full bg-[#fafafa] text-foreground">
+            <Header isMobileMenuOpen={isMobileMenuOpen} toggleMobileMenu={toggleMobileMenu} />
 
-          <div className={cn(
-            "fixed top-16 left-0 right-0 bottom-0 z-30 bg-background/95 backdrop-blur-sm transition-all duration-300 ease-in-out md:hidden",
-            isMobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"
-          )}>
-            <ScrollArea className="h-full">
-              <div className="p-4 sm:p-6">
-                <MainNavContent currentPath={pathname} onLinkClick={closeMobileMenu} isServerSelected={isServerSelected} serverData={serverData} />
-              </div>
-            </ScrollArea>
-          </div>
-
-          <div className="mx-auto grid w-full max-w-[1440px] lg:grid-cols-[260px_1fr]">
-            <aside className="hidden h-[calc(100vh-4rem)] flex-col border-r bg-background lg:sticky lg:top-16 lg:flex">
-              <ScrollArea className="flex-1">
-                <div className="p-6">
-                  <MainNavContent currentPath={pathname} isServerSelected={isServerSelected} serverData={serverData} />
+            <div className={cn(
+              "fixed top-16 left-0 right-0 bottom-0 z-30 bg-background/95 backdrop-blur-sm transition-all duration-300 ease-in-out md:hidden",
+              isMobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"
+            )}>
+              <ScrollArea className="h-full">
+                <div className="p-4 sm:p-6">
+                  <MainNavContent currentPath={pathname} onLinkClick={closeMobileMenu} isServerSelected={isServerSelected} serverData={serverData} />
                 </div>
               </ScrollArea>
-            </aside>
+            </div>
 
-            <main className="min-h-[calc(100vh-4rem)] p-6 md:p-10">
-              <div className="w-full">{children}</div>
-            </main>
+            <div className="mx-auto grid w-full max-w-[1440px] lg:grid-cols-[260px_1fr]">
+              <aside className="hidden h-[calc(100vh-4rem)] flex-col border-r bg-background lg:sticky lg:top-16 lg:flex">
+                <ScrollArea className="flex-1">
+                  <div className="p-6">
+                    <MainNavContent currentPath={pathname} isServerSelected={isServerSelected} serverData={serverData} />
+                  </div>
+                </ScrollArea>
+              </aside>
+
+              <main className="min-h-[calc(100vh-4rem)] p-6 md:p-10">
+                <div className="w-full">{children}</div>
+              </main>
+            </div>
           </div>
-        </div>
+        )}
         <Toaster />
         <Suspense fallback={null}>
           <ProgressBar />
