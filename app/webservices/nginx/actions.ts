@@ -4,15 +4,20 @@ import { revalidatePath } from 'next/cache';
 import { runCommandOnServer } from '@/services/ssh';
 import { executeCommand, executeQuickCommand } from '@/app/commands/actions';
 import { getServerForRunner } from '@/app/servers/actions';
-import { queryAppDb, toIsoString } from '@/lib/app-db';
+import { getServerPublicIp as getServerPublicIpLogic } from '@/app/webservices/actions';
+import {
+    getNginxConfiguration as getNginxConfigurationRecord,
+    saveNginxConfiguration as saveNginxConfigurationRecord,
+} from '@/services/webservices/nginx/data';
+import { generateNginxConfigFromContext as generateNginxConfigFromContextLogic } from '@/services/webservices/nginx/logic';
 
-interface SubPath {
+export interface SubPath {
     id: string;
     path: string;
     action: 'serve-local' | 'return-404';
 }
 
-interface ProxySettings {
+export interface ProxySettings {
     setHost?: boolean;
     setRealIp?: boolean;
     setForwardedFor?: boolean;
@@ -21,7 +26,7 @@ interface ProxySettings {
     customHeaders?: { key: string; value: string; id: string }[];
 }
 
-interface PathRule {
+export interface PathRule {
     id: string;
     path: string;
     action: 'proxy' | 'return-404' | 'redirect-301' | 'redirect-302' | 'redirect-307' | 'redirect-308';
@@ -37,7 +42,7 @@ interface PathRule {
     passParameters?: boolean;
 }
 
-interface DomainRedirect {
+export interface DomainRedirect {
     id: string;
     subdomain?: string;
     domainId: string;
@@ -45,7 +50,7 @@ interface DomainRedirect {
     redirectTarget: string;
 }
 
-interface DomainBlock {
+export interface DomainBlock {
     id: string;
     domainId: string;
     domainName: string;
@@ -57,13 +62,17 @@ interface DomainBlock {
     pathRules: PathRule[];
 }
 
-interface NginxConfiguration {
+export interface NginxConfiguration {
     serverIp: string;
     configName: string;
     blocks: DomainBlock[];
     domainRedirects?: DomainRedirect[];
     updatedAt?: any;
 }
+
+type GenerateNginxConfigResult =
+    | { success: true; config: string; error?: undefined }
+    | { success: false; error: string; config?: undefined };
 
 /**
  * Save Nginx configuration for a specific server
@@ -73,30 +82,13 @@ export async function saveNginxConfiguration(
     config: NginxConfiguration
 ) {
     try {
-        await queryAppDb(`
-          INSERT INTO nginx_configurations (
-            "serverId",
-            "serverIp",
-            "configName",
-            blocks,
-            "domainRedirects",
-            "updatedAt"
-          )
-          VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, NOW())
-          ON CONFLICT ("serverId")
-          DO UPDATE SET
-            "serverIp" = EXCLUDED."serverIp",
-            "configName" = EXCLUDED."configName",
-            blocks = EXCLUDED.blocks,
-            "domainRedirects" = EXCLUDED."domainRedirects",
-            "updatedAt" = NOW()
-        `, [
-          serverId,
-          config.serverIp,
-          config.configName,
-          JSON.stringify(config.blocks ?? []),
-          JSON.stringify(config.domainRedirects ?? null),
-        ]);
+        await saveNginxConfigurationRecord({
+            serverId,
+            serverIp: config.serverIp,
+            configName: config.configName,
+            blocks: config.blocks ?? [],
+            domainRedirects: config.domainRedirects ?? null,
+        });
 
         revalidatePath('/webservices/nginx');
 
@@ -112,31 +104,17 @@ export async function saveNginxConfiguration(
  */
 export async function getNginxConfiguration(serverId: string) {
     try {
-        const result = await queryAppDb<{
-          serverId: string;
-          serverIp: string;
-          configName: string;
-          blocks: DomainBlock[];
-          domainRedirects: DomainRedirect[] | null;
-          updatedAt: Date;
-        }>(`
-          SELECT *
-          FROM nginx_configurations
-          WHERE "serverId" = $1
-          LIMIT 1
-        `, [serverId]);
-
-        const row = result.rows[0];
+        const row = await getNginxConfigurationRecord(serverId);
         if (!row) {
-          return null;
+            return null;
         }
 
         return {
           serverIp: row.serverIp,
           configName: row.configName,
-          blocks: row.blocks ?? [],
-          domainRedirects: row.domainRedirects ?? [],
-          updatedAt: toIsoString(row.updatedAt),
+          blocks: (row.blocks as unknown as DomainBlock[]) ?? [],
+          domainRedirects: (row.domainRedirects as unknown as DomainRedirect[] | null) ?? [],
+          updatedAt: row.updatedAt.toISOString(),
         } as NginxConfiguration;
     } catch (error: any) {
         console.error('Error fetching nginx configuration:', error);
@@ -148,339 +126,16 @@ export async function getNginxConfiguration(serverId: string) {
  * Fetch the public IP of a server by running a command on it
  */
 export async function getServerPublicIp(serverId: string) {
-    try {
-        const server = await getServerForRunner(serverId);
-        if (!server) {
-            return { success: false, error: 'Server not found' };
-        }
-
-        // Check if we already have the public IP
-        if (server.publicIp) {
-            return { success: true, publicIp: server.publicIp };
-        }
-
-        // If not, try to fetch it via SSH
-        if (!server.username || !server.privateKey) {
-            return {
-                success: false,
-                error: 'Server credentials not configured for SSH access'
-            };
-        }
-
-        // Use a reliable method to get public IP
-        // We'll try multiple services in case one fails
-        const commands = [
-            'curl -s ifconfig.me',
-            'curl -s icanhazip.com',
-            'curl -s ipecho.net/plain',
-            'dig +short myip.opendns.com @resolver1.opendns.com',
-        ];
-
-        let publicIp = '';
-        const host = server.publicIp || server.privateIp;
-
-        if (!host) {
-            return {
-                success: false,
-                error: 'Server is missing a reachable IP address'
-            };
-        }
-
-        for (const command of commands) {
-            try {
-                const result = await runCommandOnServer(
-                    host,
-                    server.username,
-                    server.privateKey,
-                    command,
-                    undefined,
-                    undefined,
-                    true // Skip swap for quick commands
-                );
-
-                if (result.code === 0 && result.stdout.trim()) {
-                    publicIp = result.stdout.trim();
-                    break;
-                }
-            } catch (e) {
-                // Try next command
-                continue;
-            }
-        }
-
-        if (!publicIp) {
-            return {
-                success: false,
-                error: 'Failed to fetch public IP from server'
-            };
-        }
-
-        return { success: true, publicIp };
-    } catch (error: any) {
-        console.error('Error fetching server public IP:', error);
-        return { success: false, error: error.message };
-    }
+    return getServerPublicIpLogic(serverId);
 }
 
 /**
  * Generate Nginx configuration file content from current context/form state
  * This allows generating config without requiring saved configuration
  */
-export async function generateNginxConfigFromContext(config: NginxConfiguration) {
+export async function generateNginxConfigFromContext(config: NginxConfiguration): Promise<GenerateNginxConfigResult> {
     try {
-        let nginxConfig = '';
-
-        // Process domain redirects (global)
-        if (config.domainRedirects && config.domainRedirects.length > 0) {
-            for (const redirect of config.domainRedirects) {
-                const redirectName = redirect.subdomain ? `${redirect.subdomain}.${redirect.domainName}` : redirect.domainName;
-                nginxConfig += `
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${redirectName};
-    return 301 ${redirect.redirectTarget};
-}
-`;
-            }
-        }
-
-        // Process domain blocks
-        for (const block of config.blocks) {
-            // Sort rules by path length (longest first) for proper Nginx matching
-            // And normalize paths (start with /, no trailing / unless root)
-            const normalizedRules = (block.pathRules || []).map(r => {
-                let p = r.path.trim();
-                // Ensure starts with /
-                if (!p.startsWith('/')) p = '/' + p;
-                // Remove trailing / if length > 1
-                if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
-
-                // Normalize sub-paths
-                const subPaths = (r.subPaths || []).map(sp => {
-                    let spp = sp.path.trim();
-                    if (!spp.startsWith('/')) spp = '/' + spp;
-                    if (spp.length > 1 && spp.endsWith('/')) spp = spp.slice(0, -1);
-                    return { ...sp, path: spp };
-                });
-
-                // Normalize redirect target
-                let redirectTarget = r.redirectTarget;
-                if (redirectTarget) {
-                    redirectTarget = redirectTarget.trim();
-                    // If target is domain.com (no protocol, not relative), prepend https://
-                    if (!redirectTarget.startsWith('http://') && !redirectTarget.startsWith('https://') && !redirectTarget.startsWith('/')) {
-                        redirectTarget = `https://${redirectTarget}`;
-                    }
-                }
-
-                return { ...r, path: p, subPaths, redirectTarget };
-            });
-
-            const sortedRules = normalizedRules.sort((a, b) => b.path.length - a.path.length);
-
-            let locationBlocks = '';
-
-            // Process all rules and their sub-paths
-            for (const rule of sortedRules) {
-                if (rule.action === 'return-404') {
-                    locationBlocks += `
-    location ${rule.path} {
-        return 404;
-    }
-`;
-                } else if (rule.action.startsWith('redirect-')) {
-                    let statusCode = rule.action.split('-')[1];
-                    let target = rule.redirectTarget || 'https://google.com';
-
-                    if (rule.passParameters) {
-                        if (target.endsWith('/')) target = target.slice(0, -1);
-                        target = `${target}$request_uri`;
-                    }
-
-                    locationBlocks += `
-    location ${rule.path} {
-        return ${statusCode} ${target};
-    }
-`;
-                } else if (rule.action === 'proxy') {
-                    let proxyUrl = '';
-                    if (rule.proxyTarget === 'local-port' && rule.localPort) {
-                        proxyUrl = `http://localhost:${rule.localPort}`;
-                    } else if (rule.proxyTarget === 'remote-server' && rule.serverIp && rule.port) {
-                        proxyUrl = `http://${rule.serverIp}:${rule.port}`;
-                    } else {
-                        continue;
-                    }
-
-                    if (rule.subPaths && rule.subPaths.length > 0) {
-                        const sortedSubPaths = [...rule.subPaths].sort((a, b) => b.path.length - a.path.length);
-                        for (const subPath of sortedSubPaths) {
-                            const fullPath = `${rule.path}${subPath.path}`;
-                            if (subPath.action === 'serve-local') {
-                                locationBlocks += `
-    location ${fullPath} {
-        try_files $uri $uri/ =404;
-    }
-`;
-                            } else if (subPath.action === 'return-404') {
-                                locationBlocks += `
-    location ${fullPath} {
-        return 404;
-    }
-`;
-                            }
-                        }
-                    }
-
-                    const settings = rule.proxySettings || {};
-                    const upgradeWebSocket = settings.upgradeWebSocket !== false;
-                    let proxyHeaders = '';
-
-                    if (upgradeWebSocket) {
-                        proxyHeaders += `
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_cache_bypass $http_upgrade;`;
-                    }
-
-                    if (settings.setHost !== false) proxyHeaders += `\n        proxy_set_header Host $host;`;
-                    if (settings.setRealIp !== false) proxyHeaders += `\n        proxy_set_header X-Real-IP $remote_addr;`;
-                    if (settings.setForwardedFor !== false) proxyHeaders += `\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`;
-                    if (settings.setForwardedProto !== false) proxyHeaders += `\n        proxy_set_header X-Forwarded-Proto $scheme;`;
-
-                    if (settings.customHeaders && settings.customHeaders.length > 0) {
-                        for (const header of settings.customHeaders) {
-                            if (header.key && header.value) {
-                                proxyHeaders += `\n        proxy_set_header ${header.key} ${header.value};`;
-                            }
-                        }
-                    }
-
-                    // For proxy pass, we must be careful with trailing slashes.
-                    // If we Normalized path to remove trailing slash (e.g. /api),
-                    // but proxyUrl is http://localhost:3000, 
-                    // Nginx: location /api { proxy_pass http://localhost:3000; }
-                    // Request: /api/foo -> http://localhost:3000/api/foo
-
-                    // If proper API proxy with slash stripping is needed, user needs rewrite usually or trailing slash on proxy_pass.
-                    // But standard proxy pass usually passes full path. 
-                    // We will keep standard behavior: path is just a matching prefix.
-
-                    locationBlocks += `
-    location ${rule.path} {
-        proxy_pass ${proxyUrl};${proxyHeaders}
-    }
-`;
-                }
-            }
-
-            let serverName = block.domainName;
-            if (block.subdomain) {
-                if (block.subdomain === '@') {
-                    // Root domain only (no subdomain)
-                    serverName = block.domainName;
-                } else if (block.subdomain === '#') {
-                    // Catch-all wildcard for all other subdomains
-                    serverName = `*.${block.domainName}`;
-                } else {
-                    // Specific subdomain
-                    serverName = `${block.subdomain}.${block.domainName}`;
-                }
-            }
-
-            const hasRootRule = sortedRules.some(rule => rule.path === '/');
-            let defaultLocation = '';
-            if (sortedRules.length === 0) {
-                defaultLocation = `
-    location / {
-        try_files $uri $uri/ =404;
-    }
-`;
-            } else if (!hasRootRule) {
-                defaultLocation = `
-    location / {
-        return 404;
-    }
-`;
-            }
-
-            if (block.sslEnabled) {
-                // Use selected certificate file or fallback to configName for legacy support
-                const certName = block.sslCertificateFile
-                    ? block.sslCertificateFile.replace('.pem', '')
-                    : config.configName;
-
-                const sslKeyPath = `/etc/nginx/ssl/${certName}.key`;
-                const sslCertPath = `/etc/nginx/ssl/${certName}.pem`;
-
-                // 1. HTTP Block (Port 80)
-                // If HTTPS redirection is on, we redirect 80 -> 443
-                // Otherwise, we serve content on 80 as well
-                if (block.httpsRedirection) {
-                    nginxConfig += `
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${serverName};
-    return 301 https://$host$request_uri;
-}
-`;
-                } else {
-                    nginxConfig += `
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${serverName};
-
-    access_log /var/log/nginx/access.log;
-    error_log /var/log/nginx/error.log;
-
-    client_max_body_size 100M;
-
-${locationBlocks}${defaultLocation}}
-`;
-                }
-
-                // 2. HTTPS Block (Port 443)
-                nginxConfig += `
-server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    server_name ${serverName};
-
-    ssl_certificate ${sslCertPath};
-    ssl_certificate_key ${sslKeyPath};
-
-    access_log /var/log/nginx/access.log;
-    error_log /var/log/nginx/error.log;
-
-    client_max_body_size 100M;
-
-${locationBlocks}${defaultLocation}}
-`;
-            } else {
-                // SSL Disabled - Serve Standard HTTP
-                // Triggers if sslEnabled is false, regardless of httpsRedirection setting
-                // (Prevents generating a redirect to a non-existent HTTPS server)
-                nginxConfig += `
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${serverName};
-
-    access_log /var/log/nginx/access.log;
-    error_log /var/log/nginx/error.log;
-
-    client_max_body_size 100M;
-
-${locationBlocks}${defaultLocation}}
-`;
-            }
-        }
-
-        return { success: true, config: nginxConfig.trim() };
+        return generateNginxConfigFromContextLogic(config);
     } catch (error: any) {
         console.error('Error generating nginx config from context:', error);
         return { success: false, error: error.message };
@@ -490,7 +145,7 @@ ${locationBlocks}${defaultLocation}}
 /**
  * Generate Nginx configuration file content from path rules
  */
-export async function generateNginxConfigFile(serverId: string) {
+export async function generateNginxConfigFile(serverId: string): Promise<GenerateNginxConfigResult> {
     try {
         const config = await getNginxConfiguration(serverId);
 
@@ -593,6 +248,13 @@ export async function deployNginxConfig(serverId: string, configContent?: string
                 };
             }
             finalConfig = configResult.config;
+        }
+
+        if (!finalConfig) {
+            return {
+                success: false,
+                error: 'Failed to build nginx configuration'
+            };
         }
 
         const server = await getServerForRunner(serverId);

@@ -1,0 +1,360 @@
+import { runCommandOnServer } from '@/services/ssh';
+import { getDomains } from '@/services/domains/data';
+import {
+  getAllWebServices,
+  getLatestWebService,
+  getWebServiceById,
+  getWebServicesByType,
+} from '@/services/webservices/data';
+import { getServerForRunner } from '@/services/servers/logic';
+import type { WebServiceConfig } from '@/app/webservices/actions';
+
+export async function getServerPublicIp(serverId: string) {
+  try {
+    const server = await getServerForRunner(serverId);
+    if (!server) {
+      return { success: false, error: 'Server not found' };
+    }
+
+    if (server.publicIp) {
+      return { success: true, publicIp: server.publicIp };
+    }
+
+    if (!server.username || !server.privateKey) {
+      return {
+        success: false,
+        error: 'Server credentials not configured for SSH access',
+      };
+    }
+
+    const commands = [
+      'curl -s ifconfig.me',
+      'curl -s icanhazip.com',
+      'curl -s ipecho.net/plain',
+      'dig +short myip.opendns.com @resolver1.opendns.com',
+    ];
+
+    const host = server.publicIp || server.privateIp;
+    if (!host) {
+      return {
+        success: false,
+        error: 'Server is missing a reachable IP address',
+      };
+    }
+
+    for (const command of commands) {
+      try {
+        const result = await runCommandOnServer(
+          host,
+          server.username,
+          server.privateKey,
+          command,
+          undefined,
+          undefined,
+          true
+        );
+
+        if (result.code === 0 && result.stdout.trim()) {
+          return { success: true, publicIp: result.stdout.trim() };
+        }
+      } catch {
+        // Try the next provider.
+      }
+    }
+
+    return {
+      success: false,
+      error: 'Failed to fetch public IP from server',
+    };
+  } catch (error: any) {
+    console.error('Error fetching server public IP:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getNginxConfigurationsForServer(serverId?: string): Promise<WebServiceConfig[]> {
+  try {
+    const dbConfigs = await getWebServicesByType('nginx');
+    const draftConfigs = dbConfigs.map((config) => ({
+      ...config,
+      id: `@${config.id}`,
+      isDraft: true,
+    }));
+
+    if (!serverId) {
+      return draftConfigs;
+    }
+
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) {
+      return draftConfigs;
+    }
+
+    const command = `
+      find /etc/nginx/sites-available /etc/nginx/sites-enabled -maxdepth 1 -type f -o -type l 2>/dev/null \
+        | xargs -n 1 basename 2>/dev/null \
+        | sort \
+        | uniq \
+        | while read filename; do
+            if [ -z "$filename" ]; then continue; fi
+
+            is_synced="false"
+            source_file=""
+
+            if [ -e "/etc/nginx/sites-enabled/$filename" ]; then
+              is_synced="true"
+              source_file="/etc/nginx/sites-enabled/$filename"
+            fi
+
+            if [ -e "/etc/nginx/sites-available/$filename" ]; then
+              source_file="/etc/nginx/sites-available/$filename"
+            fi
+
+            if [ ! -z "$source_file" ]; then
+              echo "---NGINX-CONFIG-START: $filename|$is_synced---"
+              cat "$source_file"
+              echo "---NGINX-CONFIG-END---"
+            fi
+          done
+    `;
+
+    const { stdout, code } = await runCommandOnServer(
+      server.publicIp,
+      server.username,
+      server.privateKey,
+      command,
+      undefined,
+      undefined,
+      true
+    );
+
+    if (code !== 0) {
+      console.error('Failed to fetch nginx configs from server');
+      return draftConfigs;
+    }
+
+    const serverConfigs: WebServiceConfig[] = [];
+    const fileBlocks = stdout.split('---NGINX-CONFIG-START: ');
+
+    for (const block of fileBlocks) {
+      if (!block.trim()) {
+        continue;
+      }
+
+      const [headerLine, ...contentParts] = block.split('\n');
+      const [filename, isSyncedStr] = headerLine.replace(/---$/, '').trim().split('|');
+
+      if (filename === 'default') {
+        continue;
+      }
+
+      const content = contentParts.join('\n').split('---NGINX-CONFIG-END---')[0];
+      const serverNameMatch = content.match(/server_name\s+([^;]+);/);
+      const domainName = serverNameMatch ? serverNameMatch[1].trim().split(/\s+/)[0] : '';
+
+      serverConfigs.push({
+        id: filename,
+        name: filename,
+        type: 'nginx',
+        created_on: new Date().toISOString(),
+        created_by: 'System',
+        serverName: server.name,
+        serverId: server.id,
+        isSynced: isSyncedStr === 'true',
+        isDraft: false,
+        value: {
+          domainName,
+          serverIp: server.publicIp,
+          rawContent: content,
+        },
+      });
+    }
+
+    return [...draftConfigs, ...serverConfigs];
+  } catch (error) {
+    console.error('Error getting combined nginx configs:', error);
+    return [];
+  }
+}
+
+export async function getWebOrServerNginxConfigById(id: string, serverId?: string): Promise<WebServiceConfig | null> {
+  if (id.startsWith('@')) {
+    const config = await getWebServiceById(id.substring(1));
+    return config ? { ...config, isDraft: true } : null;
+  }
+
+  if (!serverId) {
+    return null;
+  }
+
+  try {
+    const server = await getServerForRunner(serverId);
+    if (!server || !server.username || !server.privateKey) {
+      return null;
+    }
+
+    if (id === 'default') {
+      return null;
+    }
+
+    const readCommand = `
+      if [ -e "/etc/nginx/sites-available/${id}" ]; then
+        cat "/etc/nginx/sites-available/${id}"
+      elif [ -e "/etc/nginx/sites-enabled/${id}" ]; then
+        cat "/etc/nginx/sites-enabled/${id}"
+      else
+        exit 1
+      fi
+    `;
+
+    const { stdout, code } = await runCommandOnServer(
+      server.publicIp,
+      server.username,
+      server.privateKey,
+      readCommand
+    );
+
+    if (code !== 0) {
+      return null;
+    }
+
+    const syncedResult = await runCommandOnServer(
+      server.publicIp,
+      server.username,
+      server.privateKey,
+      `[ -e "/etc/nginx/sites-enabled/${id}" ] && echo "true" || echo "false"`
+    );
+    const isSynced = syncedResult.stdout.trim() === 'true';
+
+    const parsedValue = await parseNginxConfig(stdout, server.publicIp);
+
+    if (parsedValue.domainName && parsedValue.domainName !== '_' && parsedValue.domainName !== 'localhost') {
+      try {
+        const domains = await getDomains();
+        const matched = domains.find((domain) => domain.name === parsedValue.domainName);
+        if (matched) {
+          parsedValue.domainId = matched.id;
+        }
+      } catch (error) {
+        console.error('Error resolving domain for config:', error);
+      }
+    }
+
+    return {
+      id,
+      name: id,
+      type: 'nginx',
+      created_on: new Date().toISOString(),
+      created_by: 'System',
+      serverId: server.id,
+      serverName: server.name,
+      isDraft: false,
+      isSynced,
+      value: parsedValue,
+    };
+  } catch (error) {
+    console.error('Error fetching/parsing server nginx config:', error);
+    return null;
+  }
+}
+
+async function parseNginxConfig(configContent: string, currentServerIp: string) {
+  const value: any = {
+    serverIp: currentServerIp,
+    pathRules: [],
+  };
+
+  const serverNameMatch = configContent.match(/server_name\s+([^;]+);/);
+  if (serverNameMatch) {
+    const domains = serverNameMatch[1].trim().split(/\s+/);
+    const fullServerName = domains[0];
+
+    if (fullServerName === '_' || fullServerName === 'localhost' || fullServerName === currentServerIp) {
+      value.domainName = fullServerName;
+    } else {
+      const parts = fullServerName.split('.');
+      if (parts.length > 2) {
+        value.domainName = parts.slice(-2).join('.');
+        value.subdomain = parts.slice(0, -2).join('.');
+      } else {
+        value.domainName = fullServerName;
+      }
+      value.domainId = 'manual-domain';
+    }
+  }
+
+  const locationRegex = /location\s+([^{]+)\s*{([^}]+)}/g;
+  const rules = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = locationRegex.exec(configContent)) !== null) {
+    const path = match[1].trim();
+    const blockContent = match[2];
+    const rule: any = {
+      id: `rule-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+      path,
+      action: 'proxy',
+      proxySettings: {
+        customHeaders: [],
+      },
+    };
+
+    if (blockContent.includes('return 404;')) {
+      rule.action = 'return-404';
+    } else {
+      const redirectMatch = blockContent.match(/return\s+(301|302|307|308)\s+([^;]+);/);
+      if (redirectMatch) {
+        const code = redirectMatch[1];
+        let target = redirectMatch[2].trim();
+        rule.action = `redirect-${code}`;
+
+        if (target.includes('$request_uri')) {
+          rule.passParameters = true;
+          target = target.replace('$request_uri', '');
+        }
+
+        rule.redirectTarget = target;
+      } else {
+        const proxyPassMatch = blockContent.match(/proxy_pass\s+([^;]+);/);
+        if (proxyPassMatch) {
+          const proxyUrl = proxyPassMatch[1].trim();
+          const localhostMatch = proxyUrl.match(/https?:\/\/(localhost|127\.0\.0\.1):(\d+)/);
+
+          if (localhostMatch) {
+            rule.proxyTarget = 'local-port';
+            rule.localPort = localhostMatch[2];
+          } else {
+            const remoteMatch = proxyUrl.match(/https?:\/\/([^:]+)(?::(\d+))?/);
+            if (remoteMatch) {
+              rule.proxyTarget = 'remote-server';
+              rule.serverIp = remoteMatch[1];
+              rule.port = remoteMatch[2] || '80';
+            }
+          }
+        }
+      }
+    }
+
+    if (blockContent.includes('proxy_set_header Host')) rule.proxySettings.setHost = true;
+    if (blockContent.includes('proxy_set_header X-Real-IP')) rule.proxySettings.setRealIp = true;
+    if (blockContent.includes('proxy_set_header X-Forwarded-For')) rule.proxySettings.setForwardedFor = true;
+    if (blockContent.includes('proxy_set_header X-Forwarded-Proto')) rule.proxySettings.setForwardedProto = true;
+    if (blockContent.includes('proxy_set_header Upgrade $http_upgrade')) rule.proxySettings.upgradeWebSocket = true;
+
+    rules.push(rule);
+  }
+
+  value.pathRules = rules.length > 0
+    ? rules
+    : [
+        {
+          id: 'rule-default',
+          path: '/',
+          action: 'proxy',
+          proxyTarget: 'local-port',
+          localPort: '3000',
+        },
+      ];
+
+  return value;
+}

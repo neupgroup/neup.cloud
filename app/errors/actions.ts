@@ -1,38 +1,25 @@
-
 'use server';
 
-import { queryAppDb, toIsoString } from '@/lib/app-db';
+import { getErrors as getErrorsData } from '@/services/errors/data';
 
 type AppError = {
   id: string;
   message: string;
   level: 'ERROR' | 'WARNING' | 'INFO';
   source: string;
-  timestamp: string; // Changed to string
+  timestamp: string;
   stack?: string;
 };
 
-
 export async function getErrors(): Promise<AppError[]> {
-  const result = await queryAppDb<{
-    id: string;
-    message: string;
-    level: 'ERROR' | 'WARNING' | 'INFO';
-    source: string;
-    timestamp: Date;
-    stack: string | null;
-  }>(`
-    SELECT id, message, level, source, timestamp, stack
-    FROM errors
-    ORDER BY timestamp DESC
-  `);
+  const errors = await getErrorsData();
 
-  return result.rows.map((row) => ({
-    id: row.id,
-    message: row.message,
-    level: row.level,
-    source: row.source,
-    timestamp: toIsoString(row.timestamp) || new Date().toISOString(),
-    stack: row.stack ?? undefined,
+  return errors.map((error) => ({
+    id: error.id,
+    message: error.message,
+    level: error.level as AppError['level'],
+    source: error.source,
+    timestamp: error.timestamp.toISOString(),
+    stack: error.stack ?? undefined,
   }));
 }

@@ -1,6 +1,6 @@
 'use server';
 
-import { queryAppDb } from '@/lib/app-db';
+import { getRecentServerLogs } from '@/services/server-logs/data';
 
 export type ActivityLog = {
   id: string;
@@ -12,39 +12,17 @@ export type ActivityLog = {
   serverName?: string;
 };
 
-type ServerLogRow = {
-  id: string;
-  command: string;
-  commandName: string | null;
-  status: 'Success' | 'Error' | 'pending';
-  runAt: Date;
-  serverId: string;
-};
-
 export async function getRecentActivity(serverId?: string): Promise<ActivityLog[]> {
   try {
-    const result = serverId
-      ? await queryAppDb<ServerLogRow>(`
-          SELECT id, command, "commandName", status, "runAt", "serverId"
-          FROM server_logs
-          WHERE "serverId" = $1
-          ORDER BY "runAt" DESC
-          LIMIT 10
-        `, [serverId])
-      : await queryAppDb<ServerLogRow>(`
-          SELECT id, command, "commandName", status, "runAt", "serverId"
-          FROM server_logs
-          ORDER BY "runAt" DESC
-          LIMIT 10
-        `);
+    const logs = await getRecentServerLogs(serverId);
 
-    return result.rows.map((row) => ({
-      id: row.id,
-      command: row.command,
-      commandName: row.commandName ?? undefined,
-      status: row.status,
-      runAt: row.runAt.getTime(),
-      serverId: row.serverId,
+    return logs.map((log) => ({
+      id: log.id,
+      command: log.command,
+      commandName: log.commandName ?? undefined,
+      status: log.status as ActivityLog['status'],
+      runAt: log.runAt.getTime(),
+      serverId: log.serverId,
     }));
   } catch (error) {
     console.error('Error fetching recent activity:', error);

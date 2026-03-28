@@ -6,164 +6,44 @@ import { promisify } from 'util';
 import { exec } from 'child_process';
 import { readFile, unlink } from 'fs/promises';
 import path from 'path';
-import * as NextJs from '../../core/nextjs';
-import * as NodeJs from '../../core/nodejs';
-import * as Python from '../../core/python';
-import * as Go from '../../core/go';
 import * as Git from '../../core/github';
-import { sanitizeAppName } from '../../core/universal';
 import { executeCommand, executeQuickCommand } from '../commands/actions';
-import { createRecordId, queryAppDb, toIsoString } from '@/lib/app-db';
+import {
+  createApplication as createApplicationRecord,
+  deleteApplication as deleteApplicationRecord,
+  getApplicationById,
+  getApplications as getApplicationsData,
+  updateApplication as updateApplicationRecord,
+} from '@/services/applications/data';
+import {
+  getApplicationStopCommand,
+  prepareApplicationCreateData,
+  prepareApplicationUpdateData,
+  sanitizeStageName,
+} from '@/services/applications/logic';
 import type { Application, CreateApplicationData, UpdateApplicationData } from './types';
 
 const execAsync = promisify(exec);
 
-type ApplicationRow = {
-  id: string;
-  name: string;
-  location: string;
-  language: string;
-  repository: string | null;
-  networkAccess: string[] | null;
-  commands: Record<string, string> | null;
-  information: Record<string, any> | null;
-  owner: string;
-  createdAt: Date;
-  updatedAt: Date;
-  environments: Record<string, string> | null;
-  files: Record<string, string> | null;
-};
-
-function mapApplication(row: ApplicationRow): Application {
-  return {
-    id: row.id,
-    name: row.name,
-    location: row.location,
-    language: row.language,
-    repository: row.repository ?? undefined,
-    networkAccess: row.networkAccess ?? undefined,
-    commands: row.commands ?? undefined,
-    information: row.information ?? undefined,
-    owner: row.owner,
-    createdAt: toIsoString(row.createdAt),
-    updatedAt: toIsoString(row.updatedAt),
-    environments: row.environments ?? undefined,
-    files: row.files ?? undefined,
-  };
-}
-
 export async function getApplications(): Promise<Application[]> {
-  const result = await queryAppDb<ApplicationRow>(`
-    SELECT *
-    FROM applications
-    ORDER BY "updatedAt" DESC, name ASC
-  `);
-
-  return result.rows.map(mapApplication);
+  return getApplicationsData();
 }
 
 export async function getApplication(id: string): Promise<Application | null> {
-  const result = await queryAppDb<ApplicationRow>(`
-    SELECT *
-    FROM applications
-    WHERE id = $1
-    LIMIT 1
-  `, [id]);
-
-  const application = result.rows[0];
-  return application ? mapApplication(application) : null;
+  return getApplicationById(id);
 }
 
 export async function createApplication(appData: CreateApplicationData) {
-  const sanitizeKey = (key: string) => key.replace(/[^a-zA-Z0-9-.]/g, '-');
-
-  const sanitizedCommands = appData.commands
-    ? Object.fromEntries(
-        Object.entries(appData.commands).map(([key, value]) => [sanitizeKey(key), value])
-      )
-    : null;
-
-  const sanitizedSyncedInfo = appData.information
-    ? {
-        ...appData.information,
-        commandsList: appData.information.commandsList?.map((command: any) => ({
-          ...command,
-          name: sanitizeKey(command.name),
-        })),
-      }
-    : null;
-
-  const id = createRecordId();
-
-  await queryAppDb(`
-    INSERT INTO applications (
-      id,
-      name,
-      location,
-      language,
-      repository,
-      "networkAccess",
-      commands,
-      information,
-      owner,
-      "createdAt",
-      "updatedAt",
-      environments,
-      files
-    )
-    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, NOW(), NOW(), $10::jsonb, $11::jsonb)
-  `, [
-    id,
-    appData.name,
-    appData.location,
-    appData.language,
-    appData.repository ?? null,
-    appData.networkAccess ?? null,
-    JSON.stringify(sanitizedCommands),
-    JSON.stringify(sanitizedSyncedInfo),
-    appData.owner,
-    JSON.stringify(appData.environments ?? null),
-    JSON.stringify(appData.files ?? null),
-  ]);
-
+  const application = await createApplicationRecord(prepareApplicationCreateData(appData));
   revalidatePath('/applications');
-  return id;
+  return application.id;
 }
 
 export async function deleteApplication(id: string) {
   const app = await getApplication(id);
   if (app) {
     try {
-      let stopCommand = '';
-      const commands = app.commands || {};
-      const customStopKey = Object.keys(commands).find((key) => key === 'lifecycle.stop' || key === 'stop');
-
-      if (customStopKey) {
-        const encodedCommand = commands[customStopKey];
-        try {
-          stopCommand = Buffer.from(encodedCommand, 'base64').toString('utf-8');
-        } catch {
-          stopCommand = encodedCommand;
-        }
-      } else {
-        switch (app.language) {
-          case 'next':
-            stopCommand = NextJs.getStopCommand(app.name);
-            break;
-          case 'node':
-            stopCommand = NodeJs.getStopCommand(app.name);
-            break;
-          case 'python':
-            stopCommand = Python.getStopCommand(app.name);
-            break;
-          case 'go':
-            stopCommand = Go.getStopCommand(app.name);
-            break;
-          default:
-            stopCommand = `pm2 stop "${sanitizeAppName(app.name)}"`;
-            break;
-        }
-      }
+      const stopCommand = getApplicationStopCommand(app);
 
       if (stopCommand) {
         const cookieStore = await cookies();
@@ -181,63 +61,18 @@ export async function deleteApplication(id: string) {
     }
   }
 
-  await queryAppDb(`
-    DELETE FROM applications
-    WHERE id = $1
-  `, [id]);
-
+  await deleteApplicationRecord(id);
   revalidatePath('/applications');
 }
 
 export async function updateApplication(id: string, data: UpdateApplicationData) {
-  const fieldMap: Record<string, string> = {
-    name: 'name',
-    location: 'location',
-    language: 'language',
-    repository: 'repository',
-    networkAccess: '"networkAccess"',
-    commands: 'commands',
-    information: 'information',
-    owner: 'owner',
-    environments: 'environments',
-    files: 'files',
-  };
-
-  const entries = Object.entries(data).filter(([, value]) => value !== undefined);
-  if (entries.length === 0) {
+  if (Object.keys(data).length === 0) {
     return;
   }
 
-  const values = entries.map(([key, value]) => {
-    if (key === 'commands' || key === 'information' || key === 'environments' || key === 'files') {
-      return JSON.stringify(value ?? null);
-    }
-
-    return value;
-  });
-
-  const assignments = entries.map(([key], index) => {
-    if (key === 'commands' || key === 'information' || key === 'environments' || key === 'files') {
-      return `${fieldMap[key]} = $${index + 2}::jsonb`;
-    }
-
-    return `${fieldMap[key]} = $${index + 2}`;
-  });
-
-  await queryAppDb(`
-    UPDATE applications
-    SET ${assignments.join(', ')}, "updatedAt" = NOW()
-    WHERE id = $1
-  `, [id, ...values]);
-
+  await updateApplicationRecord(id, prepareApplicationUpdateData(data));
   revalidatePath('/applications');
   revalidatePath(`/applications/${id}`);
-}
-
-function sanitizeStageName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9_]/g, '_');
 }
 
 export async function executeApplicationCommand(
