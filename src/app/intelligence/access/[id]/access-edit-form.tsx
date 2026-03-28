@@ -50,6 +50,7 @@ export default function AccessEditForm({
   initialValues: {
     accessIdentifier: string;
     balance: number;
+    currency: string;
     primaryModelId: number | null;
     fallbackModelId: number | null;
     primaryAccessKey: number | null;
@@ -77,9 +78,9 @@ export default function AccessEditForm({
 
       <Card className="border-primary/15 bg-gradient-to-br from-primary/5 via-background to-background">
         <CardHeader className="space-y-3">
-          <CardTitle className="text-2xl font-headline">Edit access</CardTitle>
+          <CardTitle className="text-2xl font-headline">Edit prompt</CardTitle>
           <CardDescription className="max-w-2xl text-base">
-            Update the linked tokens, model fallbacks, and master prompt for this access record.
+            Update the linked tokens, model fallbacks, and master prompt for this prompt record.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -96,7 +97,7 @@ export default function AccessEditForm({
               <div className="grid gap-2">
                 <Label>Balance</Label>
                 <div className="rounded-xl border border-border/70 bg-muted/30 p-3 text-sm text-muted-foreground">
-                  {initialValues.balance}
+                  {initialValues.currency} {initialValues.balance.toFixed(6)}
                 </div>
               </div>
               <div className="grid gap-2">
@@ -199,7 +200,7 @@ export default function AccessEditForm({
                 {isPending ? 'Saving...' : 'Save Changes'}
               </Button>
               <Button variant="outline" asChild>
-                <Link href="/intelligence/access">Back to Access</Link>
+                <Link href="/intelligence/prompts">Back to Prompts</Link>
               </Button>
             </div>
           </form>
@@ -210,7 +211,7 @@ export default function AccessEditForm({
         <CardHeader>
           <CardTitle className="text-destructive">Delete access</CardTitle>
           <CardDescription>
-            This removes the access record and its logs. This action cannot be undone.
+            This removes the prompt record and its logs. This action cannot be undone.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -218,10 +219,10 @@ export default function AccessEditForm({
             <input type="hidden" name="access_id" value={String(accessId)} />
             <Button type="submit" variant="destructive">
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete Access
+              Delete Prompt
             </Button>
             <Button variant="outline" asChild>
-              <Link href="/intelligence/access">Cancel</Link>
+              <Link href="/intelligence/prompts">Cancel</Link>
             </Button>
           </form>
         </CardContent>

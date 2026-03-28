@@ -64,7 +64,7 @@ export default async function IntelligenceTokensPage() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button type="submit">Add Token</Button>
               <Button variant="outline" asChild>
-                <Link href="/intelligence/access/add">Create Access</Link>
+                <Link href="/intelligence/prompts/add">Create Prompt</Link>
               </Button>
             </div>
           </form>
@@ -81,7 +81,7 @@ export default async function IntelligenceTokensPage() {
         <CardContent>
           {tokens.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No access tokens yet. Add one above so access records can call model providers.
+              No access tokens yet. Add one above so prompt records can call model providers.
             </p>
           ) : (
             <div className="grid gap-3">

@@ -129,7 +129,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
 
   const intelligenceLinks = [
     { href: "/intelligence", label: "Home", icon: Lightbulb },
-    { href: "/intelligence/access", label: "Access", icon: KeyRound },
+    { href: "/intelligence/prompts", label: "Prompts", icon: KeyRound },
     { href: "/intelligence/models", label: "Models", icon: Bot },
     { href: "/intelligence/tokens", label: "Tokens", icon: Key },
     { href: "/intelligence/logs", label: "Logs", icon: ScrollText },

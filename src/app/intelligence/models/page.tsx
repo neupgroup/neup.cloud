@@ -30,7 +30,7 @@ export default async function IntelligenceModelsPage() {
             Intelligence Models
           </span>
         }
-        description="Manage the saved provider models that intelligence access records can use."
+        description="Manage the saved provider models that intelligence prompt records can use."
       />
 
       <Card className="border-primary/15 bg-gradient-to-br from-primary/5 via-background to-background">
@@ -39,7 +39,7 @@ export default async function IntelligenceModelsPage() {
             Central model registry
           </CardTitle>
           <CardDescription className="max-w-2xl text-base">
-            Add valid OpenAI, Anthropic, or Google model entries here first. Access records copy the model snapshot at creation time, so they do not depend on a live foreign key.
+            Add valid OpenAI, Anthropic, or Google model entries here first. Prompt records copy the model snapshot at creation time, so they do not depend on a live foreign key.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row">
@@ -47,7 +47,7 @@ export default async function IntelligenceModelsPage() {
             <Link href="/intelligence/models/add">Add Model</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/intelligence/access/add">Create Access</Link>
+            <Link href="/intelligence/prompts/add">Create Prompt</Link>
           </Button>
         </CardContent>
       </Card>
@@ -62,7 +62,7 @@ export default async function IntelligenceModelsPage() {
         <CardContent>
           {models.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No models saved yet. Add one first so access records can use known-good provider and model values.
+              No models saved yet. Add one first so prompt records can use known-good provider and model values.
             </p>
           ) : (
             <div className="grid gap-4">
@@ -84,14 +84,24 @@ export default async function IntelligenceModelsPage() {
                   </CardHeader>
                   <CardContent className="grid gap-3 text-sm text-muted-foreground">
                     <p>{model.description || 'No description provided.'}</p>
-                    <div className="grid gap-2 md:grid-cols-2">
+                    <div className="grid gap-2 md:grid-cols-4">
                       <div>
-                        <p className="font-medium text-foreground">Input Price</p>
-                        <p>{model.inputPrice}</p>
+                        <p className="font-medium text-foreground">Currency</p>
+                        <p>{model.currency}</p>
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">Output Price</p>
-                        <p>{model.outputPrice}</p>
+                        <p className="font-medium text-foreground">Input Rate</p>
+                        <p className="font-mono">{model.inputRate}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">Output Rate</p>
+                        <p className="font-mono">{model.outputRate}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">Per 1000 Tokens</p>
+                        <p>
+                          In {model.inputCostPer1000Tokens} / Out {model.outputCostPer1000Tokens} {model.currency}
+                        </p>
                       </div>
                     </div>
                     <div>

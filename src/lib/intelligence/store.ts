@@ -2,6 +2,16 @@ import { createHash, randomBytes } from 'node:crypto';
 
 import { ensureIntelligenceTables, getIntelligenceDbPool } from '@/lib/intelligence/db';
 
+const intlWithSupportedValues = Intl as typeof Intl & {
+  supportedValuesOf?: (key: string) => string[];
+};
+
+const supportedCurrencyCodes = new Set(
+  typeof intlWithSupportedValues.supportedValuesOf === 'function'
+    ? intlWithSupportedValues.supportedValuesOf('currency').map((value) => value.toUpperCase())
+    : ['AED', 'AUD', 'BDT', 'BRL', 'CAD', 'CHF', 'CNY', 'DKK', 'EUR', 'GBP', 'HKD', 'IDR', 'INR', 'JPY', 'KRW', 'KWD', 'MXN', 'MYR', 'NOK', 'NPR', 'NZD', 'PHP', 'PKR', 'QAR', 'SAR', 'SEK', 'SGD', 'THB', 'TRY', 'USD', 'ZAR']
+);
+
 export interface AccessTokenRecord {
   id: number;
   account_id: string;
@@ -15,8 +25,11 @@ export interface IntelligenceModelRecord {
   provider: string;
   model: string;
   description: string | null;
-  inputPrice: number;
-  outputPrice: number;
+  currency: string;
+  inputRate: string;
+  outputRate: string;
+  inputCostPer1000Tokens: number;
+  outputCostPer1000Tokens: number;
   price: Record<string, unknown>;
 }
 
@@ -26,8 +39,11 @@ export interface StoredModelConfig {
   provider: string;
   model: string;
   description: string | null;
-  inputPrice: number;
-  outputPrice: number;
+  currency: string;
+  inputRate: string;
+  outputRate: string;
+  inputCostPer1000Tokens: number;
+  outputCostPer1000Tokens: number;
   price: Record<string, unknown>;
 }
 
@@ -56,6 +72,8 @@ export interface IntelligenceLogRecord {
   response: string | null;
   context: string | null;
   modal: string | null;
+  currency: string | null;
+  cost: number | null;
   inputTokens: number | null;
   outputTokens: number | null;
   balance: number | null;
@@ -77,6 +95,9 @@ interface IntelligenceModelRow {
   provider: string;
   model: string;
   description: string | null;
+  currency: string | null;
+  rate: string | null;
+  costPer1000Tokens: number | string | null;
   inputPrice: number | string | null;
   outputPrice: number | string | null;
   price: unknown;
@@ -114,6 +135,8 @@ interface IntelligenceLogRow {
   response: string | null;
   context: string | null;
   modal: string | null;
+  currency: string | null;
+  cost: number | string | null;
   inputTokens: number | string | null;
   outputTokens: number | string | null;
   balance: number | null;
@@ -229,6 +252,65 @@ function parseRequiredDecimal(value: FormDataEntryValue | null, label: string): 
   return parsed;
 }
 
+function parseCurrency(value: FormDataEntryValue | null): string {
+  const normalized = parseRequiredString(value, 'Currency').toUpperCase();
+
+  if (!/^[A-Z]{3}$/.test(normalized)) {
+    throw new Error('Currency must be a 3-letter code like USD');
+  }
+
+  if (!supportedCurrencyCodes.has(normalized)) {
+    throw new Error(`Currency "${normalized}" is not recognized`);
+  }
+
+  return normalized;
+}
+
+function parseRateToPer1000(
+  value: FormDataEntryValue | null,
+  label: string
+): { rate: string; costPer1000Tokens: number } {
+  const normalized = parseRequiredString(value, label);
+  const fractionMatch = normalized.match(/^\s*([0-9]*\.?[0-9]+)\s*\/\s*([0-9]*\.?[0-9]+)\s*$/);
+
+  if (fractionMatch) {
+    const numerator = Number(fractionMatch[1]);
+    const denominator = Number(fractionMatch[2]);
+
+    if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) {
+      throw new Error(`${label} must be a valid fraction like 1.23/10000000`);
+    }
+
+    return {
+      rate: `${numerator}/${denominator}`,
+      costPer1000Tokens: Number(((numerator / denominator) * 1000).toFixed(12)),
+    };
+  }
+
+  const parsed = Number(normalized);
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`${label} must be a valid number or fraction`);
+  }
+
+  return {
+    rate: normalized,
+    costPer1000Tokens: parsed,
+  };
+}
+
+function readPriceString(source: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = source[key];
+
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
 export async function getAccessTokens(accountId: string): Promise<AccessTokenRecord[]> {
   await ensureIntelligenceTables();
   const db = getIntelligenceDbPool();
@@ -279,8 +361,26 @@ function normalizeStoredModelConfig(value: unknown): StoredModelConfig | null {
     provider,
     model,
     description: typeof record.description === 'string' ? record.description : null,
-    inputPrice: normalizeOptionalNumber(record.inputPrice) ?? 0,
-    outputPrice: normalizeOptionalNumber(record.outputPrice) ?? 0,
+    currency:
+      typeof record.currency === 'string' && record.currency.trim()
+        ? record.currency.trim().toUpperCase()
+        : 'USD',
+    inputRate:
+      readPriceString(record, ['inputRate']) ||
+      (typeof record.rate === 'string' && record.rate.trim() ? record.rate.trim() : '0/1000'),
+    outputRate:
+      readPriceString(record, ['outputRate']) ||
+      (typeof record.rate === 'string' && record.rate.trim() ? record.rate.trim() : '0/1000'),
+    inputCostPer1000Tokens:
+      normalizeOptionalNumber(record.inputCostPer1000Tokens) ??
+      normalizeOptionalNumber(record.inputPrice) ??
+      normalizeOptionalNumber(record.costPer1000Tokens) ??
+      0,
+    outputCostPer1000Tokens:
+      normalizeOptionalNumber(record.outputCostPer1000Tokens) ??
+      normalizeOptionalNumber(record.outputPrice) ??
+      normalizeOptionalNumber(record.costPer1000Tokens) ??
+      0,
     price: normalizeModelPrice(record.price),
   };
 }
@@ -294,7 +394,7 @@ export async function getIntelligenceModels(): Promise<IntelligenceModelRecord[]
   const db = getIntelligenceDbPool();
   const result = await db.query<IntelligenceModelRow>(
     `
-      SELECT id, title, provider, model, description, "inputPrice", "outputPrice", price
+      SELECT id, title, provider, model, description, currency, rate, "costPer1000Tokens", "inputPrice", "outputPrice", price
       FROM "intelligence_models"
       ORDER BY title ASC, provider ASC, model ASC
     `
@@ -306,8 +406,25 @@ export async function getIntelligenceModels(): Promise<IntelligenceModelRecord[]
     provider: row.provider,
     model: row.model,
     description: row.description,
-    inputPrice: normalizeOptionalNumber(row.inputPrice) ?? 0,
-    outputPrice: normalizeOptionalNumber(row.outputPrice) ?? 0,
+    currency: row.currency || 'USD',
+    inputRate:
+      readPriceString(normalizeModelPrice(row.price), ['inputRate']) ||
+      row.rate ||
+      '0/1000',
+    outputRate:
+      readPriceString(normalizeModelPrice(row.price), ['outputRate']) ||
+      row.rate ||
+      '0/1000',
+    inputCostPer1000Tokens:
+      normalizeOptionalNumber((normalizeModelPrice(row.price) as Record<string, unknown>).inputCostPer1000Tokens) ??
+      normalizeOptionalNumber(row.inputPrice) ??
+      normalizeOptionalNumber(row.costPer1000Tokens) ??
+      0,
+    outputCostPer1000Tokens:
+      normalizeOptionalNumber((normalizeModelPrice(row.price) as Record<string, unknown>).outputCostPer1000Tokens) ??
+      normalizeOptionalNumber(row.outputPrice) ??
+      normalizeOptionalNumber(row.costPer1000Tokens) ??
+      0,
     price: normalizeModelPrice(row.price),
   }));
 }
@@ -317,7 +434,7 @@ export async function getIntelligenceModelById(modelId: number): Promise<Intelli
   const db = getIntelligenceDbPool();
   const result = await db.query<IntelligenceModelRow>(
     `
-      SELECT id, title, provider, model, description, "inputPrice", "outputPrice", price
+      SELECT id, title, provider, model, description, currency, rate, "costPer1000Tokens", "inputPrice", "outputPrice", price
       FROM "intelligence_models"
       WHERE id = $1
       LIMIT 1
@@ -337,8 +454,25 @@ export async function getIntelligenceModelById(modelId: number): Promise<Intelli
     provider: row.provider,
     model: row.model,
     description: row.description,
-    inputPrice: normalizeOptionalNumber(row.inputPrice) ?? 0,
-    outputPrice: normalizeOptionalNumber(row.outputPrice) ?? 0,
+    currency: row.currency || 'USD',
+    inputRate:
+      readPriceString(normalizeModelPrice(row.price), ['inputRate']) ||
+      row.rate ||
+      '0/1000',
+    outputRate:
+      readPriceString(normalizeModelPrice(row.price), ['outputRate']) ||
+      row.rate ||
+      '0/1000',
+    inputCostPer1000Tokens:
+      normalizeOptionalNumber((normalizeModelPrice(row.price) as Record<string, unknown>).inputCostPer1000Tokens) ??
+      normalizeOptionalNumber(row.inputPrice) ??
+      normalizeOptionalNumber(row.costPer1000Tokens) ??
+      0,
+    outputCostPer1000Tokens:
+      normalizeOptionalNumber((normalizeModelPrice(row.price) as Record<string, unknown>).outputCostPer1000Tokens) ??
+      normalizeOptionalNumber(row.outputPrice) ??
+      normalizeOptionalNumber(row.costPer1000Tokens) ??
+      0,
     price: normalizeModelPrice(row.price),
   };
 }
@@ -448,6 +582,8 @@ export async function getIntelligenceLogs(accountId: string): Promise<Intelligen
         il.response,
         il.context,
         il.modal,
+        il.currency,
+        il.cost,
         il."inputTokens",
         il."outputTokens",
         il.balance,
@@ -458,7 +594,6 @@ export async function getIntelligenceLogs(accountId: string): Promise<Intelligen
         ON ia.id = il.access_id
       WHERE ia.account_id = $1
       ORDER BY il.id DESC
-      LIMIT 200
     `,
     [accountId]
   );
@@ -467,6 +602,7 @@ export async function getIntelligenceLogs(accountId: string): Promise<Intelligen
     ...row,
     id: normalizeNumericId(row.id),
     access_id: normalizeNumericId(row.access_id),
+    cost: normalizeOptionalNumber(row.cost),
     inputTokens: normalizeOptionalNumber(row.inputTokens),
     outputTokens: normalizeOptionalNumber(row.outputTokens),
   }));
@@ -505,6 +641,8 @@ export async function getPaginatedIntelligenceLogs(
         il.response,
         il.context,
         il.modal,
+        il.currency,
+        il.cost,
         il."inputTokens",
         il."outputTokens",
         il.balance,
@@ -526,6 +664,7 @@ export async function getPaginatedIntelligenceLogs(
       ...row,
       id: normalizeNumericId(row.id),
       access_id: normalizeNumericId(row.access_id),
+      cost: normalizeOptionalNumber(row.cost),
       inputTokens: normalizeOptionalNumber(row.inputTokens),
       outputTokens: normalizeOptionalNumber(row.outputTokens),
     })),
@@ -558,24 +697,33 @@ export async function createIntelligenceModelRecord(input: {
   provider: string;
   model: string;
   description: string | null;
-  inputPrice: number;
-  outputPrice: number;
+  currency: string;
+  inputRate: string;
+  outputRate: string;
+  inputCostPer1000Tokens: number;
+  outputCostPer1000Tokens: number;
 }): Promise<void> {
   await ensureIntelligenceTables();
   const db = getIntelligenceDbPool();
   const price = {
-    inputPer1M: input.inputPrice,
-    outputPer1M: input.outputPrice,
+    currency: input.currency,
+    inputRate: input.inputRate,
+    outputRate: input.outputRate,
+    inputCostPer1000Tokens: input.inputCostPer1000Tokens,
+    outputCostPer1000Tokens: input.outputCostPer1000Tokens,
   };
 
   await db.query(
     `
-      INSERT INTO "intelligence_models" (title, provider, model, description, "inputPrice", "outputPrice", price)
-      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+      INSERT INTO "intelligence_models" (title, provider, model, description, currency, rate, "costPer1000Tokens", "inputPrice", "outputPrice", price)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
       ON CONFLICT (provider, model)
       DO UPDATE SET
         title = EXCLUDED.title,
         description = EXCLUDED.description,
+        currency = EXCLUDED.currency,
+        rate = EXCLUDED.rate,
+        "costPer1000Tokens" = EXCLUDED."costPer1000Tokens",
         "inputPrice" = EXCLUDED."inputPrice",
         "outputPrice" = EXCLUDED."outputPrice",
         price = EXCLUDED.price
@@ -585,8 +733,11 @@ export async function createIntelligenceModelRecord(input: {
       input.provider.trim().toLowerCase(),
       input.model.trim(),
       input.description,
-      input.inputPrice,
-      input.outputPrice,
+      input.currency,
+      input.inputRate,
+      input.inputCostPer1000Tokens,
+      input.inputCostPer1000Tokens,
+      input.outputCostPer1000Tokens,
       JSON.stringify(price),
     ]
   );
@@ -598,14 +749,20 @@ export async function updateIntelligenceModelRecord(input: {
   provider: string;
   model: string;
   description: string | null;
-  inputPrice: number;
-  outputPrice: number;
+  currency: string;
+  inputRate: string;
+  outputRate: string;
+  inputCostPer1000Tokens: number;
+  outputCostPer1000Tokens: number;
 }): Promise<void> {
   await ensureIntelligenceTables();
   const db = getIntelligenceDbPool();
   const price = {
-    inputPer1M: input.inputPrice,
-    outputPer1M: input.outputPrice,
+    currency: input.currency,
+    inputRate: input.inputRate,
+    outputRate: input.outputRate,
+    inputCostPer1000Tokens: input.inputCostPer1000Tokens,
+    outputCostPer1000Tokens: input.outputCostPer1000Tokens,
   };
 
   try {
@@ -617,18 +774,24 @@ export async function updateIntelligenceModelRecord(input: {
           provider = $2,
           model = $3,
           description = $4,
-          "inputPrice" = $5,
-          "outputPrice" = $6,
-          price = $7::jsonb
-        WHERE id = $8
+          currency = $5,
+          rate = $6,
+          "costPer1000Tokens" = $7,
+          "inputPrice" = $8,
+          "outputPrice" = $9,
+          price = $10::jsonb
+        WHERE id = $11
       `,
       [
         input.title,
         input.provider.trim().toLowerCase(),
         input.model.trim(),
         input.description,
-        input.inputPrice,
-        input.outputPrice,
+        input.currency,
+        input.inputRate,
+        input.inputCostPer1000Tokens,
+        input.inputCostPer1000Tokens,
+        input.outputCostPer1000Tokens,
         JSON.stringify(price),
         input.modelId,
       ]
@@ -711,7 +874,7 @@ export async function createIntelligenceAccessRecord(input: {
   if (modelIds.length > 0) {
     const modelResult = await db.query<IntelligenceModelRow>(
       `
-        SELECT id, title, provider, model, description, "inputPrice", "outputPrice", price
+        SELECT id, title, provider, model, description, currency, rate, "costPer1000Tokens", "inputPrice", "outputPrice", price
         FROM "intelligence_models"
         WHERE id = ANY($1::bigint[])
       `,
@@ -731,8 +894,25 @@ export async function createIntelligenceAccessRecord(input: {
           provider: row.provider,
           model: row.model,
           description: row.description,
-          inputPrice: normalizeOptionalNumber(row.inputPrice) ?? 0,
-          outputPrice: normalizeOptionalNumber(row.outputPrice) ?? 0,
+          currency: row.currency || 'USD',
+          inputRate:
+            readPriceString(normalizeModelPrice(row.price), ['inputRate']) ||
+            row.rate ||
+            '0/1000',
+          outputRate:
+            readPriceString(normalizeModelPrice(row.price), ['outputRate']) ||
+            row.rate ||
+            '0/1000',
+          inputCostPer1000Tokens:
+            normalizeOptionalNumber((normalizeModelPrice(row.price) as Record<string, unknown>).inputCostPer1000Tokens) ??
+            normalizeOptionalNumber(row.inputPrice) ??
+            normalizeOptionalNumber(row.costPer1000Tokens) ??
+            0,
+          outputCostPer1000Tokens:
+            normalizeOptionalNumber((normalizeModelPrice(row.price) as Record<string, unknown>).outputCostPer1000Tokens) ??
+            normalizeOptionalNumber(row.outputPrice) ??
+            normalizeOptionalNumber(row.costPer1000Tokens) ??
+            0,
           price: normalizeModelPrice(row.price),
         },
       ])
@@ -840,7 +1020,7 @@ export async function updateIntelligenceAccessRecord(input: {
   if (modelIds.length > 0) {
     const modelResult = await db.query<IntelligenceModelRow>(
       `
-        SELECT id, title, provider, model, description, "inputPrice", "outputPrice", price
+        SELECT id, title, provider, model, description, currency, rate, "costPer1000Tokens", "inputPrice", "outputPrice", price
         FROM "intelligence_models"
         WHERE id = ANY($1::bigint[])
       `,
@@ -860,8 +1040,25 @@ export async function updateIntelligenceAccessRecord(input: {
           provider: row.provider,
           model: row.model,
           description: row.description,
-          inputPrice: normalizeOptionalNumber(row.inputPrice) ?? 0,
-          outputPrice: normalizeOptionalNumber(row.outputPrice) ?? 0,
+          currency: row.currency || 'USD',
+          inputRate:
+            readPriceString(normalizeModelPrice(row.price), ['inputRate']) ||
+            row.rate ||
+            '0/1000',
+          outputRate:
+            readPriceString(normalizeModelPrice(row.price), ['outputRate']) ||
+            row.rate ||
+            '0/1000',
+          inputCostPer1000Tokens:
+            normalizeOptionalNumber((normalizeModelPrice(row.price) as Record<string, unknown>).inputCostPer1000Tokens) ??
+            normalizeOptionalNumber(row.inputPrice) ??
+            normalizeOptionalNumber(row.costPer1000Tokens) ??
+            0,
+          outputCostPer1000Tokens:
+            normalizeOptionalNumber((normalizeModelPrice(row.price) as Record<string, unknown>).outputCostPer1000Tokens) ??
+            normalizeOptionalNumber(row.outputPrice) ??
+            normalizeOptionalNumber(row.costPer1000Tokens) ??
+            0,
           price: normalizeModelPrice(row.price),
         },
       ])
@@ -964,6 +1161,8 @@ export function parseTokenFormData(formData: FormData) {
 
 export function parseModelFormData(formData: FormData) {
   const provider = parseRequiredString(formData.get('provider'), 'Provider').toLowerCase();
+  const inputRate = parseRateToPer1000(formData.get('input_rate'), 'Input rate');
+  const outputRate = parseRateToPer1000(formData.get('output_rate'), 'Output rate');
 
   if (!['openai', 'anthropic', 'google'].includes(provider)) {
     throw new Error('Provider must be one of: openai, anthropic, google');
@@ -974,8 +1173,11 @@ export function parseModelFormData(formData: FormData) {
     provider,
     model: parseRequiredString(formData.get('model'), 'Model'),
     description: parseOptionalString(formData.get('description')),
-    inputPrice: parseRequiredDecimal(formData.get('input_price'), 'Input price'),
-    outputPrice: parseRequiredDecimal(formData.get('output_price'), 'Output price'),
+    currency: parseCurrency(formData.get('currency')),
+    inputRate: inputRate.rate,
+    outputRate: outputRate.rate,
+    inputCostPer1000Tokens: inputRate.costPer1000Tokens,
+    outputCostPer1000Tokens: outputRate.costPer1000Tokens,
   };
 }
 
@@ -999,7 +1201,7 @@ export function parseAccessIdFormData(formData: FormData) {
 }
 
 export function parseRechargeFormData(formData: FormData) {
-  const amount = parseRequiredInteger(formData.get('amount'), 'Recharge amount');
+  const amount = parseRequiredDecimal(formData.get('amount'), 'Recharge amount');
 
   if (amount <= 0) {
     throw new Error('Recharge amount must be greater than zero');
@@ -1018,6 +1220,7 @@ export function parseLogContext(context: string | null): {
   usageTokens: number | null;
   status: string | null;
   estimatedCost: number | null;
+  currency: string | null;
 } {
   if (!context) {
     return {
@@ -1027,6 +1230,7 @@ export function parseLogContext(context: string | null): {
       usageTokens: null,
       status: null,
       estimatedCost: null,
+      currency: null,
     };
   }
 
@@ -1047,6 +1251,7 @@ export function parseLogContext(context: string | null): {
       usageTokens: Number.isFinite(usageTokens) ? usageTokens : null,
       status: typeof parsed?.status === 'string' ? parsed.status : null,
       estimatedCost: Number.isFinite(Number(parsed?.estimatedCost)) ? Number(parsed?.estimatedCost) : null,
+      currency: typeof parsed?.currency === 'string' && parsed.currency.trim() ? parsed.currency.trim().toUpperCase() : null,
     };
   } catch {
     return {
@@ -1056,6 +1261,7 @@ export function parseLogContext(context: string | null): {
       usageTokens: null,
       status: null,
       estimatedCost: null,
+      currency: null,
     };
   }
 }

@@ -34,8 +34,8 @@ export async function createAccessTokenAction(formData: FormData) {
     key: input.key,
   });
   revalidatePath('/intelligence/tokens');
-  revalidatePath('/intelligence/access');
-  revalidatePath('/intelligence/access/add');
+  revalidatePath('/intelligence/prompts');
+  revalidatePath('/intelligence/prompts/add');
   redirect('/intelligence/tokens');
 }
 
@@ -46,8 +46,8 @@ export async function createIntelligenceModelAction(formData: FormData) {
 
   revalidatePath('/intelligence/models');
   revalidatePath('/intelligence/models/add');
-  revalidatePath('/intelligence/access');
-  revalidatePath('/intelligence/access/add');
+  revalidatePath('/intelligence/prompts');
+  revalidatePath('/intelligence/prompts/add');
   redirect('/intelligence/models');
 }
 
@@ -89,8 +89,8 @@ export async function createIntelligenceAccessAction(
       defPrompt: input.defPrompt,
     });
 
-    revalidatePath('/intelligence/access');
-    revalidatePath('/intelligence/access/add');
+    revalidatePath('/intelligence/prompts');
+    revalidatePath('/intelligence/prompts/add');
     revalidatePath('/intelligence/logs');
 
     return {
@@ -100,7 +100,7 @@ export async function createIntelligenceAccessAction(
     };
   } catch (error) {
     return {
-      error: error instanceof Error ? error.message : 'Failed to create access',
+      error: error instanceof Error ? error.message : 'Failed to create prompt',
       generatedAccessId: null,
       generatedToken: null,
     };
@@ -114,7 +114,7 @@ export async function rechargeIntelligenceBalanceAction(formData: FormData) {
     ...input,
     accountId,
   });
-  revalidatePath('/intelligence/access');
+  revalidatePath('/intelligence/prompts');
   revalidatePath('/intelligence/logs');
   revalidatePath('/intelligence/logs/recharge');
   redirect('/intelligence/logs');
@@ -131,7 +131,7 @@ export async function updateIntelligenceAccessAction(
 
   if (!existingAccess) {
     return {
-      error: 'Access record not found',
+      error: 'Prompt record not found',
       success: null,
     };
   }
@@ -148,17 +148,17 @@ export async function updateIntelligenceAccessAction(
       defPrompt: input.defPrompt,
     });
 
-    revalidatePath('/intelligence/access');
-    revalidatePath(`/intelligence/access/${accessId}`);
+    revalidatePath('/intelligence/prompts');
+    revalidatePath(`/intelligence/prompts/${accessId}`);
     revalidatePath('/intelligence/logs');
 
     return {
       error: null,
-      success: 'Access updated successfully.',
+      success: 'Prompt updated successfully.',
     };
   } catch (error) {
     return {
-      error: error instanceof Error ? error.message : 'Failed to update access',
+      error: error instanceof Error ? error.message : 'Failed to update prompt',
       success: null,
     };
   }
@@ -173,10 +173,10 @@ export async function deleteIntelligenceAccessAction(formData: FormData) {
     accountId,
   });
 
-  revalidatePath('/intelligence/access');
-  revalidatePath(`/intelligence/access/${accessId}`);
+  revalidatePath('/intelligence/prompts');
+  revalidatePath(`/intelligence/prompts/${accessId}`);
   revalidatePath('/intelligence/logs');
-  redirect('/intelligence/access');
+  redirect('/intelligence/prompts');
 }
 
 export async function updateIntelligenceModelAction(
@@ -195,8 +195,8 @@ export async function updateIntelligenceModelAction(
     revalidatePath('/intelligence/models');
     revalidatePath(`/intelligence/models/${modelId}`);
     revalidatePath('/intelligence/models/add');
-    revalidatePath('/intelligence/access');
-    revalidatePath('/intelligence/access/add');
+    revalidatePath('/intelligence/prompts');
+    revalidatePath('/intelligence/prompts/add');
 
     return {
       error: null,
@@ -219,7 +219,7 @@ export async function deleteIntelligenceModelAction(formData: FormData) {
 
   revalidatePath('/intelligence/models');
   revalidatePath(`/intelligence/models/${modelId}`);
-  revalidatePath('/intelligence/access');
-  revalidatePath('/intelligence/access/add');
+  revalidatePath('/intelligence/prompts');
+  revalidatePath('/intelligence/prompts/add');
   redirect('/intelligence/models');
 }

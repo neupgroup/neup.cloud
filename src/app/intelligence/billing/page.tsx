@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { getCurrentIntelligenceAccountId } from '@/lib/intelligence/account';
-import { getIntelligenceLogs, parseLogContext } from '@/lib/intelligence/store';
+import { getIntelligenceLogs } from '@/lib/intelligence/store';
 
 export const metadata: Metadata = {
   title: 'Intelligence Billing, Neup.Cloud',
@@ -20,12 +20,17 @@ export const metadata: Metadata = {
 
 export default async function IntelligenceBillingPage() {
   const logs = await getIntelligenceLogs(await getCurrentIntelligenceAccountId());
-  const totalCost = logs.reduce((sum, log) => {
-    const parsedContext = parseLogContext(log.context);
-    return sum + (parsedContext.estimatedCost || 0);
-  }, 0);
   const totalInputTokens = logs.reduce((sum, log) => sum + (log.inputTokens || 0), 0);
   const totalOutputTokens = logs.reduce((sum, log) => sum + (log.outputTokens || 0), 0);
+  const totalsByCurrency = logs.reduce<Record<string, number>>((accumulator, log) => {
+    if (!log.currency || log.cost === null) {
+      return accumulator;
+    }
+
+    accumulator[log.currency] = (accumulator[log.currency] || 0) + log.cost;
+    return accumulator;
+  }, {});
+  const currencyEntries = Object.entries(totalsByCurrency).sort(([left], [right]) => left.localeCompare(right));
 
   return (
     <div className="grid gap-8">
@@ -48,7 +53,7 @@ export default async function IntelligenceBillingPage() {
             Billing intelligence lives here
           </CardTitle>
           <CardDescription className="max-w-2xl text-base">
-            This page now summarizes the overall estimated cost and token usage from completed intelligence logs.
+            This page summarizes saved request costs by currency along with overall token usage from completed intelligence logs.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row">
@@ -69,10 +74,23 @@ export default async function IntelligenceBillingPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-xl border border-border/70 p-4">
-            <p className="text-sm text-muted-foreground">Estimated Total Cost</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">${totalCost.toFixed(8)}</p>
-          </div>
+          {currencyEntries.length === 0 ? (
+            <div className="rounded-xl border border-border/70 p-4 md:col-span-3">
+              <p className="text-sm text-muted-foreground">No saved currency cost yet</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Costs will appear here after model responses finish and logs are written.
+              </p>
+            </div>
+          ) : (
+            currencyEntries.map(([currency, total]) => (
+              <div key={currency} className="rounded-xl border border-border/70 p-4">
+                <p className="text-sm text-muted-foreground">{currency} Total Cost</p>
+                <p className="mt-2 text-2xl font-semibold text-foreground">
+                  {total.toFixed(8)} {currency}
+                </p>
+              </div>
+            ))
+          )}
           <div className="rounded-xl border border-border/70 p-4">
             <p className="text-sm text-muted-foreground">Input Tokens</p>
             <p className="mt-2 text-2xl font-semibold text-foreground">{totalInputTokens}</p>

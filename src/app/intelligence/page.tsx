@@ -40,10 +40,10 @@ const intelligenceCards = [
     href: '/intelligence/billing',
   },
   {
-    title: 'Access',
-    description: 'Manage intelligence access records, balances, primary models, fallback models, and prompt bindings.',
+    title: 'Prompts',
+    description: 'Manage intelligence prompt records, currency balances, primary models, fallback models, and prompt bindings.',
     icon: KeyRound,
-    href: '/intelligence/access',
+    href: '/intelligence/prompts',
   },
   {
     title: 'Tokens',

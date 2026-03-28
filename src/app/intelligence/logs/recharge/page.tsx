@@ -18,7 +18,7 @@ import { getCurrentIntelligenceAccountId } from '@/lib/intelligence/account';
 import { getIntelligenceAccesses } from '@/lib/intelligence/store';
 
 export const metadata: Metadata = {
-  title: 'Recharge Intelligence Logs, Neup.Cloud',
+  title: 'Recharge Intelligence Prompt Balance, Neup.Cloud',
 };
 
 export default async function IntelligenceLogsRechargePage({
@@ -36,10 +36,10 @@ export default async function IntelligenceLogsRechargePage({
         title={
           <span className="flex items-center gap-3">
             <BatteryCharging className="h-8 w-8 text-primary" />
-            Recharge Intelligence Balance
+            Recharge Prompt Balance
           </span>
         }
-        description="A placeholder route for future balance top-ups and recharge actions."
+        description="Top up the currency balance for a prompt record."
         backHref="/intelligence/logs"
       />
 
@@ -49,17 +49,17 @@ export default async function IntelligenceLogsRechargePage({
             <WalletCards className="h-6 w-6" />
           </div>
           <CardTitle className="text-2xl font-headline">
-            Recharge flow will live here
+            Prompt recharge flow
           </CardTitle>
           <CardDescription className="max-w-2xl text-base">
-            Recharge balances for your signed-in account.
+            Recharge prompt balances for your signed-in account.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form action={rechargeIntelligenceBalanceAction} className="grid gap-5">
             <div className="grid gap-5 md:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="access_id">Access Record</Label>
+                <Label htmlFor="access_id">Prompt Record</Label>
                 <select
                   id="access_id"
                   name="access_id"
@@ -67,24 +67,24 @@ export default async function IntelligenceLogsRechargePage({
                   defaultValue={initialAccessId}
                   required
                 >
-                  <option value="" disabled>Select an access record</option>
+                  <option value="" disabled>Select a prompt record</option>
                   {accesses.map((access) => (
                     <option key={access.id} value={String(access.id)}>
-                      {access.prompt_id} - balance {access.balance}
+                      {access.prompt_id} - {(access.primaryModelConfig?.currency || access.fallbackModelConfig?.currency || 'USD')} {access.balance.toFixed(6)}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="amount">Recharge Amount</Label>
-                <Input id="amount" name="amount" type="number" min="1" defaultValue="1000" required />
+                <Input id="amount" name="amount" type="number" min="0.000001" step="0.000001" defaultValue="10.00" required />
               </div>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button type="submit">Recharge Balance</Button>
+              <Button type="submit">Recharge Prompt</Button>
               <Button variant="outline" asChild>
-                <Link href="/intelligence/access">View Access Records</Link>
+                <Link href="/intelligence/prompts">View Prompts</Link>
               </Button>
             </div>
           </form>
@@ -100,7 +100,7 @@ export default async function IntelligenceLogsRechargePage({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Recharges update the access balance directly. Request logs are still only created after model responses finish.
+            Recharges update the prompt balance directly. Request logs are still only created after model responses finish.
           </p>
         </CardContent>
       </Card>

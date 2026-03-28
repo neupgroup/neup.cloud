@@ -1,8 +1,8 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import Link from 'next/link';
-import { Save, Trash2 } from 'lucide-react';
+import { Calculator, Flag, Save, Trash2 } from 'lucide-react';
 
 import {
   deleteIntelligenceModelAction,
@@ -20,6 +20,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  getCurrencySuggestions,
+  getProviderSuggestions,
+  normalizeCurrencyInput,
+  normalizeProviderInput,
+  parseRateDetails,
+  resolveProviderDetails,
+  resolveCurrencyDetails,
+} from '@/app/intelligence/models/model-pricing';
 
 const initialState: UpdateIntelligenceModelActionState = {
   error: null,
@@ -36,11 +45,25 @@ export default function ModelEditForm({
     provider: string;
     model: string;
     description: string | null;
-    inputPrice: number;
-    outputPrice: number;
+    currency: string;
+    inputRate: string;
+    outputRate: string;
+    inputCostPer1000Tokens: number;
+    outputCostPer1000Tokens: number;
   };
 }) {
   const [state, updateAction, isPending] = useActionState(updateIntelligenceModelAction, initialState);
+  const [provider, setProvider] = useState(initialValues.provider);
+  const [currency, setCurrency] = useState(initialValues.currency);
+  const [inputRate, setInputRate] = useState(initialValues.inputRate);
+  const [outputRate, setOutputRate] = useState(initialValues.outputRate);
+  const providerDetails = resolveProviderDetails(provider);
+  const providerSuggestions = providerDetails ? [] : getProviderSuggestions(provider);
+  const currencyDetails = resolveCurrencyDetails(currency);
+  const currencySuggestions = currencyDetails ? [] : getCurrencySuggestions(currency);
+  const inputRateDetails = parseRateDetails(inputRate);
+  const outputRateDetails = parseRateDetails(outputRate);
+  const canSubmit = Boolean(providerDetails && currencyDetails && inputRateDetails && outputRateDetails);
 
   return (
     <div className="grid gap-6">
@@ -60,35 +83,71 @@ export default function ModelEditForm({
         <CardHeader className="space-y-3">
           <CardTitle className="text-2xl font-headline">Edit model</CardTitle>
           <CardDescription className="max-w-2xl text-base">
-            Update the provider, model name, description, and pricing JSON. Existing access records keep their own copied snapshot.
+            Update the provider, model name, description, and input/output pricing rates. Existing prompt records keep their own copied snapshot.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form action={updateAction} className="grid gap-5">
             <input type="hidden" name="model_id" value={String(modelId)} />
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="title">Title</Label>
-                <Input id="title" name="title" defaultValue={initialValues.title} required />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="provider">Provider</Label>
-                <select
-                  id="provider"
-                  name="provider"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                  defaultValue={initialValues.provider}
-                >
-                  <option value="openai">openai</option>
-                  <option value="anthropic">anthropic</option>
-                  <option value="google">google</option>
-                </select>
-              </div>
-              <div className="grid gap-2 md:col-span-2">
-                <Label htmlFor="model">Model</Label>
-                <Input id="model" name="model" defaultValue={initialValues.model} required />
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                name="title"
+                defaultValue={initialValues.title}
+                className="max-w-xl"
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="provider">Provider</Label>
+              <Input
+                id="provider"
+                name="provider"
+                value={provider}
+                onChange={(event) => setProvider(normalizeProviderInput(event.target.value))}
+                placeholder="openai"
+                required
+                className="max-w-sm"
+              />
+              {providerDetails ? (
+                <p className="text-sm text-muted-foreground">
+                  Selected provider: {providerDetails.label}
+                </p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {providerSuggestions.map((option) => (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full"
+                        onClick={() => setProvider(option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-sm text-destructive">
+                    Type an exact provider or click a chip to select one.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="model">Model</Label>
+              <Input
+                id="model"
+                name="model"
+                defaultValue={initialValues.model}
+                className="max-w-xl"
+                required
+              />
             </div>
 
             <div className="grid gap-2">
@@ -97,39 +156,99 @@ export default function ModelEditForm({
                 id="description"
                 name="description"
                 defaultValue={initialValues.description || ''}
-                className="min-h-24"
+                className="min-h-24 max-w-3xl"
               />
             </div>
 
-            <div className="grid gap-2 md:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="input_price">Input Price</Label>
-                <Input
-                  id="input_price"
-                  name="input_price"
-                  type="number"
-                  min="0"
-                  step="0.000001"
-                  defaultValue={String(initialValues.inputPrice)}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="output_price">Output Price</Label>
-                <Input
-                  id="output_price"
-                  name="output_price"
-                  type="number"
-                  min="0"
-                  step="0.000001"
-                  defaultValue={String(initialValues.outputPrice)}
-                  required
-                />
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="currency">Currency</Label>
+              <Input
+                id="currency"
+                name="currency"
+                value={currency}
+                onChange={(event) => setCurrency(normalizeCurrencyInput(event.target.value))}
+                maxLength={3}
+                className="max-w-[180px]"
+                required
+              />
+              {currencyDetails ? (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Flag className="h-4 w-4 text-primary" />
+                  <span>{currencyDetails.caption} ({currencyDetails.code})</span>
+                </p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {currencySuggestions.map((option) => (
+                      <Button
+                        key={option.code}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full"
+                        onClick={() => setCurrency(option.code)}
+                      >
+                        {option.code}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-sm text-destructive">
+                    Type an exact currency code like USD or click a chip to select one.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="input_rate">Input Rate</Label>
+              <Input
+                id="input_rate"
+                name="input_rate"
+                value={inputRate}
+                onChange={(event) => setInputRate(event.target.value)}
+                className="max-w-sm"
+                required
+              />
+              {inputRateDetails ? (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calculator className="h-4 w-4 text-primary" />
+                  <span>
+                    Normalized input cost per 1000 tokens: {inputRateDetails.costPer1000Tokens.toFixed(12)} {currencyDetails?.code || normalizeCurrencyInput(currency) || 'CUR'}
+                  </span>
+                </p>
+              ) : (
+                <p className="text-sm text-destructive">
+                  Enter a valid input rate like 1.23/10000000 or a direct per-1000 value.
+                </p>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="output_rate">Output Rate</Label>
+              <Input
+                id="output_rate"
+                name="output_rate"
+                value={outputRate}
+                onChange={(event) => setOutputRate(event.target.value)}
+                className="max-w-sm"
+                required
+              />
+              {outputRateDetails ? (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calculator className="h-4 w-4 text-primary" />
+                  <span>
+                    Normalized output cost per 1000 tokens: {outputRateDetails.costPer1000Tokens.toFixed(12)} {currencyDetails?.code || normalizeCurrencyInput(currency) || 'CUR'}
+                  </span>
+                </p>
+              ) : (
+                <p className="text-sm text-destructive">
+                  Enter a valid output rate like 4.92/10000000 or a direct per-1000 value.
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isPending || !canSubmit}>
                 <Save className="mr-2 h-4 w-4" />
                 {isPending ? 'Saving...' : 'Save Changes'}
               </Button>
@@ -145,7 +264,7 @@ export default function ModelEditForm({
         <CardHeader>
           <CardTitle className="text-destructive">Delete model</CardTitle>
           <CardDescription>
-            This removes the registry entry. Existing access records keep their copied model snapshot.
+            This removes the registry entry. Existing prompt records keep their copied model snapshot.
           </CardDescription>
         </CardHeader>
         <CardContent>

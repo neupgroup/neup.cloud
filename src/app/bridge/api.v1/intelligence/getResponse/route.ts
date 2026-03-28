@@ -58,8 +58,11 @@ interface StoredModelConfig {
   provider: string;
   model: string;
   description: string | null;
-  inputPrice: number;
-  outputPrice: number;
+  currency: string;
+  inputRate: string;
+  outputRate: string;
+  inputCostPer1000Tokens: number;
+  outputCostPer1000Tokens: number;
   price: Record<string, unknown>;
 }
 
@@ -260,8 +263,36 @@ function normalizeStoredModelConfig(value: unknown): StoredModelConfig | null {
     provider,
     model,
     description: typeof record.description === 'string' ? record.description : null,
-    inputPrice: Number.isFinite(Number(record.inputPrice)) ? Number(record.inputPrice) : 0,
-    outputPrice: Number.isFinite(Number(record.outputPrice)) ? Number(record.outputPrice) : 0,
+    currency:
+      typeof record.currency === 'string' && record.currency.trim()
+        ? record.currency.trim().toUpperCase()
+        : 'USD',
+    inputRate:
+      typeof record.inputRate === 'string' && record.inputRate.trim()
+        ? record.inputRate.trim()
+        : typeof record.rate === 'string' && record.rate.trim()
+          ? record.rate.trim()
+          : '0/1000',
+    outputRate:
+      typeof record.outputRate === 'string' && record.outputRate.trim()
+        ? record.outputRate.trim()
+        : typeof record.rate === 'string' && record.rate.trim()
+          ? record.rate.trim()
+          : '0/1000',
+    inputCostPer1000Tokens: Number.isFinite(Number(record.inputCostPer1000Tokens))
+      ? Number(record.inputCostPer1000Tokens)
+      : Number.isFinite(Number(record.inputPrice))
+        ? Number(record.inputPrice)
+        : Number.isFinite(Number(record.costPer1000Tokens))
+          ? Number(record.costPer1000Tokens)
+          : 0,
+    outputCostPer1000Tokens: Number.isFinite(Number(record.outputCostPer1000Tokens))
+      ? Number(record.outputCostPer1000Tokens)
+      : Number.isFinite(Number(record.outputPrice))
+        ? Number(record.outputPrice)
+        : Number.isFinite(Number(record.costPer1000Tokens))
+          ? Number(record.costPer1000Tokens)
+          : 0,
     price: record.price && typeof record.price === 'object' && !Array.isArray(record.price)
       ? (record.price as Record<string, unknown>)
       : {},
@@ -305,55 +336,104 @@ function readPriceNumber(source: Record<string, unknown>, keys: string[]): numbe
 }
 
 function estimateModelCost(
-  modelConfig: { inputPrice: number; outputPrice: number; price: Record<string, unknown> },
+  modelConfig: {
+    currency: string;
+    inputCostPer1000Tokens: number;
+    outputCostPer1000Tokens: number;
+    price: Record<string, unknown>;
+  },
   inputTokens: number,
   outputTokens: number,
   usageTokens: number
-): number | null {
-  if (modelConfig.inputPrice > 0 || modelConfig.outputPrice > 0) {
-    return Number(
-      (
-        ((inputTokens / 1_000_000) * modelConfig.inputPrice) +
-        ((outputTokens / 1_000_000) * modelConfig.outputPrice)
-      ).toFixed(8)
-    );
+): { cost: number | null; currency: string | null } {
+  if (modelConfig.inputCostPer1000Tokens > 0 || modelConfig.outputCostPer1000Tokens > 0) {
+    return {
+      cost: Number(
+        (
+          ((inputTokens / 1000) * modelConfig.inputCostPer1000Tokens) +
+          ((outputTokens / 1000) * modelConfig.outputCostPer1000Tokens)
+        ).toFixed(8)
+      ),
+      currency: modelConfig.currency || 'USD',
+    };
   }
 
   const price = modelConfig.price;
+  const inputPer1000 = readPriceNumber(price, ['inputCostPer1000Tokens', 'inputPer1000', 'input_per_1000']);
+  const outputPer1000 = readPriceNumber(price, ['outputCostPer1000Tokens', 'outputPer1000', 'output_per_1000']);
+  const per1000 = readPriceNumber(price, ['costPer1000Tokens', 'per1000', 'per_1000']);
   const inputPer1M = readPriceNumber(price, ['inputPer1M', 'input_per_1m', 'input']);
   const outputPer1M = readPriceNumber(price, ['outputPer1M', 'output_per_1m', 'output']);
   const flatPer1M = readPriceNumber(price, ['per1M', 'per_1m', 'totalPer1M']);
   const inputPerToken = readPriceNumber(price, ['inputPerToken', 'input_per_token']);
   const outputPerToken = readPriceNumber(price, ['outputPerToken', 'output_per_token']);
   const flatPerToken = readPriceNumber(price, ['perToken', 'per_token']);
+  const currency =
+    typeof price.currency === 'string' && price.currency.trim()
+      ? price.currency.trim().toUpperCase()
+      : modelConfig.currency || 'USD';
+
+  if (inputPer1000 !== null || outputPer1000 !== null) {
+    return {
+      cost: Number(
+        (
+          ((inputTokens / 1000) * (inputPer1000 ?? per1000 ?? 0)) +
+          ((outputTokens / 1000) * (outputPer1000 ?? per1000 ?? 0))
+        ).toFixed(8)
+      ),
+      currency,
+    };
+  }
+
+  if (per1000 !== null) {
+    return {
+      cost: Number(((usageTokens / 1000) * per1000).toFixed(8)),
+      currency,
+    };
+  }
 
   if (inputPerToken !== null || outputPerToken !== null) {
-    return Number(
-      (
-        (inputTokens * (inputPerToken ?? flatPerToken ?? 0)) +
-        (outputTokens * (outputPerToken ?? flatPerToken ?? 0))
-      ).toFixed(8)
-    );
+    return {
+      cost: Number(
+        (
+          (inputTokens * (inputPerToken ?? flatPerToken ?? 0)) +
+          (outputTokens * (outputPerToken ?? flatPerToken ?? 0))
+        ).toFixed(8)
+      ),
+      currency,
+    };
   }
 
   if (inputPer1M !== null || outputPer1M !== null) {
-    return Number(
-      (
-        ((inputTokens / 1_000_000) * (inputPer1M ?? flatPer1M ?? 0)) +
-        ((outputTokens / 1_000_000) * (outputPer1M ?? flatPer1M ?? 0))
-      ).toFixed(8)
-    );
+    return {
+      cost: Number(
+        (
+          ((inputTokens / 1_000_000) * (inputPer1M ?? flatPer1M ?? 0)) +
+          ((outputTokens / 1_000_000) * (outputPer1M ?? flatPer1M ?? 0))
+        ).toFixed(8)
+      ),
+      currency,
+    };
   }
 
   if (flatPer1M !== null) {
-    return Number(((usageTokens / 1_000_000) * flatPer1M).toFixed(8));
+    return {
+      cost: Number(((usageTokens / 1_000_000) * flatPer1M).toFixed(8)),
+      currency,
+    };
   }
 
   if (flatPerToken !== null) {
-    return Number((usageTokens * flatPerToken).toFixed(8));
+    return {
+      cost: Number((usageTokens * flatPerToken).toFixed(8)),
+      currency,
+    };
   }
 
-  return null;
+  return {
+    cost: null,
+    currency: currency || null,
+  };
 }
 
 function tokenMatchesHash(tokenKey: string, storedHash: string): boolean {
@@ -498,12 +578,13 @@ async function finalizeRequestLog(input: {
   usageTokens: number;
   inputTokens: number;
   outputTokens: number;
-  estimatedCost: number | null;
+  cost: number | null;
+  currency: string | null;
   currentBalance: number;
 }) {
   await ensureIntelligenceTables();
   const db = getIntelligenceDbPool();
-  const tokensToDeduct = Math.max(1, input.usageTokens || 0);
+  const balanceToDeduct = Math.max(input.cost || 0, 0);
 
   const updateResult = await db.query<{ balance: number }>(
     `
@@ -512,15 +593,15 @@ async function finalizeRequestLog(input: {
       WHERE id = $2
       RETURNING balance
     `,
-    [tokensToDeduct, input.accessId]
+    [balanceToDeduct, input.accessId]
   );
 
-  const remainingBalance = updateResult.rows[0]?.balance ?? Math.max(input.currentBalance - tokensToDeduct, 0);
+  const remainingBalance = updateResult.rows[0]?.balance ?? Math.max(input.currentBalance - balanceToDeduct, 0);
 
   await db.query(
     `
-      INSERT INTO "intelligenceLog" (access_id, query, response, context, modal, "inputTokens", "outputTokens", balance)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO "intelligenceLog" (access_id, query, response, context, modal, currency, cost, "inputTokens", "outputTokens", balance)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `,
     [
       input.accessId,
@@ -533,9 +614,12 @@ async function finalizeRequestLog(input: {
         usageTokens: input.usageTokens,
         inputTokens: input.inputTokens,
         outputTokens: input.outputTokens,
-        estimatedCost: input.estimatedCost,
+        estimatedCost: input.cost,
+        currency: input.currency,
       }),
       input.modal,
+      input.currency,
+      input.cost,
       input.inputTokens,
       input.outputTokens,
       remainingBalance,
@@ -551,13 +635,14 @@ async function logFailedRequest(input: {
   modal: string;
   errorMessage: string;
   balance: number;
+  currency: string | null;
 }) {
   await ensureIntelligenceTables();
   const db = getIntelligenceDbPool();
   await db.query(
     `
-      INSERT INTO "intelligenceLog" (access_id, query, response, context, modal, "inputTokens", "outputTokens", balance)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO "intelligenceLog" (access_id, query, response, context, modal, currency, cost, "inputTokens", "outputTokens", balance)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `,
     [
       input.accessId,
@@ -569,8 +654,11 @@ async function logFailedRequest(input: {
         status: 'error',
         usageTokens: 0,
         estimatedCost: null,
+        currency: input.currency,
       }),
       input.modal,
+      input.currency,
+      null,
       0,
       0,
       input.balance,
@@ -602,15 +690,15 @@ async function handleRequest(request: NextRequest) {
   const access = await findAccessRow(input.accountId, input.accessIdentifier);
 
   if (!access) {
-    return errorResponse('Invalid userid or accessid. No intelligence access was found for this account and access ID.', 404);
+    return errorResponse('Invalid userid or accessid. No intelligence prompt was found for this account and access ID.', 404);
   }
 
   if (!tokenMatchesHash(input.tokenKey, access.token_hash)) {
-    return errorResponse('Invalid tokenKey for this intelligence access.', 401);
+    return errorResponse('Invalid tokenKey for this intelligence prompt.', 401);
   }
 
   if (Number(access.balance) <= 0) {
-    return errorResponse('Insufficient balance for this intelligence access.', 402);
+    return errorResponse('Insufficient balance for this intelligence prompt.', 402);
   }
 
   const primaryModel = normalizeModelName(access.primaryModel);
@@ -643,8 +731,9 @@ async function handleRequest(request: NextRequest) {
               model: primaryModelConfig?.model || primaryModel,
               identifier: getModelIdentifier(primaryModelConfig, primaryModel),
               modelConfig: {
-                inputPrice: primaryModelConfig?.inputPrice || 0,
-                outputPrice: primaryModelConfig?.outputPrice || 0,
+                currency: primaryModelConfig?.currency || 'USD',
+                inputCostPer1000Tokens: primaryModelConfig?.inputCostPer1000Tokens || 0,
+                outputCostPer1000Tokens: primaryModelConfig?.outputCostPer1000Tokens || 0,
                 price: primaryModelConfig?.price || {},
               },
               apiKey: access.primaryAccessTokenKey,
@@ -657,8 +746,9 @@ async function handleRequest(request: NextRequest) {
               model: fallbackModelConfig?.model || fallbackModel,
               identifier: getModelIdentifier(fallbackModelConfig, fallbackModel),
               modelConfig: {
-                inputPrice: fallbackModelConfig?.inputPrice || 0,
-                outputPrice: fallbackModelConfig?.outputPrice || 0,
+                currency: fallbackModelConfig?.currency || 'USD',
+                inputCostPer1000Tokens: fallbackModelConfig?.inputCostPer1000Tokens || 0,
+                outputCostPer1000Tokens: fallbackModelConfig?.outputCostPer1000Tokens || 0,
                 price: fallbackModelConfig?.price || {},
               },
               apiKey: access.fallbackAccessTokenKey,
@@ -673,8 +763,9 @@ async function handleRequest(request: NextRequest) {
               model: primaryModelConfig?.model || primaryModel,
               identifier: getModelIdentifier(primaryModelConfig, primaryModel),
               modelConfig: {
-                inputPrice: primaryModelConfig?.inputPrice || 0,
-                outputPrice: primaryModelConfig?.outputPrice || 0,
+                currency: primaryModelConfig?.currency || 'USD',
+                inputCostPer1000Tokens: primaryModelConfig?.inputCostPer1000Tokens || 0,
+                outputCostPer1000Tokens: primaryModelConfig?.outputCostPer1000Tokens || 0,
                 price: primaryModelConfig?.price || {},
               },
               apiKey: access.primaryAccessTokenKey,
@@ -687,8 +778,9 @@ async function handleRequest(request: NextRequest) {
               model: fallbackModelConfig?.model || fallbackModel,
               identifier: getModelIdentifier(fallbackModelConfig, fallbackModel),
               modelConfig: {
-                inputPrice: fallbackModelConfig?.inputPrice || 0,
-                outputPrice: fallbackModelConfig?.outputPrice || 0,
+                currency: fallbackModelConfig?.currency || 'USD',
+                inputCostPer1000Tokens: fallbackModelConfig?.inputCostPer1000Tokens || 0,
+                outputCostPer1000Tokens: fallbackModelConfig?.outputCostPer1000Tokens || 0,
                 price: fallbackModelConfig?.price || {},
               },
               apiKey: access.fallbackAccessTokenKey,
@@ -711,8 +803,9 @@ async function handleRequest(request: NextRequest) {
       model: string;
       identifier: string;
       modelConfig: {
-        inputPrice: number;
-        outputPrice: number;
+        currency: string;
+        inputCostPer1000Tokens: number;
+        outputCostPer1000Tokens: number;
         price: Record<string, unknown>;
       };
       apiKey: string;
@@ -756,7 +849,8 @@ async function handleRequest(request: NextRequest) {
             usageTokens: modelResult.usageTokens,
             inputTokens: modelResult.inputTokens,
             outputTokens: modelResult.outputTokens,
-            estimatedCost,
+            cost: estimatedCost.cost,
+            currency: estimatedCost.currency,
             currentBalance: Number(access.balance),
           });
         } catch (error) {
@@ -780,6 +874,7 @@ async function handleRequest(request: NextRequest) {
         modal: usableCandidates.map((candidate) => candidate.identifier).join(' -> '),
         errorMessage: lastErrorMessage,
         balance: Number(access.balance),
+        currency: usableCandidates[0]?.modelConfig.currency || null,
       });
     } catch (logError) {
       console.error('Failed to log intelligence error:', logError);
