@@ -64,7 +64,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
@@ -1015,20 +1014,27 @@ function PipelineEditorCanvas({
     [intelligencePrompts]
   );
 
-  const filteredTemplates = useMemo(() => {
-    const active = nodeCategories.find((category) => category.id === activeCategory) ?? nodeCategories[0];
-    const source = active.templates;
-    if (!search.trim()) {
-      return source;
-    }
-
+  const filteredTemplatesByCategory = useMemo(() => {
     const normalized = search.trim().toLowerCase();
-    return source.filter((template) =>
-      [template.label, template.subtitle, template.description].some((value) =>
-        value.toLowerCase().includes(normalized)
-      )
+
+    return new Map(
+      nodeCategories.map((category) => [
+        category.id,
+        !normalized
+          ? category.templates
+          : category.templates.filter((template) =>
+              [template.label, template.subtitle, template.description].some((value) =>
+                value.toLowerCase().includes(normalized)
+              )
+            ),
+      ])
     );
-  }, [activeCategory, search]);
+  }, [search]);
+
+  const matchingTemplateCount = useMemo(
+    () => Array.from(filteredTemplatesByCategory.values()).reduce((count, templates) => count + templates.length, 0),
+    [filteredTemplatesByCategory]
+  );
 
   const flowNodes = useMemo(() => {
     return [...nodes]
@@ -1552,6 +1558,9 @@ function PipelineEditorCanvas({
     }
   }, [appendConsole, executeAiAgentNode, flowNodes, isRunning, setNodes]);
 
+  const isLibraryMode = Boolean(pendingParentId || pendingConnection);
+  const shouldShowSidebar = Boolean(selectedNode || isLibraryMode);
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(15,23,42,0.08),transparent_26%),linear-gradient(180deg,#f8fafc_0%,#eef2f5_100%)] text-foreground">
       <div className="flex min-h-screen flex-col">
@@ -1593,7 +1602,7 @@ function PipelineEditorCanvas({
           </div>
         </header>
 
-        <div className="grid flex-1 gap-0 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className={cn('grid flex-1 gap-0', shouldShowSidebar && 'xl:grid-cols-[minmax(0,1fr)_380px]')}>
           <main className="relative h-[calc(100vh-81px)] overflow-hidden">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.08),transparent_36%)]" />
 
@@ -1657,10 +1666,123 @@ function PipelineEditorCanvas({
             </ReactFlow>
           </main>
 
+          {shouldShowSidebar ? (
           <aside className="border-l border-white/60 bg-white/60">
             <ScrollArea className="h-[calc(100vh-81px)]">
               <div className="space-y-5 p-5">
-                {selectedNode ? (
+                {isLibraryMode ? (
+                  <>
+                    <div className="space-y-3 rounded-[1.7rem] border border-white/80 bg-white/90 p-4 shadow-sm">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Node Library</p>
+                        <h2 className="mt-1 text-lg font-semibold text-slate-950">Add the next step</h2>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">
+                          Choose a category first, then pick a node from the second level.
+                        </p>
+                      </div>
+
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <Input
+                          value={search}
+                          onChange={(event) => setSearch(event.target.value)}
+                          placeholder="Search nodes"
+                          className="rounded-2xl border-slate-200 bg-slate-50 pl-9"
+                        />
+                      </div>
+
+                      <div className="rounded-[1.4rem] border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-slate-700">
+                        Adding a child after{' '}
+                        <span className="font-semibold">
+                          {nodes.find((node) => node.id === (pendingConnection?.parentId ?? pendingParentId))?.data.label ?? 'selected node'}
+                        </span>
+                        .
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {nodeCategories.map((category) => {
+                        const Icon = category.icon;
+                        const isActive = activeCategory === category.id;
+                        const templates = filteredTemplatesByCategory.get(category.id) ?? [];
+
+                        return (
+                          <div key={category.id} className="rounded-[1.5rem] border border-white/80 bg-white/90 shadow-sm">
+                            <button
+                              type="button"
+                              onClick={() => setActiveCategory(category.id)}
+                              className={cn(
+                                'flex w-full items-start gap-3 rounded-[1.5rem] px-4 py-3 text-left transition-all',
+                                isActive ? 'bg-slate-900 text-white' : 'hover:bg-slate-50'
+                              )}
+                            >
+                              <div
+                                className={cn(
+                                  'mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl',
+                                  isActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700'
+                                )}
+                              >
+                                <Icon className="h-5 w-5" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className={cn('font-semibold', isActive ? 'text-white' : 'text-slate-950')}>
+                                  {category.label}
+                                </div>
+                                <p className={cn('mt-1 text-sm leading-6', isActive ? 'text-slate-300' : 'text-slate-600')}>
+                                  {category.description}
+                                </p>
+                              </div>
+                            </button>
+
+                            {isActive ? (
+                              <div className="space-y-2 border-t border-slate-100 px-3 py-3">
+                                {templates.length > 0 ? (
+                                  templates.map((template) => {
+                                    const TemplateIcon = template.icon;
+                                    const tone = getNodeTone(template.kind);
+
+                                    return (
+                                      <button
+                                        key={template.kind}
+                                        type="button"
+                                        onClick={() => handleAddNode(template.kind)}
+                                        className="w-full rounded-[1.15rem] border border-slate-200 bg-slate-50 px-3 py-3 text-left transition-all hover:border-slate-300 hover:bg-white"
+                                      >
+                                        <div className="flex items-start gap-3">
+                                          <div className={cn('flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-r text-white', tone.header)}>
+                                            <TemplateIcon className="h-4 w-4" />
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <p className="font-medium text-slate-950">{template.label}</p>
+                                            <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                                              {template.subtitle}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </button>
+                                    );
+                                  })
+                                ) : (
+                                  <div className="rounded-[1.15rem] border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-500">
+                                    No matching nodes in this category.
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {matchingTemplateCount === 0 ? (
+                      <Card className="rounded-[1.5rem] border border-dashed border-slate-300 bg-white/70 shadow-none">
+                        <CardContent className="p-6 text-sm text-slate-500">
+                          Nothing matched that search. Try another term.
+                        </CardContent>
+                      </Card>
+                    ) : null}
+                  </>
+                ) : selectedNode ? (
                   <>
                     <div className="rounded-[1.7rem] border border-white/80 bg-white/92 p-5 shadow-sm">
                       <div className="flex items-start justify-between gap-3">
@@ -2091,125 +2213,11 @@ function PipelineEditorCanvas({
                       </CardContent>
                     </Card>
                   </>
-                ) : (
-                  <>
-                    <div className="space-y-3 rounded-[1.7rem] border border-white/80 bg-white/90 p-4 shadow-sm">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Node Library</p>
-                        <h2 className="mt-1 text-lg font-semibold text-slate-950">Bridge-style categories</h2>
-                        <p className="mt-1 text-sm leading-6 text-slate-600">
-                          Explore the same trigger, action, logic, and integration grouping used in Neup.Bridge.
-                        </p>
-                      </div>
-
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <Input
-                          value={search}
-                          onChange={(event) => setSearch(event.target.value)}
-                          placeholder="Search nodes"
-                          className="rounded-2xl border-slate-200 bg-slate-50 pl-9"
-                        />
-                      </div>
-
-                      {pendingParentId ? (
-                        <div className="rounded-[1.4rem] border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-slate-700">
-                          Adding a child after{' '}
-                          <span className="font-semibold">
-                            {nodes.find((node) => node.id === pendingParentId)?.data.label ?? 'selected node'}
-                          </span>
-                          .
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="grid gap-2">
-                      {nodeCategories.map((category) => {
-                        const Icon = category.icon;
-                        const isActive = activeCategory === category.id;
-
-                        return (
-                          <button
-                            key={category.id}
-                            type="button"
-                            onClick={() => setActiveCategory(category.id)}
-                            className={cn(
-                              'rounded-[1.5rem] border px-4 py-3 text-left transition-all',
-                              isActive
-                                ? 'border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-900/10'
-                                : 'border-white/80 bg-white/85 hover:border-slate-300 hover:bg-white'
-                            )}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div
-                                className={cn(
-                                  'mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl',
-                                  isActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700'
-                                )}
-                              >
-                                <Icon className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <div className={cn('font-semibold', isActive ? 'text-white' : 'text-slate-950')}>
-                                  {category.label}
-                                </div>
-                                <p className={cn('mt-1 text-sm leading-6', isActive ? 'text-slate-300' : 'text-slate-600')}>
-                                  {category.description}
-                                </p>
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <div className="space-y-3">
-                      {filteredTemplates.map((template) => {
-                        const Icon = template.icon;
-                        const tone = getNodeTone(template.kind);
-
-                        return (
-                          <button
-                            key={template.kind}
-                            type="button"
-                            onClick={() => handleAddNode(template.kind)}
-                            className="w-full rounded-[1.5rem] border border-white/80 bg-white/90 p-4 text-left shadow-sm transition-all hover:border-slate-300 hover:bg-white"
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className={cn('flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-r text-white', tone.header)}>
-                                <Icon className="h-5 w-5" />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-semibold text-slate-950">{template.label}</p>
-                                  <Badge className="rounded-full border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-50">
-                                    {template.category}
-                                  </Badge>
-                                </div>
-                                <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                                  {template.subtitle}
-                                </p>
-                                <p className="mt-2 text-sm leading-6 text-slate-600">{template.description}</p>
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-
-                      {filteredTemplates.length === 0 ? (
-                        <Card className="rounded-[1.5rem] border border-dashed border-slate-300 bg-white/70 shadow-none">
-                          <CardContent className="p-6 text-sm text-slate-500">
-                            Nothing matched that search. Try another term or switch categories.
-                          </CardContent>
-                        </Card>
-                      ) : null}
-                    </div>
-
-                  </>
-                )}
+                ) : null}
               </div>
             </ScrollArea>
           </aside>
+          ) : null}
         </div>
 
         {showDebugger ? (
