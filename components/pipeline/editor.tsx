@@ -83,6 +83,18 @@ type PipelineNodeKind =
 
 type PipelineNodeStatus = 'idle' | 'running' | 'success' | 'error';
 
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
+type HttpBodyType = 'none' | 'json' | 'form' | 'raw';
+
+type HttpResponseType = 'json' | 'text' | 'html';
+
+type PipelineKeyValueEntry = {
+  id: string;
+  key: string;
+  value: string;
+};
+
 type PipelineNodeData = {
   referenceId: string;
   label: string;
@@ -93,6 +105,18 @@ type PipelineNodeData = {
   subtitle: string;
   status: PipelineNodeStatus;
   activity: string;
+  httpMethod?: HttpMethod;
+  httpUrl?: string;
+  httpQueryParams?: PipelineKeyValueEntry[];
+  httpHeaders?: PipelineKeyValueEntry[];
+  httpCookies?: PipelineKeyValueEntry[];
+  httpBodyType?: HttpBodyType;
+  httpBody?: string;
+  httpTimeoutMs?: number | null;
+  httpResponseType?: HttpResponseType;
+  httpLastResponseStatus?: number | null;
+  httpLastResponseHeaders?: PipelineKeyValueEntry[];
+  httpLastResponseBody?: string;
   intelligencePromptMode?: 'existing' | 'new';
   intelligencePromptId?: string;
   intelligencePrimaryModelId?: number | null;
@@ -111,6 +135,8 @@ type PipelineNodeData = {
 };
 
 type PipelineFlowNode = Node<PipelineNodeData>;
+
+type EditableHttpCollectionField = 'httpQueryParams' | 'httpHeaders' | 'httpCookies';
 
 type PendingConnectionDraft = {
   parentId: string;
@@ -314,6 +340,21 @@ const templateMap = new Map(
   nodeCategories.flatMap((category) => category.templates.map((template) => [template.kind, template] as const))
 );
 
+const HTTP_METHOD_OPTIONS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+
+const HTTP_BODY_TYPE_OPTIONS: { value: HttpBodyType; label: string }[] = [
+  { value: 'none', label: 'No body' },
+  { value: 'json', label: 'JSON' },
+  { value: 'form', label: 'Form data' },
+  { value: 'raw', label: 'Raw text' },
+];
+
+const HTTP_RESPONSE_TYPE_OPTIONS: { value: HttpResponseType; label: string }[] = [
+  { value: 'json', label: 'JSON' },
+  { value: 'text', label: 'Plain text' },
+  { value: 'html', label: 'HTML' },
+];
+
 function createReferenceBase(label: string): string {
   const normalized = label
     .trim()
@@ -334,6 +375,64 @@ function createNodeReferenceId(label: string, used = new Set<string>()): string 
 
   used.add(candidate);
   return candidate;
+}
+
+function createKeyValueEntry(key = '', value = ''): PipelineKeyValueEntry {
+  return {
+    id: Math.random().toString(36).slice(2, 10),
+    key,
+    value,
+  };
+}
+
+function normalizeKeyValueEntries(entries?: PipelineKeyValueEntry[]): PipelineKeyValueEntry[] {
+  return (entries ?? []).map((entry) => ({
+    id: entry.id || Math.random().toString(36).slice(2, 10),
+    key: entry.key ?? '',
+    value: entry.value ?? '',
+  }));
+}
+
+function buildKeyValueCollection(entries?: PipelineKeyValueEntry[]) {
+  return normalizeKeyValueEntries(entries)
+    .filter((entry) => entry.key.trim() || entry.value.trim())
+    .map((entry) => ({
+      key: entry.key,
+      value: entry.value,
+    }));
+}
+
+function buildKeyValueObject(entries?: PipelineKeyValueEntry[]) {
+  return Object.fromEntries(
+    normalizeKeyValueEntries(entries)
+      .filter((entry) => entry.key.trim())
+      .map((entry) => [entry.key, entry.value])
+  );
+}
+
+function buildHttpBodyValue(node: PipelineFlowNode): unknown {
+  if ((node.data.httpBodyType ?? 'none') === 'json') {
+    return coerceStructuredValue(node.data.httpBody ?? '');
+  }
+
+  return node.data.httpBody ?? '';
+}
+
+function getHttpDataDefaults(): Partial<PipelineNodeData> {
+  return {
+    httpMethod: 'GET',
+    httpUrl: '',
+    httpQueryParams: [],
+    httpHeaders: [],
+    httpCookies: [],
+    httpBodyType: 'none',
+    httpBody: '',
+    httpTimeoutMs: 30000,
+    httpResponseType: 'json',
+    httpLastResponseStatus: null,
+    httpLastResponseHeaders: [],
+    httpLastResponseBody: '',
+  };
 }
 
 function extractReferenceSuffix(referenceId: string): string {
@@ -424,7 +523,7 @@ function coerceStructuredValue(value: unknown): unknown {
 }
 
 function buildNodeReferenceValue(node: PipelineFlowNode) {
-  return {
+  const baseValue = {
     id: node.data.referenceId,
     nodeId: node.id,
     title: node.data.label,
@@ -436,20 +535,64 @@ function buildNodeReferenceValue(node: PipelineFlowNode) {
     type: getNodeTypeLabel(node.data.kind),
     status: node.data.status,
     activity: node.data.activity,
-    promptMode: node.data.intelligencePromptMode ?? '',
-    promptId: node.data.intelligencePromptId ?? '',
-    query: node.data.intelligencePrompt ?? '',
-    masterPrompt: node.data.intelligenceMasterPrompt ?? '',
-    context: coerceStructuredValue(node.data.intelligenceContext ?? ''),
-    response: coerceStructuredValue(node.data.intelligenceLastResponse ?? ''),
-    renderedPrompt: node.data.intelligenceLastRenderedPrompt ?? '',
-    usedModel: node.data.intelligenceLastModel ?? '',
-    primaryModelId: node.data.intelligencePrimaryModelId ?? null,
-    fallbackModelId: node.data.intelligenceFallbackModelId ?? null,
-    primaryAccessKey: node.data.intelligencePrimaryAccessKey ?? null,
-    fallbackAccessKey: node.data.intelligenceFallbackAccessKey ?? null,
-    maxTokens: node.data.intelligenceMaxTokens ?? null,
-    warning: node.data.intelligenceWarning ?? '',
+  };
+
+  if (node.data.kind === 'http') {
+    return {
+      ...baseValue,
+      method: node.data.httpMethod ?? 'GET',
+      url: node.data.httpUrl ?? '',
+      queryParams: buildKeyValueCollection(node.data.httpQueryParams),
+      headers: buildKeyValueCollection(node.data.httpHeaders),
+      cookies: buildKeyValueCollection(node.data.httpCookies),
+      bodyType: node.data.httpBodyType ?? 'none',
+      body: buildHttpBodyValue(node),
+      timeoutMs: node.data.httpTimeoutMs ?? null,
+      responseType: node.data.httpResponseType ?? 'json',
+      request: {
+        method: node.data.httpMethod ?? 'GET',
+        url: node.data.httpUrl ?? '',
+        queryParams: buildKeyValueObject(node.data.httpQueryParams),
+        headers: buildKeyValueObject(node.data.httpHeaders),
+        cookies: buildKeyValueObject(node.data.httpCookies),
+        bodyType: node.data.httpBodyType ?? 'none',
+        body: buildHttpBodyValue(node),
+        timeoutMs: node.data.httpTimeoutMs ?? null,
+        responseType: node.data.httpResponseType ?? 'json',
+      },
+      response: {
+        status: node.data.httpLastResponseStatus ?? null,
+        headers: buildKeyValueObject(node.data.httpLastResponseHeaders),
+        body: coerceStructuredValue(node.data.httpLastResponseBody ?? ''),
+      },
+      responseStatus: node.data.httpLastResponseStatus ?? null,
+      responseHeaders: buildKeyValueCollection(node.data.httpLastResponseHeaders),
+      responseBody: coerceStructuredValue(node.data.httpLastResponseBody ?? ''),
+    };
+  }
+
+  if (node.data.kind === 'aiAgent') {
+    return {
+      ...baseValue,
+      promptMode: node.data.intelligencePromptMode ?? '',
+      promptId: node.data.intelligencePromptId ?? '',
+      query: node.data.intelligencePrompt ?? '',
+      masterPrompt: node.data.intelligenceMasterPrompt ?? '',
+      context: coerceStructuredValue(node.data.intelligenceContext ?? ''),
+      response: coerceStructuredValue(node.data.intelligenceLastResponse ?? ''),
+      renderedPrompt: node.data.intelligenceLastRenderedPrompt ?? '',
+      usedModel: node.data.intelligenceLastModel ?? '',
+      primaryModelId: node.data.intelligencePrimaryModelId ?? null,
+      fallbackModelId: node.data.intelligenceFallbackModelId ?? null,
+      primaryAccessKey: node.data.intelligencePrimaryAccessKey ?? null,
+      fallbackAccessKey: node.data.intelligenceFallbackAccessKey ?? null,
+      maxTokens: node.data.intelligenceMaxTokens ?? null,
+      warning: node.data.intelligenceWarning ?? '',
+    };
+  }
+
+  return {
+    ...baseValue,
   };
 }
 
@@ -532,6 +675,25 @@ function resolveNodeTemplate(value: string, nodes: PipelineFlowNode[]): string {
 function getReferenceFieldIds(node: PipelineFlowNode): string[] {
   const fields = ['id', 'nodeId', 'title', 'subtitle', 'description', 'summary', 'category', 'kind', 'type', 'status', 'activity'];
 
+  if (node.data.kind === 'http') {
+    fields.push(
+      'method',
+      'url',
+      'queryParams',
+      'headers',
+      'cookies',
+      'bodyType',
+      'body',
+      'timeoutMs',
+      'responseType',
+      'request',
+      'response',
+      'responseStatus',
+      'responseHeaders',
+      'responseBody'
+    );
+  }
+
   if (node.data.kind === 'aiAgent') {
     fields.push(
       'promptMode',
@@ -568,7 +730,16 @@ function ensureReferenceIds(nodes: PipelineFlowNode[]): PipelineFlowNode[] {
     return {
       ...node,
       data: {
+        ...(node.data.kind === 'http' ? getHttpDataDefaults() : {}),
         ...node.data,
+        ...(node.data.kind === 'http'
+          ? {
+              httpQueryParams: normalizeKeyValueEntries(node.data.httpQueryParams),
+              httpHeaders: normalizeKeyValueEntries(node.data.httpHeaders),
+              httpCookies: normalizeKeyValueEntries(node.data.httpCookies),
+              httpLastResponseHeaders: normalizeKeyValueEntries(node.data.httpLastResponseHeaders),
+            }
+          : {}),
         referenceId,
       },
     };
@@ -606,6 +777,18 @@ const initialNodes: PipelineFlowNode[] = [
       subtitle: 'External API',
       status: 'idle',
       activity: 'Ready to request remote data.',
+      httpMethod: 'GET',
+      httpUrl: 'https://api.example.com/leads',
+      httpQueryParams: [],
+      httpHeaders: [createKeyValueEntry('Accept', 'application/json')],
+      httpCookies: [],
+      httpBodyType: 'none',
+      httpBody: '',
+      httpTimeoutMs: 30000,
+      httpResponseType: 'json',
+      httpLastResponseStatus: null,
+      httpLastResponseHeaders: [],
+      httpLastResponseBody: '',
     },
   },
   {
@@ -813,6 +996,7 @@ function createNode(
       subtitle: template?.subtitle ?? 'Automation step',
       status: 'idle',
       activity: `Ready to run ${template?.label?.toLowerCase() ?? 'node'}.`,
+      ...(kind === 'http' ? getHttpDataDefaults() : {}),
       ...(kind === 'aiAgent'
         ? {
             intelligencePromptMode: 'existing' as const,
@@ -832,8 +1016,87 @@ function createNode(
           }
         : {}),
       ...restOverrides,
+      ...(kind === 'http'
+        ? {
+            httpQueryParams: normalizeKeyValueEntries(restOverrides.httpQueryParams),
+            httpHeaders: normalizeKeyValueEntries(restOverrides.httpHeaders),
+            httpCookies: normalizeKeyValueEntries(restOverrides.httpCookies),
+            httpLastResponseHeaders: normalizeKeyValueEntries(restOverrides.httpLastResponseHeaders),
+          }
+        : {}),
     },
   };
+}
+
+type KeyValueListEditorProps = {
+  title: string;
+  description: string;
+  entries: PipelineKeyValueEntry[];
+  addLabel: string;
+  keyPlaceholder: string;
+  valuePlaceholder: string;
+  onAdd: () => void;
+  onChange: (entryId: string, patch: Partial<PipelineKeyValueEntry>) => void;
+  onRemove: (entryId: string) => void;
+};
+
+function KeyValueListEditor({
+  title,
+  description,
+  entries,
+  addLabel,
+  keyPlaceholder,
+  valuePlaceholder,
+  onAdd,
+  onChange,
+  onRemove,
+}: KeyValueListEditorProps) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h4 className="text-sm font-medium text-slate-950">{title}</h4>
+          <p className="text-sm leading-6 text-slate-500">{description}</p>
+        </div>
+        <Button type="button" variant="outline" className="rounded-2xl border-slate-200 bg-slate-50" onClick={onAdd}>
+          <Plus className="mr-2 h-4 w-4" />
+          {addLabel}
+        </Button>
+      </div>
+
+      {entries.length === 0 ? (
+        <p className="text-sm text-slate-500">Nothing added yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {entries.map((entry) => (
+            <div key={entry.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px] gap-2">
+              <Input
+                value={entry.key}
+                onChange={(event) => onChange(entry.id, { key: event.target.value })}
+                placeholder={keyPlaceholder}
+                className="rounded-2xl border-slate-200 bg-slate-50"
+              />
+              <Input
+                value={entry.value}
+                onChange={(event) => onChange(entry.id, { value: event.target.value })}
+                placeholder={valuePlaceholder}
+                className="rounded-2xl border-slate-200 bg-slate-50"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-2xl border-slate-200 bg-slate-50 px-0"
+                onClick={() => onRemove(entry.id)}
+                aria-label={`Remove ${title.toLowerCase()} entry`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function PipelineCanvasNode({ id, data, selected }: NodeProps<PipelineNodeData>) {
@@ -1363,6 +1626,89 @@ function PipelineEditorCanvas({
     [selectedId, setNodes]
   );
 
+  const addSelectedHttpEntry = useCallback(
+    (field: EditableHttpCollectionField) => {
+      if (!selectedId) {
+        return;
+      }
+
+      setNodes((currentNodes) =>
+        currentNodes.map((node) => {
+          if (node.id !== selectedId) {
+            return node;
+          }
+
+          const currentEntries = normalizeKeyValueEntries(node.data[field]);
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              [field]: [...currentEntries, createKeyValueEntry()],
+            },
+          };
+        })
+      );
+    },
+    [selectedId, setNodes]
+  );
+
+  const updateSelectedHttpEntry = useCallback(
+    (field: EditableHttpCollectionField, entryId: string, patch: Partial<PipelineKeyValueEntry>) => {
+      if (!selectedId) {
+        return;
+      }
+
+      setNodes((currentNodes) =>
+        currentNodes.map((node) => {
+          if (node.id !== selectedId) {
+            return node;
+          }
+
+          const nextEntries = normalizeKeyValueEntries(node.data[field]).map((entry) =>
+            entry.id === entryId ? { ...entry, ...patch } : entry
+          );
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              [field]: nextEntries,
+            },
+          };
+        })
+      );
+    },
+    [selectedId, setNodes]
+  );
+
+  const removeSelectedHttpEntry = useCallback(
+    (field: EditableHttpCollectionField, entryId: string) => {
+      if (!selectedId) {
+        return;
+      }
+
+      setNodes((currentNodes) =>
+        currentNodes.map((node) => {
+          if (node.id !== selectedId) {
+            return node;
+          }
+
+          const nextEntries = normalizeKeyValueEntries(node.data[field]).filter((entry) => entry.id !== entryId);
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              [field]: nextEntries,
+            },
+          };
+        })
+      );
+    },
+    [selectedId, setNodes]
+  );
+
   const updateSelectedNodeLabel = useCallback(
     (label: string) => {
       if (!selectedId) {
@@ -1813,6 +2159,173 @@ function PipelineEditorCanvas({
                       </Alert>
                     ) : null}
 
+                    {selectedNode.data.kind === 'http' ? (
+                      <section className="space-y-5 px-1">
+                        <h3 className="text-lg font-semibold text-slate-950">Node options</h3>
+
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                            Request URL
+                          </label>
+                          <Input
+                            value={selectedNode.data.httpUrl ?? ''}
+                            onChange={(event) => updateSelectedNode({ httpUrl: event.target.value })}
+                            placeholder="https://api.example.com/resource"
+                            className="rounded-2xl border-slate-200 bg-slate-50"
+                          />
+                          <p className="text-sm text-slate-500">
+                            Use <code className="font-mono text-[0.95em] text-slate-700">{'{{node_ref.field}}'}</code>{' '}
+                            values here to build dynamic endpoints.
+                          </p>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                              Request type
+                            </label>
+                            <select
+                              value={selectedNode.data.httpMethod ?? 'GET'}
+                              onChange={(event) =>
+                                updateSelectedNode({ httpMethod: event.target.value as HttpMethod })
+                              }
+                              className="flex h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-950 outline-none"
+                            >
+                              {HTTP_METHOD_OPTIONS.map((method) => (
+                                <option key={method} value={method}>
+                                  {method}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                              Response type
+                            </label>
+                            <select
+                              value={selectedNode.data.httpResponseType ?? 'json'}
+                              onChange={(event) =>
+                                updateSelectedNode({
+                                  httpResponseType: event.target.value as HttpResponseType,
+                                })
+                              }
+                              className="flex h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-950 outline-none"
+                            >
+                              {HTTP_RESPONSE_TYPE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <KeyValueListEditor
+                          title="Query params"
+                          description="Attach query string values like `page=1` or `leadId={{manualstart_1201.id}}`."
+                          entries={normalizeKeyValueEntries(selectedNode.data.httpQueryParams)}
+                          addLabel="Add param"
+                          keyPlaceholder="Param name"
+                          valuePlaceholder="Value"
+                          onAdd={() => addSelectedHttpEntry('httpQueryParams')}
+                          onChange={(entryId, patch) =>
+                            updateSelectedHttpEntry('httpQueryParams', entryId, patch)
+                          }
+                          onRemove={(entryId) => removeSelectedHttpEntry('httpQueryParams', entryId)}
+                        />
+
+                        <KeyValueListEditor
+                          title="Headers"
+                          description="Set request headers like authorization, content type, or custom app headers."
+                          entries={normalizeKeyValueEntries(selectedNode.data.httpHeaders)}
+                          addLabel="Add header"
+                          keyPlaceholder="Header name"
+                          valuePlaceholder="Header value"
+                          onAdd={() => addSelectedHttpEntry('httpHeaders')}
+                          onChange={(entryId, patch) =>
+                            updateSelectedHttpEntry('httpHeaders', entryId, patch)
+                          }
+                          onRemove={(entryId) => removeSelectedHttpEntry('httpHeaders', entryId)}
+                        />
+
+                        <KeyValueListEditor
+                          title="Cookies"
+                          description="Pass cookie values when the upstream service expects session or browser state."
+                          entries={normalizeKeyValueEntries(selectedNode.data.httpCookies)}
+                          addLabel="Add cookie"
+                          keyPlaceholder="Cookie name"
+                          valuePlaceholder="Cookie value"
+                          onAdd={() => addSelectedHttpEntry('httpCookies')}
+                          onChange={(entryId, patch) =>
+                            updateSelectedHttpEntry('httpCookies', entryId, patch)
+                          }
+                          onRemove={(entryId) => removeSelectedHttpEntry('httpCookies', entryId)}
+                        />
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                              Body type
+                            </label>
+                            <select
+                              value={selectedNode.data.httpBodyType ?? 'none'}
+                              onChange={(event) =>
+                                updateSelectedNode({
+                                  httpBodyType: event.target.value as HttpBodyType,
+                                })
+                              }
+                              className="flex h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-950 outline-none"
+                            >
+                              {HTTP_BODY_TYPE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                              Timeout
+                            </label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={selectedNode.data.httpTimeoutMs ?? ''}
+                              onChange={(event) =>
+                                updateSelectedNode({
+                                  httpTimeoutMs: event.target.value ? Number(event.target.value) : null,
+                                })
+                              }
+                              placeholder="30000"
+                              className="rounded-2xl border-slate-200 bg-slate-50"
+                            />
+                          </div>
+                        </div>
+
+                        {selectedNode.data.httpBodyType !== 'none' ? (
+                          <div className="space-y-2">
+                            <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                              Request body
+                            </label>
+                            <Textarea
+                              value={selectedNode.data.httpBody ?? ''}
+                              onChange={(event) => updateSelectedNode({ httpBody: event.target.value })}
+                              placeholder={
+                                selectedNode.data.httpBodyType === 'json'
+                                  ? '{\n  "leadId": "{{manualstart_1201.id}}"\n}'
+                                  : selectedNode.data.httpBodyType === 'form'
+                                    ? 'name=Acme&status=qualified'
+                                    : 'Raw request payload'
+                              }
+                              className="min-h-[130px] rounded-2xl border-slate-200 bg-slate-50 font-mono text-sm"
+                            />
+                          </div>
+                        ) : null}
+                      </section>
+                    ) : null}
+
                     {selectedNode.data.kind === 'aiAgent' ? (
                       <section className="space-y-4 px-1">
                         <h3 className="text-lg font-semibold text-slate-950">Node options</h3>
@@ -2143,6 +2656,49 @@ function PipelineEditorCanvas({
                               </p>
                               <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-600">
                                 {selectedNode.data.intelligenceLastRenderedPrompt}
+                              </p>
+                            </div>
+                          ) : null}
+                        </div>
+                      </section>
+                    ) : null}
+
+                    {selectedNode.data.kind === 'http' &&
+                    (selectedNode.data.httpLastResponseStatus || selectedNode.data.httpLastResponseBody?.trim()) ? (
+                      <section className="space-y-4 px-1">
+                        <h3 className="text-lg font-semibold text-slate-950">Response</h3>
+                        <div className="space-y-3 rounded-[1.4rem] border border-slate-200 bg-slate-50/80 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-medium text-slate-900">HTTP response</p>
+                            {selectedNode.data.httpLastResponseStatus ? (
+                              <Badge className="rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-white">
+                                Status {selectedNode.data.httpLastResponseStatus}
+                              </Badge>
+                            ) : null}
+                          </div>
+
+                          {normalizeKeyValueEntries(selectedNode.data.httpLastResponseHeaders).length > 0 ? (
+                            <div className="space-y-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                                Response headers
+                              </p>
+                              <div className="space-y-1 text-sm text-slate-700">
+                                {normalizeKeyValueEntries(selectedNode.data.httpLastResponseHeaders).map((entry) => (
+                                  <p key={entry.id}>
+                                    <span className="font-medium text-slate-900">{entry.key}</span>: {entry.value}
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {selectedNode.data.httpLastResponseBody?.trim() ? (
+                            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                                Response body
+                              </p>
+                              <p className="mt-2 whitespace-pre-wrap font-mono text-xs leading-5 text-slate-600">
+                                {selectedNode.data.httpLastResponseBody}
                               </p>
                             </div>
                           ) : null}
