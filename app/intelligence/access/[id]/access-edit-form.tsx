@@ -56,7 +56,7 @@ export default function AccessEditForm({
     primaryAccessKey: number | null;
     fallbackAccessKey: number | null;
     maxTokens: number | null;
-    defPrompt: string | null;
+    guider: string | null;
     tokenHash: string;
   };
 }) {
@@ -80,7 +80,7 @@ export default function AccessEditForm({
         <CardHeader className="space-y-3">
           <CardTitle className="text-2xl font-headline">Edit prompt</CardTitle>
           <CardDescription className="max-w-2xl text-base">
-            Update the linked tokens, model fallbacks, and master prompt for this prompt record.
+            Update the linked tokens, model fallbacks, and guider for this prompt record.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -178,11 +178,11 @@ export default function AccessEditForm({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="def_prompt">Master Prompt</Label>
+              <Label htmlFor="guider">Guider</Label>
               <Textarea
-                id="def_prompt"
-                name="def_prompt"
-                defaultValue={initialValues.defPrompt || ''}
+                id="guider"
+                name="guider"
+                defaultValue={initialValues.guider || ''}
                 className="min-h-40"
               />
             </div>

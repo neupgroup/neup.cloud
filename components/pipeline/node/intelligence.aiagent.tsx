@@ -64,7 +64,7 @@ export function getAiAgentValidationError(
   ].some((value) => Boolean(value?.trim()));
 
   if (!hasPromptContent) {
-    return 'Provide a prompt, a master prompt, or some context for the AI Agent.';
+    return 'Provide a prompt, a guider, or some context for the AI Agent.';
   }
 
   return null;
@@ -80,34 +80,18 @@ function AiNodeOptions({
   node,
   updateNode,
   clearWarning,
-  executeNode,
   intelligence,
 }: PipelineNodeInspectorArgs<AiNodeData>) {
   const { models, prompts, tokens, modelOptionMap, promptOptionMap, tokenOptionMap } = intelligence;
+  const promptMode: 'existing' = 'existing';
   const selectedPromptOption =
     node.data.intelligencePromptId ? promptOptionMap.get(node.data.intelligencePromptId) ?? null : null;
 
   return (
     <section className="space-y-4 px-1">
       <h3 className="text-lg font-semibold text-slate-950">Node options</h3>
-      <div className="grid grid-cols-2 gap-2">
-        <Button
-          variant={node.data.intelligencePromptMode === 'existing' ? 'default' : 'outline'}
-          className="rounded-2xl"
-          onClick={() => updateNode({ intelligencePromptMode: 'existing' })}
-        >
-          Existing prompt
-        </Button>
-        <Button
-          variant={node.data.intelligencePromptMode === 'new' ? 'default' : 'outline'}
-          className="rounded-2xl"
-          onClick={() => updateNode({ intelligencePromptMode: 'new' })}
-        >
-          New prompt
-        </Button>
-      </div>
 
-      {node.data.intelligencePromptMode === 'existing' ? (
+      {promptMode === 'existing' ? (
         <div className="space-y-2">
           <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Prompt ID
@@ -125,7 +109,7 @@ function AiNodeOptions({
                 intelligencePrimaryAccessKey: prompt?.primaryAccessKey ?? null,
                 intelligenceFallbackAccessKey: prompt?.fallbackAccessKey ?? null,
                 intelligenceMaxTokens: prompt?.maxTokens ?? null,
-                intelligenceMasterPrompt: prompt?.defPrompt ?? '',
+                intelligenceMasterPrompt: prompt?.guider ?? '',
               });
             }}
             className="flex h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-950 outline-none"
@@ -138,24 +122,9 @@ function AiNodeOptions({
             ))}
           </select>
         </div>
-      ) : (
-        <div className="space-y-2">
-          <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Prompt ID
-          </label>
-          <Input
-            value={node.data.intelligencePromptId ?? ''}
-            onChange={(event) => {
-              clearWarning();
-              updateNode({ intelligencePromptId: event.target.value });
-            }}
-            placeholder="Leave blank to auto-generate"
-            className="rounded-2xl border-slate-200 bg-slate-50"
-          />
-        </div>
-      )}
+      ) : null}
 
-      {node.data.intelligencePromptMode === 'existing' && selectedPromptOption ? (
+      {promptMode === 'existing' && selectedPromptOption ? (
         <div className="space-y-3 rounded-[1.25rem] border border-slate-200 bg-slate-50/80 p-4">
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Primary model</p>
@@ -213,129 +182,13 @@ function AiNodeOptions({
           </div>
 
           <div className="space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Master prompt</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Guider</p>
             <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
-              {node.data.intelligenceMasterPrompt?.trim() || 'No master prompt set for this saved prompt.'}
+              {node.data.intelligenceMasterPrompt?.trim() || 'No guider set for this saved prompt.'}
             </p>
           </div>
         </div>
-      ) : (
-        <>
-          <div className="space-y-2">
-            <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Primary model
-            </label>
-            <select
-              value={node.data.intelligencePrimaryModelId ? String(node.data.intelligencePrimaryModelId) : ''}
-              onChange={(event) => {
-                clearWarning();
-                updateNode({ intelligencePrimaryModelId: event.target.value ? Number(event.target.value) : null });
-              }}
-              className="flex h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-950 outline-none"
-            >
-              <option value="">Select primary model</option>
-              {models.map((model) => (
-                <option key={model.id} value={String(model.id)}>
-                  {buildPipelineIntelligenceModelLabel(model)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Fallback model
-            </label>
-            <select
-              value={node.data.intelligenceFallbackModelId ? String(node.data.intelligenceFallbackModelId) : ''}
-              onChange={(event) => {
-                clearWarning();
-                updateNode({ intelligenceFallbackModelId: event.target.value ? Number(event.target.value) : null });
-              }}
-              className="flex h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-950 outline-none"
-            >
-              <option value="">No fallback model</option>
-              {models.map((model) => (
-                <option key={model.id} value={String(model.id)}>
-                  {buildPipelineIntelligenceModelLabel(model)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Primary token
-            </label>
-            <select
-              value={node.data.intelligencePrimaryAccessKey ? String(node.data.intelligencePrimaryAccessKey) : ''}
-              onChange={(event) => {
-                clearWarning();
-                updateNode({ intelligencePrimaryAccessKey: event.target.value ? Number(event.target.value) : null });
-              }}
-              className="flex h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-950 outline-none"
-            >
-              <option value="">Select primary token</option>
-              {tokens.map((token) => (
-                <option key={token.id} value={String(token.id)}>
-                  {token.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Fallback token
-            </label>
-            <select
-              value={node.data.intelligenceFallbackAccessKey ? String(node.data.intelligenceFallbackAccessKey) : ''}
-              onChange={(event) => {
-                clearWarning();
-                updateNode({ intelligenceFallbackAccessKey: event.target.value ? Number(event.target.value) : null });
-              }}
-              className="flex h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-950 outline-none"
-            >
-              <option value="">No fallback token</option>
-              {tokens.map((token) => (
-                <option key={token.id} value={String(token.id)}>
-                  {token.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Max tokens
-            </label>
-            <Input
-              type="number"
-              min={1}
-              value={node.data.intelligenceMaxTokens ?? ''}
-              onChange={(event) => {
-                clearWarning();
-                updateNode({ intelligenceMaxTokens: event.target.value ? Number(event.target.value) : null });
-              }}
-              className="rounded-2xl border-slate-200 bg-slate-50"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Master prompt
-            </label>
-            <Textarea
-              value={node.data.intelligenceMasterPrompt ?? ''}
-              onChange={(event) => {
-                clearWarning();
-                updateNode({ intelligenceMasterPrompt: event.target.value });
-              }}
-              className="min-h-[110px] rounded-2xl border-slate-200 bg-slate-50"
-            />
-          </div>
-        </>
-      )}
+      ) : null}
 
       <div className="space-y-2">
         <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -347,6 +200,7 @@ function AiNodeOptions({
             clearWarning();
             updateNode({ intelligencePrompt: event.target.value });
           }}
+          placeholder="Dynamic prompt"
           className="min-h-[100px] rounded-2xl border-slate-200 bg-slate-50"
         />
       </div>
@@ -361,14 +215,10 @@ function AiNodeOptions({
             clearWarning();
             updateNode({ intelligenceContext: event.target.value });
           }}
+          placeholder="Dynamic context"
           className="min-h-[110px] rounded-2xl border-slate-200 bg-slate-50"
         />
       </div>
-
-      <Button className="w-full rounded-2xl" onClick={() => void executeNode()}>
-        <Bot className="mr-2 h-4 w-4" />
-        Generate response
-      </Button>
 
       {node.data.intelligenceWarning ? (
         <Alert variant="destructive" className="rounded-[1.25rem] border border-rose-200 bg-rose-50 text-rose-700 [&>svg]:text-rose-600">
@@ -389,26 +239,15 @@ function AiNodeResponse({ node }: PipelineNodeInspectorArgs<AiNodeData>) {
   return (
     <section className="space-y-4 px-1">
       <h3 className="text-lg font-semibold text-slate-950">Response</h3>
-      <div className="space-y-3 rounded-[1.4rem] border border-slate-200 bg-slate-50/80 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-medium text-slate-900">AI response</p>
-          {node.data.intelligenceLastModel ? (
-            <Badge className="rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-white">
-              {node.data.intelligenceLastModel}
-            </Badge>
-          ) : null}
-        </div>
-        <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{node.data.intelligenceLastResponse}</p>
-        {node.data.intelligenceLastRenderedPrompt ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Rendered prompt
-            </p>
-            <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-600">
-              {node.data.intelligenceLastRenderedPrompt}
-            </p>
-          </div>
-        ) : null}
+      <div className="space-y-3">
+        <label className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          AI response
+        </label>
+        <Textarea
+          readOnly
+          value={node.data.intelligenceLastResponse}
+          className="min-h-[120px] field-sizing-content rounded-2xl border-slate-200 bg-slate-50 text-sm leading-6 text-slate-700"
+        />
       </div>
     </section>
   );

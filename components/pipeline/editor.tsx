@@ -22,21 +22,22 @@ import {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import {
-  ArrowLeft,
   Check,
   CircleSlash,
+  Cloud,
   Loader2,
-  Play,
-  RefreshCcw,
+  Plus,
   Save,
   Square,
   TerminalSquare,
   Workflow,
 } from 'lucide-react';
 
-import { Logo } from '@/components/logo';
 import { Button } from '@/components/ui/button';
-import { savePipelineFlowAction } from '@/app/pipeline/actions';
+import {
+  createPipelineLogAction,
+  savePipelineFlowAction,
+} from '@/app/pipeline/actions';
 import {
   executeAiAgentNodeAction,
   getAiAgentValidationError,
@@ -70,7 +71,6 @@ import {
   type PipelineIntelligencePrompt,
   type PipelineIntelligenceToken,
 } from '@/components/pipeline/node/intelligence.shared';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { PipelineContextMenu } from '@/components/pipeline/pipeline-context-menu';
 
@@ -474,6 +474,11 @@ const initialEdges: Edge[] = [
   createEdge('score-ai', 'calendar-follow-up'),
 ];
 
+const emptyInitialFlow: { nodes: PipelineFlowNode[]; edges: Edge[] } = {
+  nodes: [],
+  edges: [],
+};
+
 function parseStoredFlow(flowJson: unknown): { nodes: PipelineFlowNode[]; edges: Edge[] } | null {
   if (!flowJson || typeof flowJson !== 'object') {
     return null;
@@ -715,8 +720,9 @@ function PipelineEditorCanvas({
 }: PipelineEditorProps) {
   const router = useRouter();
   const { screenToFlowPosition } = useReactFlow<PipelineNodeData>();
+  const canvasShellRef = useRef<HTMLDivElement | null>(null);
   const initialFlow = useMemo(
-    () => parseStoredFlow(initialPipeline?.flowJson) ?? { nodes: initialNodes, edges: initialEdges },
+    () => parseStoredFlow(initialPipeline?.flowJson) ?? emptyInitialFlow,
     [initialPipeline]
   );
   const [nodes, setNodes, onNodesChange] = useNodesState<PipelineNodeData>(initialFlow.nodes);
@@ -746,10 +752,6 @@ function PipelineEditorCanvas({
   const [pendingCanvasNode, setPendingCanvasNode] = useState<PendingCanvasNodeDraft | null>(null);
   const [referenceSaveNotice, setReferenceSaveNotice] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<PipelineContextMenuState | null>(null);
-  const [showDebugger, setShowDebugger] = useState(true);
-  const [consoleLines, setConsoleLines] = useState<string[]>([
-    'Editor ready. Build on the canvas or add a child from any node.',
-  ]);
   const connectStartRef = useRef<{ nodeId: string | null; handleType: 'source' | 'target' | null }>({
     nodeId: null,
     handleType: null,
@@ -766,33 +768,6 @@ function PipelineEditorCanvas({
       });
     }
   }, [initialPipeline]);
-
-  useEffect(() => {
-    if (initialPipeline) {
-      setConsoleLines((current) => [...current, `Loaded "${initialPipeline.title}" from the database.`]);
-      return;
-    }
-
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(stored) as { nodes?: PipelineFlowNode[]; edges?: Edge[] };
-      if (Array.isArray(parsed.nodes) && parsed.nodes.length > 0) {
-        const hydratedNodes = ensureReferenceIds(parsed.nodes);
-        setNodes(hydratedNodes);
-        setSelectedId(hydratedNodes[0]?.id ?? null);
-      }
-      if (Array.isArray(parsed.edges)) {
-        setEdges(parsed.edges);
-      }
-      setConsoleLines((current) => [...current, 'Recovered the last saved local draft.']);
-    } catch (error) {
-      console.error('Failed to restore pipeline editor state', error);
-    }
-  }, [initialPipeline, setEdges, setNodes]);
 
   useEffect(() => {
     if (!contextMenu) {
@@ -873,10 +848,24 @@ function PipelineEditorCanvas({
     [selectedNode]
   );
 
-  const appendConsole = useCallback((line: string) => {
-    const time = new Date().toLocaleTimeString();
-    setConsoleLines((current) => [...current, `${time} | ${line}`]);
-  }, []);
+  const currentPipelineId = persistedPipeline?.id ?? initialPipeline?.id ?? null;
+
+  const appendConsole = useCallback(
+    (line: string, pipelineIdOverride?: string | null) => {
+      const targetPipelineId = pipelineIdOverride ?? currentPipelineId;
+
+      if (!targetPipelineId || !line.trim()) {
+        return;
+      }
+
+      void createPipelineLogAction({
+        pipelineId: targetPipelineId,
+        logBy: 'editor',
+        details: line,
+      }).catch(() => null);
+    },
+    [currentPipelineId]
+  );
 
   const setNodeWarning = useCallback(
     (nodeId: string, warning: string, activity?: string) => {
@@ -919,7 +908,7 @@ function PipelineEditorCanvas({
   );
 
   const clearPendingConnection = useCallback(
-    (logLine?: string) => {
+    () => {
       if (!pendingConnection) {
         return;
       }
@@ -932,12 +921,8 @@ function PipelineEditorCanvas({
       );
       setPendingConnection(null);
       setPendingParentId(null);
-
-      if (logLine) {
-        appendConsole(logLine);
-      }
     },
-    [appendConsole, pendingConnection, setEdges, setNodes]
+    [pendingConnection, setEdges, setNodes]
   );
 
   const closeContextMenu = useCallback(() => {
@@ -952,10 +937,31 @@ function PipelineEditorCanvas({
       setSelectedId(null);
       setActiveCategory('actions');
       setSearch('');
-      appendConsole('Choose a node from the sidebar to place it on the canvas.');
     },
-    [appendConsole, clearPendingConnection]
+    [clearPendingConnection]
   );
+
+  const openTriggerLibraryFromCanvas = useCallback(() => {
+    const rect = canvasShellRef.current?.getBoundingClientRect();
+    const centerPoint = rect
+      ? {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        }
+      : {
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+        };
+
+    clearPendingConnection();
+    setPendingCanvasNode({
+      position: screenToFlowPosition(centerPoint),
+    });
+    setPendingParentId(null);
+    setSelectedId(null);
+    setActiveCategory('triggers');
+    setSearch('');
+  }, [clearPendingConnection, screenToFlowPosition]);
 
   const openChildNodeLibrary = useCallback(
     (nodeId: string) => {
@@ -965,10 +971,8 @@ function PipelineEditorCanvas({
       setSelectedId(nodeId);
       setActiveCategory('actions');
       setSearch('');
-      const nodeLabel = nodes.find((node) => node.id === nodeId)?.data.label ?? 'selected node';
-      appendConsole(`Choose a node to place after ${nodeLabel}.`);
     },
-    [appendConsole, clearPendingConnection, nodes]
+    [clearPendingConnection]
   );
 
   useEffect(() => {
@@ -1019,14 +1023,13 @@ function PipelineEditorCanvas({
       setSelectedId(null);
       setActiveCategory('actions');
       setSearch('');
-      appendConsole('Choose the next node from the sidebar to complete this branch.');
 
       ignoreNextPaneClickRef.current = true;
       window.requestAnimationFrame(() => {
         ignoreNextPaneClickRef.current = false;
       });
     },
-    [appendConsole, setEdges, setNodes]
+    [setEdges, setNodes]
   );
 
   const handleConnect = useCallback(
@@ -1041,9 +1044,8 @@ function PipelineEditorCanvas({
       didConnectRef.current = true;
       clearPendingConnection();
       setEdges((currentEdges) => addEdge(createEdge(sourceId, targetId), currentEdges));
-      appendConsole('Created a connection between two nodes.');
     },
-    [appendConsole, clearPendingConnection, setEdges]
+    [clearPendingConnection, setEdges]
   );
 
   const handleSave = useCallback(async () => {
@@ -1082,7 +1084,6 @@ function PipelineEditorCanvas({
       });
 
       setPersistedPipeline(savedPipeline);
-      appendConsole(`Saved "${savedPipeline.title}" to the database.`);
       setReferenceSaveNotice(null);
       setSaveState('saved');
 
@@ -1092,11 +1093,9 @@ function PipelineEditorCanvas({
 
       window.setTimeout(() => setSaveState('idle'), 1400);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to save the pipeline.';
-      appendConsole(`Pipeline save failed: ${message}`);
       setSaveState('idle');
     }
-  }, [appendConsole, edges, initialPipeline?.description, initialPipeline?.id, initialPipeline?.title, nodes, persistedPipeline, router]);
+  }, [edges, initialPipeline?.description, initialPipeline?.id, initialPipeline?.title, nodes, persistedPipeline, router]);
 
   const handleReset = useCallback(() => {
     setNodes(initialFlow.nodes);
@@ -1108,8 +1107,7 @@ function PipelineEditorCanvas({
     setContextMenu(null);
     setReferenceSaveNotice(null);
     window.localStorage.removeItem(STORAGE_KEY);
-    appendConsole(initialPipeline ? 'Reset the editor back to the loaded pipeline.' : 'Reset the editor back to the starter flow.');
-  }, [appendConsole, initialFlow.edges, initialFlow.nodes, initialPipeline, setEdges, setNodes]);
+  }, [initialFlow.edges, initialFlow.nodes, setEdges, setNodes]);
 
   const handleAddNode = useCallback(
     (kind: PipelineNodeKind) => {
@@ -1143,9 +1141,6 @@ function PipelineEditorCanvas({
           ),
           createEdge(parentNode.id, newNode.id),
         ]);
-        appendConsole(`Added ${newNode.data.label} after ${parentNode.data.label}.`);
-      } else {
-        appendConsole(`Added ${newNode.data.label} to the canvas.`);
       }
 
       setSelectedId(newNode.id);
@@ -1154,7 +1149,7 @@ function PipelineEditorCanvas({
       setPendingCanvasNode(null);
       setContextMenu(null);
     },
-    [appendConsole, edges, nodes, pendingCanvasNode, pendingConnection, pendingParentId, selectedId, setEdges, setNodes]
+    [edges, nodes, pendingCanvasNode, pendingConnection, pendingParentId, selectedId, setEdges, setNodes]
   );
 
   const handleDuplicate = useCallback(() => {
@@ -1178,8 +1173,7 @@ function PipelineEditorCanvas({
 
     setNodes((currentNodes) => [...currentNodes, duplicate]);
     setSelectedId(duplicate.id);
-    appendConsole(`Duplicated ${selectedNode.data.label}.`);
-  }, [appendConsole, selectedNode, setNodes]);
+  }, [selectedNode, setNodes]);
 
   const handleDelete = useCallback(() => {
     if (!selectedId) {
@@ -1195,8 +1189,7 @@ function PipelineEditorCanvas({
     setPendingCanvasNode(null);
     setSelectedId(null);
     setContextMenu(null);
-    appendConsole('Removed the selected node from the flow.');
-  }, [appendConsole, clearPendingConnection, pendingConnection?.parentId, selectedId, setEdges, setNodes]);
+  }, [clearPendingConnection, pendingConnection?.parentId, selectedId, setEdges, setNodes]);
 
   const updateSelectedNode = useCallback(
     (patch: Partial<PipelineNodeData>) => {
@@ -1451,13 +1444,93 @@ function PipelineEditorCanvas({
     [appendConsole, intelligence, nodes, setNodeWarning, setNodes]
   );
 
+  const executeCanvasNode = useCallback(
+    async (node: PipelineFlowNode) => {
+      if (node.data.kind === 'aiAgent') {
+        return executeAiAgentNode(node);
+      }
+
+      setNodes((currentNodes) =>
+        currentNodes.map((currentNode) =>
+          currentNode.id === node.id
+            ? {
+                ...currentNode,
+                data: {
+                  ...currentNode.data,
+                  status: 'running',
+                  activity: 'Executing now...',
+                },
+              }
+            : currentNode
+        )
+      );
+      appendConsole(`Running ${node.data.label}.`);
+
+      await new Promise((resolve) => window.setTimeout(resolve, 420));
+
+      setNodes((currentNodes) =>
+        currentNodes.map((currentNode) =>
+          currentNode.id === node.id
+            ? {
+                ...currentNode,
+                data: {
+                  ...currentNode.data,
+                  status: 'success',
+                  activity: 'Completed successfully.',
+                },
+              }
+            : currentNode
+        )
+      );
+      appendConsole(`Completed ${node.data.label}.`);
+
+      return true;
+    },
+    [appendConsole, executeAiAgentNode, setNodes]
+  );
+
+  const handleRunNodeFromCanvas = useCallback(
+    async (nodeId: string) => {
+      if (isRunning) {
+        return;
+      }
+
+      const node = nodes.find((currentNode) => currentNode.id === nodeId && !currentNode.data.pending) ?? null;
+
+      if (!node) {
+        return;
+      }
+
+      setIsRunning(true);
+      closeContextMenu();
+      setSelectedId(nodeId);
+      appendConsole(`Starting a canvas test run for ${node.data.label}.`);
+
+      try {
+        const succeeded = await executeCanvasNode(node);
+
+        if (!succeeded) {
+          appendConsole(`Canvas test run for ${node.data.label} stopped with a warning.`);
+          return;
+        }
+
+        appendConsole(`Canvas test run for ${node.data.label} finished.`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Canvas node run failed.';
+        appendConsole(message);
+      } finally {
+        setIsRunning(false);
+      }
+    },
+    [appendConsole, closeContextMenu, executeCanvasNode, isRunning, nodes]
+  );
+
   const handleRun = useCallback(async () => {
     if (isRunning || flowNodes.length === 0) {
       return;
     }
 
     setIsRunning(true);
-    setShowDebugger(true);
     appendConsole(`Starting a ${flowNodes.length}-step simulation run.`);
     setNodes((currentNodes) =>
       currentNodes.map((node) => ({ ...node, data: { ...node.data, status: 'idle' } }))
@@ -1465,48 +1538,12 @@ function PipelineEditorCanvas({
 
     try {
       for (const node of flowNodes) {
-        if (node.data.kind === 'aiAgent') {
-          const aiSucceeded = await executeAiAgentNode(node);
-          if (!aiSucceeded) {
-            appendConsole(`Stopped the run after ${node.data.label} reported a pipeline warning.`);
-            break;
-          }
-          continue;
+        const succeeded = await executeCanvasNode(node);
+
+        if (!succeeded) {
+          appendConsole(`Stopped the run after ${node.data.label} reported a pipeline warning.`);
+          break;
         }
-
-        setNodes((currentNodes) =>
-          currentNodes.map((currentNode) =>
-            currentNode.id === node.id
-              ? {
-                  ...currentNode,
-                  data: {
-                    ...currentNode.data,
-                    status: 'running',
-                    activity: 'Executing now...',
-                  },
-                }
-              : currentNode
-          )
-        );
-        appendConsole(`Running ${node.data.label}.`);
-
-        await new Promise((resolve) => window.setTimeout(resolve, 420));
-
-        setNodes((currentNodes) =>
-          currentNodes.map((currentNode) =>
-            currentNode.id === node.id
-              ? {
-                  ...currentNode,
-                  data: {
-                    ...currentNode.data,
-                    status: 'success',
-                    activity: 'Completed successfully.',
-                  },
-                }
-              : currentNode
-          )
-        );
-        appendConsole(`Completed ${node.data.label}.`);
       }
 
       appendConsole('Pipeline simulation finished.');
@@ -1516,10 +1553,11 @@ function PipelineEditorCanvas({
     } finally {
       setIsRunning(false);
     }
-  }, [appendConsole, executeAiAgentNode, flowNodes, isRunning, setNodes]);
+  }, [appendConsole, executeCanvasNode, flowNodes, isRunning, setNodes]);
 
   const isLibraryMode = Boolean(pendingParentId || pendingConnection || pendingCanvasNode);
   const shouldShowSidebar = Boolean(selectedNode || isLibraryMode);
+  const shouldShowEmptyCanvasCta = flowNodes.length === 0 && !isLibraryMode;
   const selectedNodeInspectorArgs = useMemo(
     () =>
       selectedNode
@@ -1565,44 +1603,66 @@ function PipelineEditorCanvas({
         <header className="border-b border-white/70 bg-white/85 px-4 py-4 shadow-[0_18px_60px_rgba(15,23,42,0.06)] backdrop-blur-xl md:px-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-4">
-              <Logo />
-              <div className="hidden h-10 w-px bg-border md:block" />
-              <Button asChild variant="outline" className="rounded-full border-slate-200 bg-white">
-                <Link href="/pipeline">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Pipeline home
+              <div className="flex items-center">
+                <Link href="/" className="flex items-center gap-2 text-foreground">
+                  <Cloud className="h-6 w-6 text-primary" />
+                  <span className="font-headline text-lg font-bold">Neup</span>
                 </Link>
-              </Button>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">Plain Workspace</p>
-                <h1 className="text-lg font-semibold tracking-tight text-slate-950">Pipeline Editor</h1>
+                <Link
+                  href="/pipeline"
+                  className="font-headline text-lg font-bold text-foreground transition-colors hover:text-primary"
+                >
+                  .Pipeline
+                </Link>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" className="rounded-full border-slate-200 bg-white" onClick={() => setShowDebugger((current) => !current)}>
-                <TerminalSquare className="mr-2 h-4 w-4" />
-                {showDebugger ? 'Hide logs' : 'Show logs'}
-              </Button>
-              <Button variant="outline" className="rounded-full border-slate-200 bg-white" onClick={handleReset}>
-                <RefreshCcw className="mr-2 h-4 w-4" />
-                Reset
-              </Button>
+              {currentPipelineId ? (
+                <Button variant="outline" className="rounded-full border-slate-200 bg-white" asChild>
+                  <Link
+                    href={`/pipeline/instance/${currentPipelineId}/logs`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <TerminalSquare className="mr-2 h-4 w-4" />
+                    Logs
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="outline" className="rounded-full border-slate-200 bg-white" disabled>
+                  <TerminalSquare className="mr-2 h-4 w-4" />
+                  Logs
+                </Button>
+              )}
               <Button variant="outline" className="rounded-full border-slate-200 bg-white" onClick={handleSave}>
                 <Save className="mr-2 h-4 w-4" />
                 {saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved' : 'Save'}
-              </Button>
-              <Button className="rounded-full" onClick={handleRun} disabled={isRunning}>
-                <Play className="mr-2 h-4 w-4" />
-                {isRunning ? 'Running...' : 'Run flow'}
               </Button>
             </div>
           </div>
         </header>
 
         <div className={cn('grid flex-1 gap-0', shouldShowSidebar && 'xl:grid-cols-[minmax(0,1fr)_380px]')}>
-          <main className="relative h-[calc(100vh-81px)] overflow-hidden">
+          <main ref={canvasShellRef} className="relative h-[calc(100vh-81px)] overflow-hidden">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(15,23,42,0.08),transparent_36%)]" />
+
+            {shouldShowEmptyCanvasCta ? (
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-6">
+                <button
+                  type="button"
+                  className="pointer-events-auto flex flex-col items-center gap-5 text-slate-500 transition-all hover:text-slate-800"
+                  onClick={openTriggerLibraryFromCanvas}
+                >
+                  <span className="flex h-[230px] w-[230px] items-center justify-center rounded-[2rem] border-2 border-dashed border-slate-300/90 bg-white/20 shadow-[0_18px_50px_rgba(15,23,42,0.05)] backdrop-blur-sm transition-all hover:border-slate-500 hover:bg-white/40">
+                    <Plus className="h-16 w-16" strokeWidth={2.5} />
+                  </span>
+                  <span className="text-3xl font-medium tracking-tight text-slate-600">
+                    Add first step...
+                  </span>
+                </button>
+              </div>
+            ) : null}
 
             <ReactFlow
               nodes={nodes}
@@ -1738,7 +1798,6 @@ function PipelineEditorCanvas({
                 }
 
                 setPendingParentId(selectedNode.id);
-                appendConsole(`Choose a node to place after ${selectedNode.data.label}.`);
               }}
               onDuplicate={handleDuplicate}
               onDelete={handleDelete}
@@ -1754,6 +1813,14 @@ function PipelineEditorCanvas({
             items={
               contextMenu.target === 'node'
                 ? [
+                    {
+                      id: 'run-node-from-canvas',
+                      label: 'Run from canvas',
+                      icon: 'run',
+                      onSelect: () => {
+                        void handleRunNodeFromCanvas(contextMenu.nodeId);
+                      },
+                    },
                     {
                       id: 'add-child-node',
                       label: 'Add child node',
@@ -1777,41 +1844,6 @@ function PipelineEditorCanvas({
                   ]
             }
           />
-        ) : null}
-
-        {showDebugger ? (
-          <div className="border-t border-white/70 bg-white/88 shadow-[0_-20px_60px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-            <div className="flex items-center justify-between gap-4 px-5 py-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Debugger</p>
-                <h2 className="text-sm font-semibold text-slate-950">Run console</h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" className="rounded-full border-slate-200 bg-white" onClick={() => setConsoleLines([])}>
-                  Clear logs
-                </Button>
-                <Button variant="outline" className="rounded-full border-slate-200 bg-white" onClick={() => setShowDebugger(false)}>
-                  Hide
-                </Button>
-              </div>
-            </div>
-
-            <ScrollArea className="h-52 border-t border-slate-100">
-              <div className="space-y-2 px-5 py-4 font-mono text-[12px]">
-                {consoleLines.length === 0 ? (
-                  <div className="flex h-40 items-center justify-center rounded-[1.4rem] border border-dashed border-slate-200 bg-slate-50 text-slate-400">
-                    No debugger output yet.
-                  </div>
-                ) : (
-                  consoleLines.map((line, index) => (
-                    <div key={`${line}-${index}`} className="rounded-xl bg-slate-50 px-3 py-2 text-slate-700">
-                      {line}
-                    </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-          </div>
         ) : null}
       </div>
 

@@ -19,7 +19,7 @@ interface LogViewModel {
   inputTokens: number | null;
   outputTokens: number | null;
   query: string;
-  masterPrompt: string;
+  guider: string;
   context: string;
   response: string;
 }
@@ -62,9 +62,9 @@ export default function LogsAccordion({ logs }: { logs: LogViewModel[] }) {
             </AccordionTrigger>
             <AccordionContent className="border-t border-border/70 px-5 pb-5 pt-4">
               <CardContent className="grid gap-4 p-0 md:grid-cols-2">
-                {log.masterPrompt && (
+                {log.guider && (
                   <div className="space-y-2">
-                    {renderHintBox('master prompt', log.masterPrompt)}
+                    {renderHintBox('guider', log.guider)}
                   </div>
                 )}
                 {log.context && (
@@ -73,7 +73,7 @@ export default function LogsAccordion({ logs }: { logs: LogViewModel[] }) {
                   </div>
                 )}
                 {log.response && (
-                  <div className={cn('space-y-2', (log.masterPrompt || log.context) && 'md:col-span-2')}>
+                  <div className={cn('space-y-2', (log.guider || log.context) && 'md:col-span-2')}>
                     {renderHintBox('response', log.response)}
                   </div>
                 )}

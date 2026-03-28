@@ -86,7 +86,7 @@ export async function createIntelligenceAccessAction(
       primaryAccessKey: input.primaryAccessKey,
       fallbackAccessKey: input.fallbackAccessKey,
       maxTokens: input.maxTokens,
-      defPrompt: input.defPrompt,
+      defPrompt: input.guider,
     });
 
     revalidatePath('/intelligence/prompts');
@@ -145,7 +145,7 @@ export async function updateIntelligenceAccessAction(
       primaryAccessKey: input.primaryAccessKey,
       fallbackAccessKey: input.fallbackAccessKey,
       maxTokens: input.maxTokens,
-      defPrompt: input.defPrompt,
+      defPrompt: input.guider,
     });
 
     revalidatePath('/intelligence/prompts');

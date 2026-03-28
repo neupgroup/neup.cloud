@@ -82,7 +82,7 @@ export default async function PipelineEditorPage({
         primaryAccessKey: prompt.primaryAccessKey,
         fallbackAccessKey: prompt.fallbackAccessKey,
         maxTokens: prompt.maxTokens,
-        defPrompt: prompt.defPrompt,
+        guider: prompt.defPrompt,
       }))}
       intelligenceTokens={tokens.map((token) => ({
         id: token.id,

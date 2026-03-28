@@ -31,7 +31,7 @@ export default async function IntelligencePromptsPage() {
             Intelligence Prompts
           </span>
         }
-        description="Manage prompt IDs, linked provider tokens, model fallbacks, and master prompts for your signed-in account."
+        description="Manage prompt IDs, linked provider tokens, model fallbacks, and guiders for your signed-in account."
       />
 
       <Card className="border-primary/15 bg-gradient-to-br from-primary/5 via-background to-background">
@@ -43,7 +43,7 @@ export default async function IntelligencePromptsPage() {
             Prompt records live here
           </CardTitle>
           <CardDescription className="max-w-2xl text-base">
-            Use this section to manage `intelligenceAccess` entries as prompts, including generated access IDs, primary models, fallback models, master prompts, and attached access keys.
+            Use this section to manage `intelligenceAccess` entries as prompts, including generated access IDs, primary models, fallback models, guiders, and attached access keys.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row">
@@ -114,8 +114,8 @@ export default async function IntelligencePromptsPage() {
                         <p>{prompt.maxTokens ?? 'Default provider limit'}</p>
                       </div>
                       <div className="md:col-span-2">
-                        <p className="font-medium text-foreground">Master Prompt</p>
-                        <p className="whitespace-pre-wrap">{prompt.defPrompt || 'No master prompt configured.'}</p>
+                        <p className="font-medium text-foreground">Guider</p>
+                        <p className="whitespace-pre-wrap">{prompt.defPrompt || 'No guider configured.'}</p>
                       </div>
                       <div className="md:col-span-2">
                         <div className="flex flex-col gap-3 sm:flex-row">

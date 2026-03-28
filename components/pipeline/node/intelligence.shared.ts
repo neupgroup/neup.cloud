@@ -15,7 +15,7 @@ export type PipelineIntelligencePrompt = {
   primaryAccessKey: number | null;
   fallbackAccessKey: number | null;
   maxTokens: number | null;
-  defPrompt: string | null;
+  guider: string | null;
 };
 
 export type PipelineIntelligenceToken = {

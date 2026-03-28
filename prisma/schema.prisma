@@ -224,3 +224,14 @@ model Pipeline {
   @@index([accountId], map: "pipelines_account_id_idx")
   @@map("pipelines")
 }
+
+model PipelineLog {
+  id         String   @id @db.Text
+  pipelineId String   @map("pipeline_id") @db.Text
+  timestamp  DateTime @db.Timestamp(6)
+  logBy      String   @map("log_by") @db.Text
+  details    String   @db.Text
+
+  @@index([pipelineId, timestamp], map: "pipeline_logs_pipeline_id_timestamp_idx")
+  @@map("pipeline_logs")
+}

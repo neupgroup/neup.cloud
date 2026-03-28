@@ -382,11 +382,11 @@ export default function AccessCreateForm({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="def_prompt">Master Prompt</Label>
+              <Label htmlFor="guider">Guider</Label>
               <Textarea
-                id="def_prompt"
-                name="def_prompt"
-                placeholder="You are a helpful assistant for {{company}}..."
+                id="guider"
+                name="guider"
+                placeholder="Fixed guider for how the model should behave..."
                 className="min-h-40"
               />
             </div>

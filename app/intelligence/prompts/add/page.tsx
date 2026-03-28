@@ -32,7 +32,7 @@ export default async function IntelligencePromptAddPage() {
             Add Intelligence Prompt
           </span>
         }
-        description="Create a new intelligence prompt record."
+        description="Create a new intelligence prompt record with a fixed guider and dynamic runtime inputs."
         backHref="/intelligence/prompts"
       />
 
@@ -47,7 +47,7 @@ export default async function IntelligencePromptAddPage() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            The software generates the access token for you, shows it once for copying, and stores only its hash in the database.
+            The software generates the access token for you, shows it once for copying, and stores only its hash in the database. Use the guider as the fixed instruction layer, then pass prompt and context dynamically at runtime.
           </p>
         </CardContent>
       </Card>

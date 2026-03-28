@@ -19,6 +19,8 @@ import {
 } from '@/lib/intelligence/store';
 import {
   createPipeline,
+  createPipelineLog,
+  deletePipelineLogsByPipelineId,
   getPipelineById,
   updatePipeline,
 } from '@/services/pipelines/data';
@@ -59,6 +61,16 @@ export interface SavePipelineFlowResult {
   id: string;
   title: string;
   description: string | null;
+}
+
+export interface CreatePipelineLogInput {
+  pipelineId: string;
+  logBy: string;
+  details: string;
+}
+
+export interface ClearPipelineLogsInput {
+  pipelineId: string;
 }
 
 interface BuiltPrompt {
@@ -113,7 +125,7 @@ function buildPrompt(masterPrompt: string | null, prompt: string, context: strin
   }
 
   if (resolvedMasterPrompt) {
-    sections.push(`Master Prompt:\n${resolvedMasterPrompt}`);
+    sections.push(`Guider:\n${resolvedMasterPrompt}`);
   }
 
   if (resolvedContext) {
@@ -131,7 +143,7 @@ function buildPrompt(masterPrompt: string | null, prompt: string, context: strin
 function buildStoredContext(
   rawContext: string,
   metadata: Record<string, unknown> & {
-    masterPrompt?: string;
+    guider?: string;
     query?: string;
   }
 ): string {
@@ -431,7 +443,7 @@ async function finalizeRequestLog(input: {
       input.query,
       input.responseText,
       buildStoredContext(input.context, {
-        masterPrompt: input.masterPrompt,
+        guider: input.masterPrompt,
         query: input.query,
         status: 'success',
         usageTokens: input.usageTokens,
@@ -474,7 +486,7 @@ async function logFailedRequest(input: {
       input.query,
       `ERROR: ${input.errorMessage}`,
       buildStoredContext(input.context, {
-        masterPrompt: input.masterPrompt,
+        guider: input.masterPrompt,
         query: input.query,
         status: 'error',
         usageTokens: 0,
@@ -501,7 +513,7 @@ export async function executePipelineAiAgentAction(
   const builtPrompt = buildPrompt(access.defPrompt, input.prompt, stringifyContext(input.context));
 
   if (!builtPrompt.renderedPrompt) {
-    throw new Error('Provide a prompt, a master prompt, or some context for the AI Agent.');
+    throw new Error('Provide a prompt, a guider, or some context for the AI Agent.');
   }
 
   const candidates = [
@@ -669,4 +681,60 @@ export async function savePipelineFlowAction(
     title: createdPipeline.title,
     description: createdPipeline.description ?? null,
   };
+}
+
+export async function createPipelineLogAction(
+  input: CreatePipelineLogInput
+) {
+  const accountId = await getCurrentIntelligenceAccountId();
+  const pipelineId = input.pipelineId.trim();
+  const details = input.details.trim();
+  const logBy = input.logBy.trim() || 'system';
+
+  if (!pipelineId) {
+    throw new Error('Pipeline id is required for log creation.');
+  }
+
+  if (!details) {
+    return null;
+  }
+
+  const pipeline = await getPipelineById(pipelineId, accountId);
+
+  if (!pipeline) {
+    throw new Error('The selected pipeline could not be found for this account.');
+  }
+
+  const createdLog = await createPipelineLog({
+    pipelineId,
+    logBy,
+    details,
+  });
+
+  revalidatePath(`/pipeline/instance/${pipelineId}/logs`);
+  revalidatePath('/pipeline/instance');
+
+  return createdLog;
+}
+
+export async function clearPipelineLogsAction(
+  input: ClearPipelineLogsInput
+) {
+  const accountId = await getCurrentIntelligenceAccountId();
+  const pipelineId = input.pipelineId.trim();
+
+  if (!pipelineId) {
+    throw new Error('Pipeline id is required to clear logs.');
+  }
+
+  const pipeline = await getPipelineById(pipelineId, accountId);
+
+  if (!pipeline) {
+    throw new Error('The selected pipeline could not be found for this account.');
+  }
+
+  await deletePipelineLogsByPipelineId(pipelineId);
+
+  revalidatePath(`/pipeline/instance/${pipelineId}/logs`);
+  revalidatePath('/pipeline/instance');
 }

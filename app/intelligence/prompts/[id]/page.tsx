@@ -145,7 +145,7 @@ export default async function IntelligencePromptDetailPage({
           primaryAccessKey: access.primaryAccessKey,
           fallbackAccessKey: access.fallbackAccessKey,
           maxTokens: access.maxTokens,
-          defPrompt: access.defPrompt,
+          guider: access.defPrompt,
           tokenHash: access.token_hash,
         }}
       />

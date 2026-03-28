@@ -60,7 +60,7 @@ export default async function IntelligenceLogsPage({
               inputTokens: log.inputTokens,
               outputTokens: log.outputTokens,
               query: (parsedContext.query || log.query || '').trim(),
-              masterPrompt: parsedContext.masterPrompt.trim(),
+              guider: parsedContext.guider.trim(),
               context: parsedContext.displayContext.trim(),
               response: (log.response || '').trim(),
             };

@@ -1192,7 +1192,7 @@ export function parseAccessFormData(formData: FormData) {
     primaryAccessKey: parseOptionalInteger(formData.get('primary_access_key')),
     fallbackAccessKey: parseOptionalInteger(formData.get('fallback_access_key')),
     maxTokens: parseOptionalInteger(formData.get('max_tokens')),
-    defPrompt: parseOptionalString(formData.get('def_prompt')),
+    guider: parseOptionalString(formData.get('guider') ?? formData.get('def_prompt')),
   };
 }
 
@@ -1215,7 +1215,7 @@ export function parseRechargeFormData(formData: FormData) {
 
 export function parseLogContext(context: string | null): {
   displayContext: string;
-  masterPrompt: string;
+  guider: string;
   query: string;
   usageTokens: number | null;
   status: string | null;
@@ -1225,7 +1225,7 @@ export function parseLogContext(context: string | null): {
   if (!context) {
     return {
       displayContext: '',
-      masterPrompt: '',
+      guider: '',
       query: '',
       usageTokens: null,
       status: null,
@@ -1246,7 +1246,12 @@ export function parseLogContext(context: string | null): {
 
     return {
       displayContext,
-      masterPrompt: typeof parsed?.masterPrompt === 'string' ? parsed.masterPrompt : '',
+      guider:
+        typeof parsed?.guider === 'string'
+          ? parsed.guider
+          : typeof parsed?.masterPrompt === 'string'
+            ? parsed.masterPrompt
+            : '',
       query: typeof parsed?.query === 'string' ? parsed.query : '',
       usageTokens: Number.isFinite(usageTokens) ? usageTokens : null,
       status: typeof parsed?.status === 'string' ? parsed.status : null,
@@ -1256,7 +1261,7 @@ export function parseLogContext(context: string | null): {
   } catch {
     return {
       displayContext: context,
-      masterPrompt: '',
+      guider: '',
       query: '',
       usageTokens: null,
       status: null,

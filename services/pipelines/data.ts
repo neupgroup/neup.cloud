@@ -11,6 +11,14 @@ export interface StoredPipeline {
   flowJson: Prisma.JsonValue;
 }
 
+export interface StoredPipelineLog {
+  id: string;
+  pipelineId: string;
+  timestamp: string;
+  logBy: string;
+  details: string;
+}
+
 function toJsonField(value: Prisma.InputJsonValue) {
   return value;
 }
@@ -28,6 +36,22 @@ function mapPipeline(record: {
     title: record.title,
     description: record.description ?? undefined,
     flowJson: record.flowJson,
+  };
+}
+
+function mapPipelineLog(record: {
+  id: string;
+  pipelineId: string;
+  timestamp: Date;
+  logBy: string;
+  details: string;
+}): StoredPipelineLog {
+  return {
+    id: record.id,
+    pipelineId: record.pipelineId,
+    timestamp: record.timestamp.toISOString(),
+    logBy: record.logBy,
+    details: record.details,
   };
 }
 
@@ -88,4 +112,53 @@ export async function updatePipeline(
   });
 
   return mapPipeline(record);
+}
+
+export async function createPipelineLog(data: {
+  pipelineId: string;
+  logBy: string;
+  details: string;
+}) {
+  const record = await (prisma as typeof prisma & {
+    pipelineLog: {
+      create: typeof prisma.pipeline.create;
+    };
+  }).pipelineLog.create({
+    data: {
+      id: createId(),
+      pipelineId: data.pipelineId,
+      timestamp: new Date(),
+      logBy: data.logBy,
+      details: data.details,
+    },
+  });
+
+  return mapPipelineLog(record);
+}
+
+export async function getPipelineLogsByPipelineId(
+  pipelineId: string,
+  options?: { limit?: number }
+) {
+  const records = await (prisma as typeof prisma & {
+    pipelineLog: {
+      findMany: typeof prisma.pipeline.findMany;
+    };
+  }).pipelineLog.findMany({
+    where: { pipelineId },
+    orderBy: [{ timestamp: 'desc' }, { id: 'desc' }],
+    ...(options?.limit ? { take: options.limit } : {}),
+  });
+
+  return records.map(mapPipelineLog);
+}
+
+export async function deletePipelineLogsByPipelineId(pipelineId: string) {
+  return (prisma as typeof prisma & {
+    pipelineLog: {
+      deleteMany: typeof prisma.pipeline.deleteMany;
+    };
+  }).pipelineLog.deleteMany({
+    where: { pipelineId },
+  });
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, Database, Workflow } from 'lucide-react';
+import { ArrowRight, Database, ScrollText, Workflow } from 'lucide-react';
 
 import { PageTitle } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -102,13 +102,8 @@ export default async function PipelineInstancePage({
             const stats = getFlowStats(pipeline.flowJson);
 
             return (
-              <Link
-                key={pipeline.id}
-                href={`/pipeline/editor?id=${encodeURIComponent(pipeline.id)}`}
-                className="block h-full"
-              >
-                <Card className="transition-colors hover:border-primary/40 hover:bg-primary/5">
-                  <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+              <Card key={pipeline.id} className="transition-colors hover:border-primary/40 hover:bg-primary/5">
+                <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0 flex-1 space-y-2">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0 space-y-1">
@@ -122,13 +117,26 @@ export default async function PipelineInstancePage({
 
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-border/60 pt-4 text-sm font-medium text-muted-foreground lg:w-[180px] lg:flex-none lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-                      <span>Open in editor</span>
-                      <ArrowRight className="h-4 w-4" />
+                    <div className="flex items-center gap-2 border-t border-border/60 pt-4 lg:w-auto lg:flex-none lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link
+                          href={`/pipeline/instance/${encodeURIComponent(pipeline.id)}/logs`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <ScrollText className="mr-2 h-4 w-4" />
+                          Logs
+                        </Link>
+                      </Button>
+                      <Button size="sm" asChild>
+                        <Link href={`/pipeline/editor?id=${encodeURIComponent(pipeline.id)}`}>
+                          Editor
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
-              </Link>
             );
           })}
 

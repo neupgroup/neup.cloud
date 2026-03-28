@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, Workflow } from 'lucide-react';
+import { Play, Plus, Workflow } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 type PipelineContextMenuItem = {
   id: string;
   label: string;
-  icon?: 'add' | 'branch';
+  icon?: 'add' | 'branch' | 'run';
   onSelect: () => void;
 };
 
@@ -36,7 +36,12 @@ export function PipelineContextMenu({ x, y, items, className }: PipelineContextM
     >
       <div className="space-y-1">
         {items.map((item) => {
-          const Icon = item.icon === 'branch' ? Workflow : Plus;
+          const Icon =
+            item.icon === 'branch'
+              ? Workflow
+              : item.icon === 'run'
+                ? Play
+                : Plus;
 
           return (
             <Button
