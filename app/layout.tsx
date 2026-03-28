@@ -40,7 +40,8 @@ import {
   Activity,
   Rocket,
   Play,
-  Bot
+  Bot,
+  Workflow
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -135,6 +136,10 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     { href: "/intelligence/billing", label: "Billing", icon: CreditCard },
   ];
 
+  const pipelineLinks = [
+    { href: "/pipeline", label: "Home", icon: Workflow },
+  ];
+
   const domainLinks = [
     { href: "/domains", label: "Domains", icon: Globe },
     { href: "/domains/add", label: "Add Domain", icon: Plus },
@@ -218,6 +223,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
   const allPaths = [
     ...navLinks.map(l => l.href),
     ...intelligenceLinks.map(l => l.href),
+    ...pipelineLinks.map(l => l.href),
     ...domainLinks.map(l => l.href),
     ...accountLinks.map(l => l.href),
     ...(isServerSelected ? serverLinks.map(l => l.href) : []),
@@ -247,6 +253,18 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
           Intelligence
         </div>
         {intelligenceLinks.map(({ href, label, icon: Icon }) => (
+          <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
+            <Icon className="h-4 w-4" />
+            <span>{label}</span>
+          </NavLink>
+        ))}
+      </div>
+
+      <div className="space-y-2">
+        <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
+          Pipeline
+        </div>
+        {pipelineLinks.map(({ href, label, icon: Icon }) => (
           <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
             <Icon className="h-4 w-4" />
             <span>{label}</span>

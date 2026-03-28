@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   ReactFlow,
@@ -19,17 +19,21 @@ import {
   type Node,
   type NodeProps,
   type NodeTypes,
+  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import {
   ArrowLeft,
   Bot,
   Calendar,
+  Check,
+  CircleSlash,
   Clock3,
   Copy,
   GitBranch,
   Globe,
   LayoutGrid,
+  Loader2,
   Play,
   Plus,
   RefreshCcw,
@@ -37,10 +41,12 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  Square,
   SquareTerminal,
   TerminalSquare,
   Timer,
   Trash2,
+  TriangleAlert,
   Webhook,
   Workflow,
   Zap,
@@ -52,6 +58,7 @@ import {
   type PipelineAiAgentExecutionInput,
 } from '@/app/pipeline/actions';
 import { Logo } from '@/components/logo';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -99,9 +106,17 @@ type PipelineNodeData = {
   intelligenceLastResponse?: string;
   intelligenceLastModel?: string;
   intelligenceLastRenderedPrompt?: string;
+  intelligenceWarning?: string;
+  pending?: boolean;
 };
 
 type PipelineFlowNode = Node<PipelineNodeData>;
+
+type PendingConnectionDraft = {
+  parentId: string;
+  placeholderId: string;
+  position: { x: number; y: number };
+};
 
 type NodeTemplate = {
   kind: PipelineNodeKind;
@@ -386,9 +401,9 @@ function createEdge(source: string, target: string): Edge {
     id: `edge-${source}-${target}`,
     source,
     target,
-    animated: true,
+    animated: false,
     markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
-    style: { stroke: 'hsl(var(--foreground) / 0.38)', strokeWidth: 1.6 },
+    style: { stroke: 'hsl(var(--foreground) / 0.26)', strokeWidth: 2 },
   };
 }
 
@@ -442,28 +457,71 @@ function getStatusAppearance(status: PipelineNodeStatus) {
   switch (status) {
     case 'running':
       return {
-        frame: 'border-amber-300 shadow-[0_20px_50px_rgba(245,158,11,0.18)] ring-2 ring-amber-200/70',
-        dot: 'bg-amber-500',
+        frame: 'border-blue-300 shadow-[0_18px_44px_rgba(59,130,246,0.14)] ring-1 ring-blue-100',
+        box: 'border-blue-500 bg-blue-500 text-white shadow-[0_10px_24px_rgba(59,130,246,0.28)]',
+        pill: 'border-blue-200 bg-blue-50 text-blue-700',
+        dot: 'bg-blue-500',
         label: 'Running',
+        Icon: Loader2,
       };
     case 'success':
       return {
-        frame: 'border-emerald-300 shadow-[0_20px_50px_rgba(16,185,129,0.16)] ring-2 ring-emerald-200/70',
+        frame: 'border-emerald-300 shadow-[0_18px_44px_rgba(16,185,129,0.14)] ring-1 ring-emerald-100',
+        box: 'border-emerald-500 bg-emerald-500 text-white shadow-[0_10px_24px_rgba(16,185,129,0.28)]',
+        pill: 'border-emerald-200 bg-emerald-50 text-emerald-700',
         dot: 'bg-emerald-500',
         label: 'Success',
+        Icon: Check,
       };
     case 'error':
       return {
-        frame: 'border-rose-300 shadow-[0_20px_50px_rgba(244,63,94,0.16)] ring-2 ring-rose-200/70',
+        frame: 'border-rose-300 shadow-[0_18px_44px_rgba(244,63,94,0.14)] ring-1 ring-rose-100',
+        box: 'border-rose-500 bg-rose-500 text-white shadow-[0_10px_24px_rgba(244,63,94,0.26)]',
+        pill: 'border-rose-200 bg-rose-50 text-rose-700',
         dot: 'bg-rose-500',
-        label: 'Error',
+        label: 'Issue',
+        Icon: CircleSlash,
       };
     default:
       return {
-        frame: 'border-slate-200 shadow-[0_18px_40px_rgba(15,23,42,0.08)]',
-        dot: 'bg-slate-300',
-        label: 'Idle',
+        frame: 'border-slate-200 shadow-[0_14px_36px_rgba(15,23,42,0.08)]',
+        box: 'border-slate-300 bg-slate-100 text-slate-500',
+        pill: 'border-slate-200 bg-slate-50 text-slate-600',
+        dot: 'bg-slate-400',
+        label: 'Ready',
+        Icon: Square,
       };
+  }
+}
+
+function getNodeTypeLabel(kind: PipelineNodeKind) {
+  switch (kind) {
+    case 'manualStart':
+      return 'Manual Trigger';
+    case 'webhookTrigger':
+      return 'Webhook Trigger';
+    case 'scheduleTrigger':
+      return 'Schedule Trigger';
+    case 'http':
+      return 'HTTP Request';
+    case 'browser':
+      return 'Browser';
+    case 'aiAgent':
+      return 'AI Agent';
+    case 'transform':
+      return 'Transform';
+    case 'condition':
+      return 'Condition';
+    case 'delay':
+      return 'Delay';
+    case 'googleCalendar':
+      return 'Google Calendar';
+    case 'database':
+      return 'Database';
+    case 'end':
+      return 'End';
+    default:
+      return 'Node';
   }
 }
 
@@ -503,6 +561,7 @@ function createNode(
             intelligenceLastResponse: '',
             intelligenceLastModel: '',
             intelligenceLastRenderedPrompt: '',
+            intelligenceWarning: '',
           }
         : {}),
       ...overrides,
@@ -513,78 +572,106 @@ function createNode(
 function PipelineCanvasNode({ id, data, selected }: NodeProps<PipelineNodeData>) {
   const template = templateMap.get(data.kind);
   const Icon = template?.icon ?? Workflow;
-  const tone = getNodeTone(data.kind);
   const status = getStatusAppearance(data.status);
+  const typeLabel = getNodeTypeLabel(data.kind);
+  const StatusIcon = status.Icon;
 
   return (
     <div
       className={cn(
-        'group relative w-[260px] rounded-[1.7rem] border bg-white/95 transition-all duration-300 backdrop-blur-sm',
-        selected ? 'border-primary shadow-[0_24px_64px_rgba(15,23,42,0.18)] ring-2 ring-primary/20' : status.frame
+        'group relative w-[256px] rounded-[1.35rem] bg-white shadow-[0_16px_36px_rgba(15,23,42,0.08)] transition-all duration-200',
+        selected
+          ? 'shadow-[0_18px_40px_rgba(15,23,42,0.12)] ring-2 ring-slate-200/70'
+          : status.frame
       )}
     >
-      <div className="absolute -top-2 -right-2 z-20 flex items-center gap-2 rounded-full border border-white/80 bg-white px-2.5 py-1 shadow-lg">
-        <span className={cn('h-2.5 w-2.5 rounded-full', status.dot)} />
-        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">{status.label}</span>
-      </div>
-
       <Handle
         type="target"
         position={Position.Left}
-        className="!left-[-6px] !h-3 !w-3 !border-2 !border-white !bg-slate-900"
+        className="!left-[-7px] !h-3.5 !w-3.5 !border-[3px] !border-white !bg-slate-900"
       />
 
-      <div className={cn('rounded-t-[1.7rem] bg-gradient-to-r px-4 py-4 text-white', tone.header)}>
-        <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 shadow-inner">
-            <Icon className="h-5 w-5" />
+      <div
+        className={cn(
+          'overflow-hidden rounded-[1.15rem] border border-slate-300 bg-white',
+          selected && 'border-slate-400'
+        )}
+      >
+        <div className={cn('h-1.5 w-full bg-gradient-to-r', getNodeTone(data.kind).header)} />
+
+        <div className="bg-white">
+          <div className="flex items-start gap-3 px-3.5 py-3">
+            <div
+              className={cn(
+                'flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem] bg-gradient-to-br text-white shadow-[0_10px_22px_rgba(15,23,42,0.12)]',
+                getNodeTone(data.kind).header,
+                selected && 'shadow-[0_14px_26px_rgba(15,23,42,0.16)]'
+              )}
+            >
+              <Icon className="h-[18px] w-[18px]" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                {typeLabel}
+              </p>
+              <h3 className="truncate pt-0.5 text-[15px] font-semibold tracking-[-0.02em] text-slate-950">
+                {data.label}
+              </h3>
+              <p className="pt-0.5 text-sm text-slate-500">{data.subtitle}</p>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/70">{data.subtitle}</p>
-            <h3 className="truncate text-sm font-semibold">{data.label}</h3>
+
+          <div className="border-t border-slate-100 bg-slate-50/70 px-3.5 py-2.5">
+            <div
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-medium text-slate-600',
+                status.pill
+              )}
+            >
+              <span className={cn('h-2 w-2 rounded-full', status.dot)} />
+              Live
+            </div>
           </div>
-        </div>
-      </div>
-
-      <div className="space-y-3 px-4 pb-4 pt-3">
-        <div className="flex items-center justify-between gap-3">
-          <Badge className="rounded-full border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-50">
-            {data.category}
-          </Badge>
-          <span className="text-[11px] text-slate-500">{data.activity}</span>
-        </div>
-
-        <p className="text-sm leading-6 text-slate-600">{data.description}</p>
-
-        <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-xs leading-5 text-slate-600">
-          {data.summary}
         </div>
       </div>
 
       <Handle
         type="source"
         position={Position.Right}
-        className="!right-[-6px] !h-3 !w-3 !border-2 !border-white !bg-slate-900"
+        className="!right-[-7px] !h-3.5 !w-3.5 !border-[3px] !border-white !bg-slate-900"
       />
 
-      <button
-        type="button"
-        aria-label="Add child node"
-        onClick={(event) => {
-          event.stopPropagation();
-          window.dispatchEvent(new CustomEvent('pipeline:add-child', { detail: { nodeId: id } }));
-        }}
-        className="absolute -right-8 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 opacity-0 shadow-md transition-all group-hover:opacity-100 hover:border-primary hover:text-primary"
-      >
-        <Plus className="h-4 w-4" />
-      </button>
     </div>
+  );
+}
+
+function PendingBranchAnchor() {
+  return (
+    <div className="h-4 w-4 rounded-full border-2 border-dashed border-slate-300 bg-white shadow-[0_0_0_6px_rgba(255,255,255,0.92)]" />
   );
 }
 
 const nodeTypes: NodeTypes = {
   pipelineNode: PipelineCanvasNode,
+  pendingAnchor: PendingBranchAnchor,
 };
+
+function getPointerPosition(event: MouseEvent | TouchEvent) {
+  if ('touches' in event && event.touches.length > 0) {
+    return { x: event.touches[0].clientX, y: event.touches[0].clientY };
+  }
+
+  if ('changedTouches' in event && event.changedTouches.length > 0) {
+    return { x: event.changedTouches[0].clientX, y: event.changedTouches[0].clientY };
+  }
+
+  if ('clientX' in event) {
+    return { x: event.clientX, y: event.clientY };
+  }
+
+  return { x: 0, y: 0 };
+}
 
 function buildModelLabel(model: IntelligenceModelOption): string {
   return `${model.title} (${model.provider}:${model.model})`;
@@ -595,6 +682,7 @@ function PipelineEditorCanvas({
   intelligencePrompts,
   intelligenceTokens,
 }: PipelineEditorProps) {
+  const { screenToFlowPosition } = useReactFlow<PipelineNodeData>();
   const [nodes, setNodes, onNodesChange] = useNodesState<PipelineNodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedId, setSelectedId] = useState<string | null>('http-fetch');
@@ -603,10 +691,17 @@ function PipelineEditorCanvas({
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [isRunning, setIsRunning] = useState(false);
   const [pendingParentId, setPendingParentId] = useState<string | null>(null);
+  const [pendingConnection, setPendingConnection] = useState<PendingConnectionDraft | null>(null);
   const [showDebugger, setShowDebugger] = useState(true);
   const [consoleLines, setConsoleLines] = useState<string[]>([
     'Editor ready. Build on the canvas or add a child from any node.',
   ]);
+  const connectStartRef = useRef<{ nodeId: string | null; handleType: 'source' | 'target' | null }>({
+    nodeId: null,
+    handleType: null,
+  });
+  const didConnectRef = useRef(false);
+  const ignoreNextPaneClickRef = useRef(false);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -642,7 +737,7 @@ function PipelineEditorCanvas({
   }, []);
 
   const selectedNode = useMemo(
-    () => nodes.find((node) => node.id === selectedId) ?? null,
+    () => nodes.find((node) => node.id === selectedId && !node.data.pending) ?? null,
     [nodes, selectedId]
   );
   const promptOptionMap = useMemo(
@@ -666,18 +761,168 @@ function PipelineEditorCanvas({
   }, [activeCategory, search]);
 
   const flowNodes = useMemo(() => {
-    return [...nodes].sort((left, right) => {
+    return [...nodes]
+      .filter((node) => !node.data.pending)
+      .sort((left, right) => {
       if (left.position.x === right.position.x) {
         return left.position.y - right.position.y;
       }
       return left.position.x - right.position.x;
-    });
+      });
   }, [nodes]);
 
   const appendConsole = useCallback((line: string) => {
     const time = new Date().toLocaleTimeString();
     setConsoleLines((current) => [...current, `${time} | ${line}`]);
   }, []);
+
+  const setNodeWarning = useCallback(
+    (nodeId: string, warning: string, activity?: string) => {
+      setNodes((currentNodes) =>
+        currentNodes.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  status: 'error',
+                  activity: activity ?? warning,
+                  intelligenceWarning: warning,
+                },
+              }
+            : node
+        )
+      );
+    },
+    [setNodes]
+  );
+
+  const clearNodeWarning = useCallback(
+    (nodeId: string) => {
+      setNodes((currentNodes) =>
+        currentNodes.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  intelligenceWarning: '',
+                },
+              }
+            : node
+        )
+      );
+    },
+    [setNodes]
+  );
+
+  const getAiAgentValidationError = useCallback(
+    (node: PipelineFlowNode): string | null => {
+      if (node.data.kind !== 'aiAgent') {
+        return null;
+      }
+
+      if (intelligenceModels.length === 0 || intelligenceTokens.length === 0) {
+        return 'Configure at least one model and one access token for the AI Agent.';
+      }
+
+      const hasConfiguredPrimary =
+        node.data.intelligencePrimaryModelId !== null &&
+        node.data.intelligencePrimaryModelId !== undefined &&
+        node.data.intelligencePrimaryAccessKey !== null &&
+        node.data.intelligencePrimaryAccessKey !== undefined;
+      const hasConfiguredFallback =
+        node.data.intelligenceFallbackModelId !== null &&
+        node.data.intelligenceFallbackModelId !== undefined &&
+        node.data.intelligenceFallbackAccessKey !== null &&
+        node.data.intelligenceFallbackAccessKey !== undefined;
+
+      if (!hasConfiguredPrimary && !hasConfiguredFallback) {
+        return 'Configure at least one model and one access token for the AI Agent.';
+      }
+
+      const hasPromptContent = [
+        node.data.intelligencePrompt,
+        node.data.intelligenceMasterPrompt,
+        node.data.intelligenceContext,
+      ].some((value) => Boolean(value?.trim()));
+
+      if (!hasPromptContent) {
+        return 'Provide a prompt, a master prompt, or some context for the AI Agent.';
+      }
+
+      return null;
+    },
+    [intelligenceModels.length, intelligenceTokens.length]
+  );
+
+  const clearPendingConnection = useCallback(
+    (logLine?: string) => {
+      if (!pendingConnection) {
+        return;
+      }
+
+      setNodes((currentNodes) => currentNodes.filter((node) => node.id !== pendingConnection.placeholderId));
+      setEdges((currentEdges) =>
+        currentEdges.filter(
+          (edge) => edge.source !== pendingConnection.placeholderId && edge.target !== pendingConnection.placeholderId
+        )
+      );
+      setPendingConnection(null);
+      setPendingParentId(null);
+
+      if (logLine) {
+        appendConsole(logLine);
+      }
+    },
+    [appendConsole, pendingConnection, setEdges, setNodes]
+  );
+
+  const startPendingConnection = useCallback(
+    (parentId: string, position: { x: number; y: number }) => {
+      const placeholderId = `pending-anchor-${Math.random().toString(36).slice(2, 8)}`;
+
+      setNodes((currentNodes) => [
+        ...currentNodes.filter((node) => !node.data.pending),
+        {
+          id: placeholderId,
+          type: 'pendingAnchor',
+          position: { x: position.x - 8, y: position.y - 8 },
+          draggable: false,
+          selectable: false,
+          connectable: false,
+          deletable: false,
+          data: {
+            label: '',
+            kind: 'end',
+            category: '',
+            description: '',
+            summary: '',
+            subtitle: '',
+            status: 'idle',
+            activity: '',
+            pending: true,
+          },
+        },
+      ]);
+      setEdges((currentEdges) => [
+        ...currentEdges.filter((edge) => !edge.target.startsWith('pending-anchor-')),
+        createEdge(parentId, placeholderId),
+      ]);
+      setPendingConnection({ parentId, placeholderId, position });
+      setPendingParentId(parentId);
+      setSelectedId(null);
+      setActiveCategory('actions');
+      setSearch('');
+      appendConsole('Choose the next node from the sidebar to complete this branch.');
+
+      ignoreNextPaneClickRef.current = true;
+      window.requestAnimationFrame(() => {
+        ignoreNextPaneClickRef.current = false;
+      });
+    },
+    [appendConsole, setEdges, setNodes]
+  );
 
   const handleConnect = useCallback(
     (connection: Connection) => {
@@ -688,15 +933,25 @@ function PipelineEditorCanvas({
         return;
       }
 
+      didConnectRef.current = true;
+      clearPendingConnection();
       setEdges((currentEdges) => addEdge(createEdge(sourceId, targetId), currentEdges));
       appendConsole('Created a connection between two nodes.');
     },
-    [appendConsole, setEdges]
+    [appendConsole, clearPendingConnection, setEdges]
   );
 
   const handleSave = useCallback(() => {
     setSaveState('saving');
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ nodes, edges }));
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        nodes: nodes.filter((node) => !node.data.pending),
+        edges: edges.filter(
+          (edge) => !edge.source.startsWith('pending-anchor-') && !edge.target.startsWith('pending-anchor-')
+        ),
+      })
+    );
     appendConsole('Saved the local pipeline draft.');
 
     window.setTimeout(() => {
@@ -710,29 +965,41 @@ function PipelineEditorCanvas({
     setEdges(initialEdges);
     setSelectedId('http-fetch');
     setPendingParentId(null);
+    setPendingConnection(null);
     window.localStorage.removeItem(STORAGE_KEY);
     appendConsole('Reset the editor back to the starter flow.');
   }, [appendConsole, setEdges, setNodes]);
 
   const handleAddNode = useCallback(
     (kind: PipelineNodeKind) => {
-      const parentId = pendingParentId ?? selectedId;
+      const parentId = pendingConnection?.parentId ?? pendingParentId ?? selectedId;
       const parentNode = parentId ? nodes.find((node) => node.id === parentId) ?? null : null;
-      const nextPosition = parentNode
-        ? {
-            x: parentNode.position.x + 320,
-            y: parentNode.position.y + (edges.filter((edge) => edge.source === parentNode.id).length * 140 - 40),
-          }
-        : {
-            x: 140 + nodes.length * 60,
-            y: 180 + ((nodes.length % 3) * 130),
-          };
+      const nextPosition = pendingConnection
+        ? pendingConnection.position
+        : parentNode
+          ? {
+              x: parentNode.position.x + 320,
+              y: parentNode.position.y + (edges.filter((edge) => edge.source === parentNode.id).length * 140 - 40),
+            }
+          : {
+              x: 140 + nodes.length * 60,
+              y: 180 + ((nodes.length % 3) * 130),
+            };
 
       const newNode = createNode(kind, nextPosition);
-      setNodes((currentNodes) => [...currentNodes, newNode]);
+      setNodes((currentNodes) => [
+        ...currentNodes.filter((node) => node.id !== pendingConnection?.placeholderId),
+        newNode,
+      ]);
 
       if (parentNode) {
-        setEdges((currentEdges) => [...currentEdges, createEdge(parentNode.id, newNode.id)]);
+        setEdges((currentEdges) => [
+          ...currentEdges.filter(
+            (edge) =>
+              edge.source !== pendingConnection?.placeholderId && edge.target !== pendingConnection?.placeholderId
+          ),
+          createEdge(parentNode.id, newNode.id),
+        ]);
         appendConsole(`Added ${newNode.data.label} after ${parentNode.data.label}.`);
       } else {
         appendConsole(`Added ${newNode.data.label} to the canvas.`);
@@ -740,8 +1007,9 @@ function PipelineEditorCanvas({
 
       setSelectedId(newNode.id);
       setPendingParentId(null);
+      setPendingConnection(null);
     },
-    [appendConsole, edges, nodes, pendingParentId, selectedId, setEdges, setNodes]
+    [appendConsole, edges, nodes, pendingConnection, pendingParentId, selectedId, setEdges, setNodes]
   );
 
   const handleDuplicate = useCallback(() => {
@@ -775,10 +1043,13 @@ function PipelineEditorCanvas({
 
     setNodes((currentNodes) => currentNodes.filter((node) => node.id !== selectedId));
     setEdges((currentEdges) => currentEdges.filter((edge) => edge.source !== selectedId && edge.target !== selectedId));
+    if (pendingConnection?.parentId === selectedId) {
+      clearPendingConnection();
+    }
     setPendingParentId((current) => (current === selectedId ? null : current));
     setSelectedId(null);
     appendConsole('Removed the selected node from the flow.');
-  }, [appendConsole, selectedId, setEdges, setNodes]);
+  }, [appendConsole, clearPendingConnection, pendingConnection?.parentId, selectedId, setEdges, setNodes]);
 
   const updateSelectedNode = useCallback(
     (patch: Partial<PipelineNodeData>) => {
@@ -800,7 +1071,15 @@ function PipelineEditorCanvas({
   const executeAiAgentNode = useCallback(
     async (node: PipelineFlowNode) => {
       if (node.data.kind !== 'aiAgent') {
-        return null;
+        return false;
+      }
+
+      const validationError = getAiAgentValidationError(node);
+
+      if (validationError) {
+        setNodeWarning(node.id, validationError);
+        appendConsole(`AI Agent "${node.data.label}" needs configuration: ${validationError}`);
+        return false;
       }
 
       const actionInput: PipelineAiAgentExecutionInput = {
@@ -825,6 +1104,7 @@ function PipelineEditorCanvas({
                   ...currentNode.data,
                   status: 'running',
                   activity: 'Generating intelligence response...',
+                  intelligenceWarning: '',
                 },
               }
             : currentNode
@@ -853,6 +1133,7 @@ function PipelineEditorCanvas({
                     intelligenceLastResponse: result.responseText,
                     intelligenceLastModel: result.usedModel,
                     intelligenceLastRenderedPrompt: result.renderedPrompt,
+                    intelligenceWarning: '',
                     summary: compactResponse || currentNode.data.summary,
                   },
                 }
@@ -864,30 +1145,16 @@ function PipelineEditorCanvas({
           `${result.createdPrompt ? 'Created' : 'Updated'} prompt ${result.promptId} and generated a response with ${result.usedModel}.`
         );
 
-        return result;
+        return true;
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to generate AI response';
-
-        setNodes((currentNodes) =>
-          currentNodes.map((currentNode) =>
-            currentNode.id === node.id
-              ? {
-                  ...currentNode,
-                  data: {
-                    ...currentNode.data,
-                    status: 'error',
-                    activity: message,
-                  },
-                }
-              : currentNode
-          )
-        );
+        setNodeWarning(node.id, message);
 
         appendConsole(`AI Agent "${node.data.label}" failed: ${message}`);
-        throw error;
+        return false;
       }
     },
-    [appendConsole, setNodes]
+    [appendConsole, getAiAgentValidationError, setNodeWarning, setNodes]
   );
 
   const handleRun = useCallback(async () => {
@@ -905,7 +1172,11 @@ function PipelineEditorCanvas({
     try {
       for (const node of flowNodes) {
         if (node.data.kind === 'aiAgent') {
-          await executeAiAgentNode(node);
+          const aiSucceeded = await executeAiAgentNode(node);
+          if (!aiSucceeded) {
+            appendConsole(`Stopped the run after ${node.data.label} reported a pipeline warning.`);
+            break;
+          }
           continue;
         }
 
@@ -945,6 +1216,9 @@ function PipelineEditorCanvas({
       }
 
       appendConsole('Pipeline simulation finished.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Pipeline run failed.';
+      appendConsole(message);
     } finally {
       setIsRunning(false);
     }
@@ -1007,22 +1281,47 @@ function PipelineEditorCanvas({
               panOnScroll
               panOnScrollMode={PanOnScrollMode.Free}
               defaultEdgeOptions={{
-                animated: true,
+                animated: false,
                 markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18 },
-                style: { stroke: 'hsl(var(--foreground) / 0.35)', strokeWidth: 1.6 },
+                style: { stroke: 'hsl(var(--foreground) / 0.26)', strokeWidth: 2 },
               }}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={handleConnect}
+              onConnectStart={(_, params) => {
+                didConnectRef.current = false;
+                connectStartRef.current = {
+                  nodeId: params.nodeId,
+                  handleType: params.handleType,
+                };
+              }}
+              onConnectEnd={(event) => {
+                const { nodeId, handleType } = connectStartRef.current;
+
+                if (!nodeId || handleType !== 'source' || didConnectRef.current) {
+                  connectStartRef.current = { nodeId: null, handleType: null };
+                  return;
+                }
+
+                const pointerPosition = getPointerPosition(event);
+                startPendingConnection(nodeId, screenToFlowPosition(pointerPosition));
+                connectStartRef.current = { nodeId: null, handleType: null };
+              }}
               onNodeClick={(_, node) => {
+                clearPendingConnection();
                 setSelectedId(node.id);
                 setPendingParentId(null);
               }}
               onPaneClick={() => {
+                if (ignoreNextPaneClickRef.current) {
+                  return;
+                }
+
+                clearPendingConnection();
                 setSelectedId(null);
                 setPendingParentId(null);
               }}
-              className="bg-transparent"
+              className="pipeline-editor-flow bg-transparent"
               proOptions={{ hideAttribution: true }}
             >
               <Background gap={22} size={1.1} color="hsl(var(--border))" />
@@ -1084,6 +1383,7 @@ function PipelineEditorCanvas({
                               <select
                                 value={selectedNode.data.intelligencePromptId ?? ''}
                                 onChange={(event) => {
+                                  clearNodeWarning(selectedNode.id);
                                   const prompt = promptOptionMap.get(event.target.value);
 
                                   updateSelectedNode({
@@ -1113,7 +1413,10 @@ function PipelineEditorCanvas({
                               </label>
                               <Input
                                 value={selectedNode.data.intelligencePromptId ?? ''}
-                                onChange={(event) => updateSelectedNode({ intelligencePromptId: event.target.value })}
+                                onChange={(event) => {
+                                  clearNodeWarning(selectedNode.id);
+                                  updateSelectedNode({ intelligencePromptId: event.target.value });
+                                }}
                                 placeholder="Leave blank to auto-generate"
                                 className="rounded-2xl border-slate-200 bg-slate-50"
                               />
@@ -1126,11 +1429,12 @@ function PipelineEditorCanvas({
                             </label>
                             <select
                               value={selectedNode.data.intelligencePrimaryModelId ? String(selectedNode.data.intelligencePrimaryModelId) : ''}
-                              onChange={(event) =>
+                              onChange={(event) => {
+                                clearNodeWarning(selectedNode.id);
                                 updateSelectedNode({
                                   intelligencePrimaryModelId: event.target.value ? Number(event.target.value) : null,
-                                })
-                              }
+                                });
+                              }}
                               className="flex h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-950 outline-none"
                             >
                               <option value="">Select primary model</option>
@@ -1148,11 +1452,12 @@ function PipelineEditorCanvas({
                             </label>
                             <select
                               value={selectedNode.data.intelligenceFallbackModelId ? String(selectedNode.data.intelligenceFallbackModelId) : ''}
-                              onChange={(event) =>
+                              onChange={(event) => {
+                                clearNodeWarning(selectedNode.id);
                                 updateSelectedNode({
                                   intelligenceFallbackModelId: event.target.value ? Number(event.target.value) : null,
-                                })
-                              }
+                                });
+                              }}
                               className="flex h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-950 outline-none"
                             >
                               <option value="">No fallback model</option>
@@ -1170,11 +1475,12 @@ function PipelineEditorCanvas({
                             </label>
                             <select
                               value={selectedNode.data.intelligencePrimaryAccessKey ? String(selectedNode.data.intelligencePrimaryAccessKey) : ''}
-                              onChange={(event) =>
+                              onChange={(event) => {
+                                clearNodeWarning(selectedNode.id);
                                 updateSelectedNode({
                                   intelligencePrimaryAccessKey: event.target.value ? Number(event.target.value) : null,
-                                })
-                              }
+                                });
+                              }}
                               className="flex h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-950 outline-none"
                             >
                               <option value="">Select primary token</option>
@@ -1192,11 +1498,12 @@ function PipelineEditorCanvas({
                             </label>
                             <select
                               value={selectedNode.data.intelligenceFallbackAccessKey ? String(selectedNode.data.intelligenceFallbackAccessKey) : ''}
-                              onChange={(event) =>
+                              onChange={(event) => {
+                                clearNodeWarning(selectedNode.id);
                                 updateSelectedNode({
                                   intelligenceFallbackAccessKey: event.target.value ? Number(event.target.value) : null,
-                                })
-                              }
+                                });
+                              }}
                               className="flex h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-950 outline-none"
                             >
                               <option value="">No fallback token</option>
@@ -1216,11 +1523,12 @@ function PipelineEditorCanvas({
                               type="number"
                               min={1}
                               value={selectedNode.data.intelligenceMaxTokens ?? ''}
-                              onChange={(event) =>
+                              onChange={(event) => {
+                                clearNodeWarning(selectedNode.id);
                                 updateSelectedNode({
                                   intelligenceMaxTokens: event.target.value ? Number(event.target.value) : null,
-                                })
-                              }
+                                });
+                              }}
                               className="rounded-2xl border-slate-200 bg-slate-50"
                             />
                           </div>
@@ -1231,7 +1539,10 @@ function PipelineEditorCanvas({
                             </label>
                             <Textarea
                               value={selectedNode.data.intelligenceMasterPrompt ?? ''}
-                              onChange={(event) => updateSelectedNode({ intelligenceMasterPrompt: event.target.value })}
+                              onChange={(event) => {
+                                clearNodeWarning(selectedNode.id);
+                                updateSelectedNode({ intelligenceMasterPrompt: event.target.value });
+                              }}
                               className="min-h-[110px] rounded-2xl border-slate-200 bg-slate-50"
                             />
                           </div>
@@ -1242,7 +1553,10 @@ function PipelineEditorCanvas({
                             </label>
                             <Textarea
                               value={selectedNode.data.intelligencePrompt ?? ''}
-                              onChange={(event) => updateSelectedNode({ intelligencePrompt: event.target.value })}
+                              onChange={(event) => {
+                                clearNodeWarning(selectedNode.id);
+                                updateSelectedNode({ intelligencePrompt: event.target.value });
+                              }}
                               className="min-h-[100px] rounded-2xl border-slate-200 bg-slate-50"
                             />
                           </div>
@@ -1253,7 +1567,10 @@ function PipelineEditorCanvas({
                             </label>
                             <Textarea
                               value={selectedNode.data.intelligenceContext ?? ''}
-                              onChange={(event) => updateSelectedNode({ intelligenceContext: event.target.value })}
+                              onChange={(event) => {
+                                clearNodeWarning(selectedNode.id);
+                                updateSelectedNode({ intelligenceContext: event.target.value });
+                              }}
                               className="min-h-[110px] rounded-2xl border-slate-200 bg-slate-50"
                             />
                           </div>
@@ -1271,6 +1588,14 @@ function PipelineEditorCanvas({
                             <Bot className="mr-2 h-4 w-4" />
                             Generate response
                           </Button>
+
+                          {selectedNode.data.intelligenceWarning ? (
+                            <Alert variant="destructive" className="rounded-[1.25rem] border border-rose-200 bg-rose-50 text-rose-700 [&>svg]:text-rose-600">
+                              <TriangleAlert className="h-4 w-4" />
+                              <AlertTitle>Pipeline warning</AlertTitle>
+                              <AlertDescription>{selectedNode.data.intelligenceWarning}</AlertDescription>
+                            </Alert>
+                          ) : null}
 
                           {selectedNode.data.intelligenceLastResponse ? (
                             <div className="space-y-3 rounded-[1.4rem] border border-slate-200 bg-slate-50/80 p-4">
@@ -1311,7 +1636,10 @@ function PipelineEditorCanvas({
                           </label>
                           <Input
                             value={selectedNode.data.label}
-                            onChange={(event) => updateSelectedNode({ label: event.target.value })}
+                            onChange={(event) => {
+                              clearNodeWarning(selectedNode.id);
+                              updateSelectedNode({ label: event.target.value });
+                            }}
                             className="rounded-2xl border-slate-200 bg-slate-50"
                           />
                         </div>
@@ -1321,7 +1649,10 @@ function PipelineEditorCanvas({
                           </label>
                           <Textarea
                             value={selectedNode.data.description}
-                            onChange={(event) => updateSelectedNode({ description: event.target.value })}
+                            onChange={(event) => {
+                              clearNodeWarning(selectedNode.id);
+                              updateSelectedNode({ description: event.target.value });
+                            }}
                             className="min-h-[110px] rounded-2xl border-slate-200 bg-slate-50"
                           />
                         </div>
@@ -1331,7 +1662,10 @@ function PipelineEditorCanvas({
                           </label>
                           <Textarea
                             value={selectedNode.data.summary}
-                            onChange={(event) => updateSelectedNode({ summary: event.target.value })}
+                            onChange={(event) => {
+                              clearNodeWarning(selectedNode.id);
+                              updateSelectedNode({ summary: event.target.value });
+                            }}
                             className="min-h-[100px] rounded-2xl border-slate-200 bg-slate-50"
                           />
                         </div>
@@ -1341,7 +1675,10 @@ function PipelineEditorCanvas({
                           </label>
                           <Input
                             value={selectedNode.data.activity}
-                            onChange={(event) => updateSelectedNode({ activity: event.target.value })}
+                            onChange={(event) => {
+                              clearNodeWarning(selectedNode.id);
+                              updateSelectedNode({ activity: event.target.value });
+                            }}
                             className="rounded-2xl border-slate-200 bg-slate-50"
                           />
                         </div>
@@ -1569,6 +1906,34 @@ function PipelineEditorCanvas({
           </div>
         ) : null}
       </div>
+
+      <style jsx global>{`
+        .pipeline-editor-flow .react-flow__node {
+          background: transparent;
+          border: 0;
+        }
+
+        .pipeline-editor-flow .react-flow__node.selected,
+        .pipeline-editor-flow .react-flow__node:focus,
+        .pipeline-editor-flow .react-flow__node:focus-visible {
+          box-shadow: none;
+          outline: none;
+        }
+
+        .pipeline-editor-flow .react-flow__edge-path {
+          stroke-linecap: round;
+        }
+
+        .pipeline-editor-flow .react-flow__handle {
+          box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9);
+        }
+
+        .pipeline-editor-flow .react-flow__controls-button {
+          border-bottom-color: rgba(148, 163, 184, 0.18);
+          background: rgba(255, 255, 255, 0.96);
+          color: rgb(15, 23, 42);
+        }
+      `}</style>
     </div>
   );
 }
