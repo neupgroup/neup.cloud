@@ -13,12 +13,18 @@ export type PipelineNodeKind =
   | 'manualStart'
   | 'webhookTrigger'
   | 'scheduleTrigger'
+  | 'whatsappTrigger'
   | 'http'
   | 'browser'
+  | 'whatsappSend'
+  | 'whatsappReact'
   | 'aiAgent'
   | 'transform'
   | 'condition'
   | 'delay'
+  | 'google'
+  | 'github'
+  | 'linkedin'
   | 'googleCalendar'
   | 'database'
   | 'end';
@@ -167,10 +173,16 @@ export function getNodeTypeLabel(kind: PipelineNodeKind) {
       return 'Webhook Trigger';
     case 'scheduleTrigger':
       return 'Schedule Trigger';
+    case 'whatsappTrigger':
+      return 'WhatsApp Trigger';
     case 'http':
       return 'HTTP Request';
     case 'browser':
       return 'Browser';
+    case 'whatsappSend':
+      return 'WhatsApp Send';
+    case 'whatsappReact':
+      return 'WhatsApp React';
     case 'aiAgent':
       return 'AI Agent';
     case 'transform':
@@ -179,6 +191,12 @@ export function getNodeTypeLabel(kind: PipelineNodeKind) {
       return 'Condition';
     case 'delay':
       return 'Delay';
+    case 'google':
+      return 'Google';
+    case 'github':
+      return 'GitHub';
+    case 'linkedin':
+      return 'LinkedIn';
     case 'googleCalendar':
       return 'Google Calendar';
     case 'database':
@@ -195,9 +213,12 @@ export function getNodeType(kind: PipelineNodeKind): PipelineNodeType {
     case 'manualStart':
     case 'webhookTrigger':
     case 'scheduleTrigger':
+    case 'whatsappTrigger':
       return 'triggers';
     case 'http':
     case 'browser':
+    case 'whatsappSend':
+    case 'whatsappReact':
     case 'database':
       return 'actions';
     case 'transform':
@@ -205,6 +226,9 @@ export function getNodeType(kind: PipelineNodeKind): PipelineNodeType {
     case 'delay':
     case 'end':
       return 'logic';
+    case 'google':
+    case 'github':
+    case 'linkedin':
     case 'googleCalendar':
       return 'integration';
     case 'aiAgent':

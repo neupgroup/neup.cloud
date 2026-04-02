@@ -5,7 +5,11 @@ import {
   ArrowRight,
   Bot,
   Calendar,
+  Chrome,
+  Github,
   GitBranch,
+  Linkedin,
+  MessageCircle,
   Play,
   ShieldCheck,
   Sparkles,
@@ -63,10 +67,37 @@ const featureCards = [
 ];
 
 const previewNodes = [
-  { label: 'Webhook', tone: 'bg-emerald-500/15 text-emerald-700 border-emerald-200' },
-  { label: 'HTTP Request', tone: 'bg-sky-500/15 text-sky-700 border-sky-200' },
+  { label: 'WhatsApp Trigger', tone: 'bg-emerald-500/15 text-emerald-700 border-emerald-200' },
+  { label: 'WhatsApp Send', tone: 'bg-sky-500/15 text-sky-700 border-sky-200' },
   { label: 'AI Agent', tone: 'bg-indigo-500/15 text-indigo-700 border-indigo-200' },
-  { label: 'Google Calendar', tone: 'bg-amber-500/15 text-amber-700 border-amber-200' },
+  { label: 'Google', tone: 'bg-cyan-500/15 text-cyan-700 border-cyan-200' },
+];
+
+const connectionCards = [
+  {
+    title: 'WhatsApp',
+    description: 'Connect Cloud API details and use receive, send, and react nodes in the editor.',
+    href: '/pipeline/node/whatsapp/index',
+    icon: MessageCircle,
+  },
+  {
+    title: 'Google',
+    description: 'Open the sample Google connection center for workspace-oriented nodes.',
+    href: '/pipeline/node/google/index',
+    icon: Chrome,
+  },
+  {
+    title: 'GitHub',
+    description: 'Save repo defaults and token details for sample GitHub pipeline nodes.',
+    href: '/pipeline/node/github/index',
+    icon: Github,
+  },
+  {
+    title: 'LinkedIn',
+    description: 'Prepare posting identity and token details for the sample LinkedIn node.',
+    href: '/pipeline/node/linkedin/index',
+    icon: Linkedin,
+  },
 ];
 
 export default function PipelinePage() {
@@ -234,6 +265,42 @@ export default function PipelinePage() {
               </Card>
             );
           })}
+        </section>
+
+        <section className="pb-6">
+          <div className="mb-4 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Connection Hubs</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Open provider setup pages directly</h2>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {connectionCards.map((connection) => {
+              const Icon = connection.icon;
+
+              return (
+                <Card key={connection.title} className="rounded-[1.85rem] border border-slate-200/80 bg-white/90 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
+                  <CardHeader className="space-y-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl text-slate-950">{connection.title}</CardTitle>
+                      <CardDescription className="mt-2 text-sm leading-6 text-slate-600">
+                        {connection.description}
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Button asChild variant="outline" className="w-full rounded-full border-slate-200 bg-white">
+                      <Link href={connection.href}>Open setup page</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </section>
       </div>
     </div>

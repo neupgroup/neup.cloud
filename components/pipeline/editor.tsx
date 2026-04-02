@@ -107,6 +107,38 @@ type PipelineNodeData = PipelineSharedNodeData & {
   intelligenceLastModel?: string;
   intelligenceLastRenderedPrompt?: string;
   intelligenceWarning?: string;
+  whatsappConnectionLabel?: string;
+  whatsappPhoneNumberId?: string;
+  whatsappBusinessAccountId?: string;
+  whatsappWebhookPath?: string;
+  whatsappEventType?: 'text' | 'interactive' | 'media' | 'status' | 'any';
+  whatsappAllowedSenders?: string;
+  whatsappAutoMarkRead?: boolean;
+  whatsappRecipientPhone?: string;
+  whatsappMessageType?: 'text' | 'template';
+  whatsappMessageBody?: string;
+  whatsappTemplateName?: string;
+  whatsappTemplateLanguage?: string;
+  whatsappReplyToMessageId?: string;
+  whatsappTargetMessageId?: string;
+  whatsappReactionEmoji?: string;
+  whatsappLastPayload?: string;
+  googleConnectionLabel?: string;
+  googleProduct?: 'calendar' | 'sheets' | 'gmail' | 'drive';
+  googleOperation?: string;
+  googleResourceId?: string;
+  googleInstruction?: string;
+  githubConnectionLabel?: string;
+  githubOwner?: string;
+  githubRepository?: string;
+  githubEvent?: 'pull_request' | 'issues' | 'push';
+  githubOperation?: string;
+  githubInstruction?: string;
+  linkedinConnectionLabel?: string;
+  linkedinAccountType?: 'person' | 'organization';
+  linkedinProfileId?: string;
+  linkedinAudience?: 'public' | 'connections';
+  linkedinPostText?: string;
 };
 
 type PipelineFlowNode = Node<PipelineNodeData>;
@@ -550,12 +582,15 @@ function getNodeTone(kind: PipelineNodeKind) {
     case 'manualStart':
     case 'webhookTrigger':
     case 'scheduleTrigger':
+    case 'whatsappTrigger':
       return {
         header: 'from-emerald-500 to-teal-500',
         soft: 'bg-emerald-500/10 text-emerald-700 border-emerald-200',
       };
     case 'http':
     case 'browser':
+    case 'whatsappSend':
+    case 'whatsappReact':
     case 'database':
       return {
         header: 'from-sky-500 to-blue-600',
@@ -572,6 +607,21 @@ function getNodeTone(kind: PipelineNodeKind) {
       return {
         header: 'from-amber-500 to-orange-500',
         soft: 'bg-amber-500/10 text-amber-700 border-amber-200',
+      };
+    case 'google':
+      return {
+        header: 'from-cyan-500 to-sky-600',
+        soft: 'bg-cyan-500/10 text-cyan-700 border-cyan-200',
+      };
+    case 'github':
+      return {
+        header: 'from-slate-700 to-slate-900',
+        soft: 'bg-slate-500/10 text-slate-700 border-slate-200',
+      };
+    case 'linkedin':
+      return {
+        header: 'from-blue-600 to-sky-500',
+        soft: 'bg-blue-500/10 text-blue-700 border-blue-200',
       };
     case 'googleCalendar':
       return {

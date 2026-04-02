@@ -1,12 +1,20 @@
 'use client';
 
-import { Bot, Calendar, GitBranch, Play, Zap, type LucideIcon } from 'lucide-react';
+import { Bot, Calendar, GitBranch, Play, PlugZap, Zap, type LucideIcon } from 'lucide-react';
 
 import { browserNodeModule } from '@/components/pipeline/node/action.browser';
 import { databaseNodeModule } from '@/components/pipeline/node/action.database';
 import { httpRequestNodeModule } from '@/components/pipeline/node/action.httprequest';
 import { aiAgentNodeModule } from '@/components/pipeline/node/intelligence.aiagent';
+import { githubNodeModule } from '@/components/pipeline/node/integration.github';
+import { googleNodeModule } from '@/components/pipeline/node/integration.google';
 import { googleCalendarNodeModule } from '@/components/pipeline/node/integration.googlecalendar';
+import { linkedinNodeModule } from '@/components/pipeline/node/integration.linkedin';
+import {
+  whatsappReactNodeModule,
+  whatsappSendNodeModule,
+  whatsappTriggerNodeModule,
+} from '@/components/pipeline/node/integration.whatsapp';
 import { conditionNodeModule } from '@/components/pipeline/node/logic.condition';
 import { delayNodeModule } from '@/components/pipeline/node/logic.delay';
 import { endNodeModule } from '@/components/pipeline/node/logic.end';
@@ -45,8 +53,8 @@ export const pipelineNodeCategories: PipelineNodeCategoryDefinition[] = [
   {
     id: 'integration',
     label: 'Integration',
-    description: 'Connect the flow to concrete tools and endpoints.',
-    icon: Calendar,
+    description: 'Connect the flow to concrete tools and provider-specific entry points.',
+    icon: PlugZap,
   },
   {
     id: 'intelligence',
@@ -60,13 +68,19 @@ export const pipelineNodeModules: PipelineNodeModule[] = [
   manualStartNodeModule,
   webhookTriggerNodeModule,
   scheduleTriggerNodeModule,
+  whatsappTriggerNodeModule,
   httpRequestNodeModule,
   browserNodeModule,
+  whatsappSendNodeModule,
+  whatsappReactNodeModule,
   aiAgentNodeModule,
   databaseNodeModule,
   transformNodeModule,
   conditionNodeModule,
   delayNodeModule,
+  googleNodeModule,
+  githubNodeModule,
+  linkedinNodeModule,
   googleCalendarNodeModule,
   endNodeModule,
 ];
