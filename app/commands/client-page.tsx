@@ -642,18 +642,6 @@ function CommandsContent() {
                             {log.output || <span className="text-zinc-500 italic">No output recorded.</span>}
                           </div>
                         </div>
-                        <div className="flex justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              router.push('/commands/history');
-                            }}
-                          >
-                            Open full history
-                          </Button>
-                        </div>
                       </div>
                     </AccordionContent>
                   </Card>
