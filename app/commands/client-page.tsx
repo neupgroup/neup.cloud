@@ -221,6 +221,44 @@ export function CommandsContent({ mode = 'dashboard' }: { mode?: CommandsPageMod
     fetchAllData();
   }, [fetchAllData]);
 
+  const fetchHistoryLogs = useCallback(
+    async ({ showLoader = false, showError = false }: { showLoader?: boolean; showError?: boolean } = {}) => {
+      if (mode === 'saved') {
+        setHistoryLogs([]);
+        setIsHistoryLoading(false);
+        return;
+      }
+
+      if (!selectedServer) {
+        setHistoryLogs([]);
+        setIsHistoryLoading(false);
+        return;
+      }
+
+      if (showLoader) {
+        setIsHistoryLoading(true);
+      }
+
+      try {
+        const logs = await getServerLogs(selectedServer);
+        setHistoryLogs(logs as CommandHistoryItem[]);
+      } catch {
+        if (showError) {
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to load command history preview.',
+          });
+        }
+      } finally {
+        if (showLoader) {
+          setIsHistoryLoading(false);
+        }
+      }
+    },
+    [mode, selectedServer, toast]
+  );
+
   useEffect(() => {
     if (mode === 'saved') {
       setHistoryLogs([]);
@@ -228,29 +266,18 @@ export function CommandsContent({ mode = 'dashboard' }: { mode?: CommandsPageMod
       return;
     }
 
-    const fetchHistoryLogs = async () => {
-      if (!selectedServer) {
-        setHistoryLogs([]);
-        return;
-      }
+    void fetchHistoryLogs({ showLoader: true, showError: true });
 
-      setIsHistoryLoading(true);
-      try {
-        const logs = await getServerLogs(selectedServer);
-        setHistoryLogs(logs as CommandHistoryItem[]);
-      } catch {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Failed to load command history preview.',
-        });
-      } finally {
-        setIsHistoryLoading(false);
-      }
-    };
+    if (!selectedServer) {
+      return;
+    }
 
-    fetchHistoryLogs();
-  }, [mode, selectedServer, toast]);
+    const interval = setInterval(() => {
+      void fetchHistoryLogs();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [mode, selectedServer, fetchHistoryLogs]);
 
   const openRunDialog = (e: React.MouseEvent, command: SavedCommand) => {
     e.stopPropagation();
@@ -282,6 +309,7 @@ export function CommandsContent({ mode = 'dashboard' }: { mode?: CommandsPageMod
         title: 'Execution Started',
         description: `Running "${command.name}" on the selected server. Check history for output.`,
       });
+      void fetchHistoryLogs();
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Execution Failed', description: e.message });
     } finally {
@@ -307,6 +335,7 @@ export function CommandsContent({ mode = 'dashboard' }: { mode?: CommandsPageMod
         description: `Running "${commandToRun.name}" on the selected server. Check history for output.`,
       });
       setIsRunDialogOpen(false);
+      void fetchHistoryLogs();
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Execution Failed', description: e.message });
     } finally {
@@ -330,6 +359,7 @@ export function CommandsContent({ mode = 'dashboard' }: { mode?: CommandsPageMod
       await runCustomCommandOnServer(selectedServer, customCommand);
       toast({ title: 'Command Executed', description: 'Custom command has been executed. Check history for output.' });
       setCustomCommand('');
+      void fetchHistoryLogs();
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Execution Failed', description: e.message });
     } finally {
