@@ -159,12 +159,8 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     { href: "/commands", label: "Commands", icon: Terminal },
     { href: "/firewall", label: "Firewall", icon: ShieldAlert },
     { href: "/files", label: "File Manager", icon: FolderKanban },
-    { href: "/system/packages", label: "Packages", icon: Package },
-    { href: "/system/updates", label: "Updates", icon: ArrowUpCircle },
-    { href: "/system/storage", label: "Storage", icon: HardDrive },
-    { href: "/system/startup", label: "Startup", icon: Play },
-    { href: "/system/requirement", label: "Requirements", icon: ListChecks },
     { href: "/webservices", label: "Webservices", icon: Globe },
+    { href: "/system", label: "System", icon: LayoutGrid },
   ]
 
   /* Maintenance Links removed as they are moved to System */
@@ -173,10 +169,6 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     { href: "/root/servers", label: "Manage Servers", icon: Settings },
     { href: "/errors", label: "Errors", icon: ShieldAlert },
   ]
-
-  const systemLinks = [
-    { href: "/system", label: "Home", icon: LayoutGrid },
-  ];
 
   // Collect all paths for longest match calculation
   const allPaths = [
@@ -188,7 +180,6 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     ...(isServerSelected ? serverLinks.map(l => l.href) : []),
     // maintenanceLinks removed
 
-    ...systemLinks.map(l => l.href),
     ...rootLinks.map(l => l.href),
   ];
 
@@ -264,19 +255,6 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
           </NavLink>
         ))}
       </div>
-
-      <div className="space-y-2">
-        <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
-          System
-        </div>
-        {systemLinks.map(({ href, label, icon: Icon }) => (
-          <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
-            <Icon className="h-4 w-4" />
-            <span>{label}</span>
-          </NavLink>
-        ))}
-      </div>
-
 
     </nav>
   );
