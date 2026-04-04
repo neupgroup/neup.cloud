@@ -54,6 +54,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
         appLocation: application.location,
         preferredPorts: uniquePorts,
         entryFile: application.information?.entryFile,
+        supervisorServiceName: application.information?.supervisorServiceName,
     };
 
     // Get all commands from the appropriate module

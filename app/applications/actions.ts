@@ -22,6 +22,7 @@ import {
   sanitizeStageName,
 } from '@/services/applications/logic';
 import type { Application, CreateApplicationData, UpdateApplicationData } from './types';
+import { findApplicationProcess, type ServerProcess } from './status';
 
 const execAsync = promisify(exec);
 
@@ -73,6 +74,92 @@ export async function updateApplication(id: string, data: UpdateApplicationData)
   await updateApplicationRecord(id, prepareApplicationUpdateData(data));
   revalidatePath('/applications');
   revalidatePath(`/applications/${id}`);
+}
+
+type SyncApplicationsWithServerResult = {
+  applications: Application[];
+  serverOnlyApplications: ServerProcess[];
+};
+
+export async function syncApplicationsWithServer(): Promise<SyncApplicationsWithServerResult> {
+  const applications = await getApplicationsData();
+  const supervisorProcesses = await getSupervisorProcesses();
+  const normalizedSupervisorProcesses: ServerProcess[] = (Array.isArray(supervisorProcesses) ? supervisorProcesses : []).map((process) => ({
+    ...process,
+    source: 'supervisor',
+  }));
+
+  const matchedProcessNames = new Set<string>();
+  let didUpdateAnyApplication = false;
+
+  const syncedApplications = await Promise.all(
+    applications.map(async (application) => {
+      const matchedProcess = findApplicationProcess(
+        application.id,
+        normalizedSupervisorProcesses,
+        application.information?.supervisorServiceName
+      );
+
+      if (matchedProcess) {
+        matchedProcessNames.add(`${matchedProcess.source}:${matchedProcess.name}`);
+      }
+
+      const nextServerSync = matchedProcess
+        ? {
+            status: 'matched' as const,
+            matchedProcessName: matchedProcess.name,
+            matchedProcessState: matchedProcess.state,
+            matchedProcessSource: matchedProcess.source,
+          }
+        : {
+            status: 'missing_on_server' as const,
+          };
+      const nextSupervisorServiceName = matchedProcess?.name ?? application.information?.supervisorServiceName;
+
+      const currentServerSync = application.information?.serverSync;
+      const hasServerSyncChanged =
+        currentServerSync?.status !== nextServerSync.status ||
+        currentServerSync?.matchedProcessName !== nextServerSync.matchedProcessName ||
+        currentServerSync?.matchedProcessState !== nextServerSync.matchedProcessState ||
+        currentServerSync?.matchedProcessSource !== nextServerSync.matchedProcessSource ||
+        application.information?.supervisorServiceName !== nextSupervisorServiceName;
+
+      if (!hasServerSyncChanged) {
+        return {
+          ...application,
+          information: {
+            ...application.information,
+            supervisorServiceName: nextSupervisorServiceName,
+            serverSync: nextServerSync,
+          },
+        };
+      }
+
+      didUpdateAnyApplication = true;
+
+      return updateApplicationRecord(
+        application.id,
+        prepareApplicationUpdateData({
+          information: {
+            ...application.information,
+            supervisorServiceName: nextSupervisorServiceName,
+            serverSync: nextServerSync,
+          },
+        })
+      );
+    })
+  );
+
+  if (didUpdateAnyApplication) {
+    revalidatePath('/applications');
+  }
+
+  return {
+    applications: syncedApplications,
+    serverOnlyApplications: normalizedSupervisorProcesses.filter(
+      (process) => !matchedProcessNames.has(`${process.source}:${process.name}`)
+    ),
+  };
 }
 
 export async function executeApplicationCommand(
@@ -332,11 +419,11 @@ export async function getSupervisorProcesses() {
 
   const command = `
     if command -v supervisorctl &> /dev/null; then 
-        sudo supervisorctl status
+        sudo supervisorctl status 2>/dev/null || true
     elif [ -f /usr/bin/supervisorctl ]; then
-        sudo /usr/bin/supervisorctl status
+        sudo /usr/bin/supervisorctl status 2>/dev/null || true
     elif [ -f /usr/local/bin/supervisorctl ]; then
-        sudo /usr/local/bin/supervisorctl status
+        sudo /usr/local/bin/supervisorctl status 2>/dev/null || true
     else
         echo "SUPERVISORCTL_NOT_FOUND"
     fi`;
@@ -350,7 +437,7 @@ export async function getSupervisorProcesses() {
 
   try {
     const output = (result.output || '').trim();
-    if (output === 'SUPERVISORCTL_NOT_FOUND') return { error: 'SUPERVISOR_NOT_INSTALLED' };
+    if (!output || output === 'SUPERVISORCTL_NOT_FOUND') return [];
 
     const lines = output.split('\n');
     const processes = [];

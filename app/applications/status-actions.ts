@@ -5,6 +5,7 @@ import { executeQuickCommand } from '../commands/actions';
 import { getApplication, getProcessDetails, getSupervisorProcesses } from './actions';
 import { cookies } from 'next/headers';
 import { sanitizeAppName } from '../../core/universal';
+import { findBestSupervisorProcessForApplication } from '@/services/applications/service-name';
 
 export type AppStatusResult = {
     processStatus: 'running' | 'stopped' | 'error' | 'unknown';
@@ -80,24 +81,16 @@ export async function checkApplicationStatus(applicationId: string): Promise<App
     // Step 1.5: Check Process via Supervisor (if not found in PM2)
     if (processStatus === 'unknown' || processStatus === 'stopped') {
         try {
-            // Ensure app name is sterilized and truncated according to system provisions
-            // System Limit: 16 characters max, lowercase, no special chars, spaces to underscores
-            const sanitizedName = sanitizeAppName(app.name);
+            const supervisorServiceName = app.information?.supervisorServiceName;
             
-            let supervisorProcess = await getProcessDetails('supervisor', sanitizedName);
+            let supervisorProcess = supervisorServiceName
+                ? await getProcessDetails('supervisor', supervisorServiceName)
+                : null;
 
-            // Fallback: If direct check failed, try listing all processes
-            // This handles cases where the process might be in a group or direct name lookup failed
             if (!supervisorProcess) {
                 const allProcesses = await getSupervisorProcesses();
                 if (Array.isArray(allProcesses)) {
-                    const found = allProcesses.find((p: any) => 
-                        p.name === sanitizedName || 
-                        p.name.endsWith(`:${sanitizedName}`) ||
-                        // Double check: if the name in supervisor is slightly different but derived from same base?
-                        // But strictly, it should match sanitizedName.
-                        p.name === sanitizedName.toLowerCase()
-                    );
+                    const found = findBestSupervisorProcessForApplication(app.id, allProcesses, supervisorServiceName);
                     
                     if (found) {
                         let pmStatus = 'stopped';

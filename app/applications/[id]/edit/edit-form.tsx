@@ -19,9 +19,9 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '../../../../hooks/use-toast';
-import { Copy, ExternalLink, Key, Plus, Trash, X } from 'lucide-react';
+import { Copy, ExternalLink, Key, Plus, Trash, X, Upload, AppWindow } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { generateApplicationName, normalizeApplicationNameInput } from '@/app/applications/name';
 
 const FRAMEWORKS = [
@@ -67,8 +67,10 @@ export default function EditApplicationForm({ application }: EditApplicationForm
 
     // Application Basics
     const [appName, setAppName] = useState(application.name || '');
+    const [appIcon, setAppIcon] = useState(application.appIcon || '');
     const [appLocation, setAppLocation] = useState(application.location || '');
     const nameLocked = Boolean(application.name);
+    const appIconInputRef = useRef<HTMLInputElement | null>(null);
 
     // Repository Info
     const repoInfo = application.information?.repoInfo || {};
@@ -190,6 +192,18 @@ export default function EditApplicationForm({ application }: EditApplicationForm
         toast({ description: "Public key copied to clipboard." });
     };
 
+    const handleAppIconUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = typeof reader.result === 'string' ? reader.result : '';
+            setAppIcon(result);
+        };
+        reader.readAsDataURL(file);
+    };
+
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -241,6 +255,7 @@ export default function EditApplicationForm({ application }: EditApplicationForm
 
         const updatedData = {
             name: resolvedName,
+            appIcon: appIcon || undefined,
             location: appLocation,
             language: selectedFramework,
             repository: repoLocation,
@@ -297,6 +312,32 @@ export default function EditApplicationForm({ application }: EditApplicationForm
                             <p className="text-xs text-muted-foreground">
                                 {nameLocked ? 'Application name is locked after it has been set.' : 'The saved name will be generated automatically from this value.'}
                             </p>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="appIcon">App Icon</Label>
+                            <div className="flex items-center gap-3">
+                                <div className="h-14 w-14 rounded-xl border bg-muted overflow-hidden flex items-center justify-center shrink-0">
+                                    {appIcon ? (
+                                        <img src={appIcon} alt="App icon preview" className="h-full w-full object-cover" />
+                                    ) : (
+                                        <AppWindow className="h-6 w-6 text-muted-foreground" />
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Button type="button" variant="outline" onClick={() => appIconInputRef.current?.click()}>
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        Upload Icon
+                                    </Button>
+                                    {appIcon && (
+                                        <Button type="button" variant="ghost" onClick={() => setAppIcon('')}>
+                                            <X className="mr-2 h-4 w-4" />
+                                            Remove
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                            <input ref={appIconInputRef} id="appIcon" type="file" accept="image/*" className="hidden" onChange={handleAppIconUpload} />
+                            <p className="text-xs text-muted-foreground">Optional. Upload a square image for the card view.</p>
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="appLocation">Location in Server</Label>

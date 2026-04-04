@@ -52,6 +52,7 @@ export function prepareApplicationUpdateData(data: UpdateApplicationData): Updat
 export function getApplicationStopCommand(application: Application) {
   const commands = application.commands || {};
   const customStopKey = Object.keys(commands).find((key) => key === 'lifecycle.stop' || key === 'stop');
+  const supervisorServiceName = application.information?.supervisorServiceName;
 
   if (customStopKey) {
     const encodedCommand = commands[customStopKey];
@@ -65,15 +66,17 @@ export function getApplicationStopCommand(application: Application) {
 
   switch (application.language) {
     case 'next':
-      return NextJs.getStopCommand(application.name);
+      return NextJs.getStopCommand(application.name, supervisorServiceName);
     case 'node':
-      return NodeJs.getStopCommand(application.name);
+      return NodeJs.getStopCommand(application.name, supervisorServiceName);
     case 'python':
-      return Python.getStopCommand(application.name);
+      return Python.getStopCommand(application.name, supervisorServiceName);
     case 'go':
-      return Go.getStopCommand(application.name);
+      return Go.getStopCommand(application.name, supervisorServiceName);
     default:
-      return `pm2 stop "${sanitizeAppName(application.name)}"`;
+      return supervisorServiceName
+        ? `sudo supervisorctl stop "${supervisorServiceName}"`
+        : `pm2 stop "${sanitizeAppName(application.name)}"`;
   }
 }
 

@@ -23,6 +23,7 @@ export interface CommandContext {
     appLocation: string;
     preferredPorts?: number[];
     entryFile?: string;
+    supervisorServiceName?: string;
 }
 
 /**
@@ -31,6 +32,7 @@ export interface CommandContext {
  */
 export const getCommands = (context: CommandContext): CommandDefinition[] => {
     const sanitizedAppName = sanitizeAppName(context.appName);
+    const supervisorServiceName = context.supervisorServiceName || sanitizedAppName;
     const portsStr = context.preferredPorts?.join(' ') || '';
     const entryFile = context.entryFile || 'index.js';
 
@@ -93,13 +95,13 @@ fi
 
 sudo mkdir -p /etc/supervisor/conf.d/
 
-CONF_FILE="/etc/supervisor/conf.d/${sanitizedAppName}.conf"
+CONF_FILE="/etc/supervisor/conf.d/${supervisorServiceName}.conf"
 LOG_OUT="${context.appLocation}/terminal.output.log"
 LOG_ERR="${context.appLocation}/terminal.error.log"
 USER_NAME=$(whoami)
 
 cat <<EOF | sudo tee $CONF_FILE
-[program:${sanitizedAppName}]
+[program:${supervisorServiceName}]
 command=node ${context.appLocation}/${entryFile}
 directory=${context.appLocation}
 user=$USER_NAME
@@ -115,7 +117,7 @@ EOF
 
 sudo supervisorctl reread
 sudo supervisorctl update
-sudo supervisorctl restart ${sanitizedAppName}
+sudo supervisorctl restart ${supervisorServiceName}
 `
             }
         },
@@ -128,8 +130,8 @@ sudo supervisorctl restart ${sanitizedAppName}
             status: 'published',
             type: 'destructive',
             command: {
-                mainCommand: `sudo supervisorctl stop ${sanitizedAppName}
-sudo rm /etc/supervisor/conf.d/${sanitizedAppName}.conf
+                mainCommand: `sudo supervisorctl stop ${supervisorServiceName}
+sudo rm /etc/supervisor/conf.d/${supervisorServiceName}.conf
 sudo supervisorctl reread
 sudo supervisorctl update`
             }
@@ -155,15 +157,15 @@ export const getAllCommands = (context: CommandContext): Record<string, CommandD
 /**
  * Legacy compatibility functions
  */
-export const getStartCommand = (appName: string, appLocation: string, entryFile: string = 'index.js', preferredPorts: number[] = []) => {
-    const commands = getCommands({ appName, appLocation, entryFile, preferredPorts });
+export const getStartCommand = (appName: string, appLocation: string, entryFile: string = 'index.js', preferredPorts: number[] = [], supervisorServiceName?: string) => {
+    const commands = getCommands({ appName, appLocation, entryFile, preferredPorts, supervisorServiceName });
     const cmd = commands.find(c => c.title === 'Start');
     if (!cmd) return '';
     return `${cmd.command.preCommand || ''}\n${cmd.command.mainCommand}`;
 };
 
-export const getStopCommand = (appName: string) => {
-    const commands = getCommands({ appName, appLocation: '' });
+export const getStopCommand = (appName: string, supervisorServiceName?: string) => {
+    const commands = getCommands({ appName, appLocation: '', supervisorServiceName });
     const cmd = commands.find(c => c.title === 'Stop');
     return cmd?.command.mainCommand || '';
 };

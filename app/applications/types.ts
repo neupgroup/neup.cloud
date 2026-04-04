@@ -3,12 +3,34 @@
  * 
  * Represents an application deployed in the infrastructure
  */
+export type ApplicationServerSyncStatus = 'matched' | 'missing_on_server';
+
+export type ApplicationServerSyncInfo = {
+    status: ApplicationServerSyncStatus;
+    matchedProcessName?: string;
+    matchedProcessState?: string;
+    matchedProcessSource?: 'pm2' | 'supervisor';
+};
+
+export interface ApplicationInformation extends Record<string, any> {
+    repoInfo?: {
+        isPrivate?: boolean;
+        accessKey?: string;
+        username?: string;
+    };
+    supervisorServiceName?: string;
+    serverSync?: ApplicationServerSyncInfo;
+}
+
 export interface Application {
     /** Unique identifier */
     id: string;
 
     /** Name of the application */
     name: string;
+
+    /** Uploaded application icon (data URL or image URL) */
+    appIcon?: string;
 
     /** Location of the app in the server (file path) */
     location: string;
@@ -26,7 +48,7 @@ export interface Application {
     commands?: Record<string, string>;
 
     /** Additional information stored as JSON */
-    information?: Record<string, any>;
+    information?: ApplicationInformation;
 
     /** Owner user ID */
     owner: string;

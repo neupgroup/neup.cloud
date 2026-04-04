@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Trash, X, Copy, ExternalLink, Key } from 'lucide-react';
+import { Plus, Trash, X, Copy, ExternalLink, Key, Upload, AppWindow } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -65,8 +65,10 @@ export default function CreateApplicationPage() {
 
   // Application Basics
   const [appName, setAppName] = useState('');
+  const [appIcon, setAppIcon] = useState('');
   const [appLocation, setAppLocation] = useState('');
   const [nameSuffix] = useState(() => generateApplicationNameSuffix());
+  const appIconInputRef = useRef<HTMLInputElement | null>(null);
 
   // Repository Info
   const [repoLocation, setRepoLocation] = useState('');
@@ -156,6 +158,18 @@ export default function CreateApplicationPage() {
     toast({ description: "Public key copied to clipboard." });
   };
 
+  const handleAppIconUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      setAppIcon(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Improved submit handler to use the returned ID
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,6 +227,7 @@ export default function CreateApplicationPage() {
     try {
       const appId = await createApplication({
         name: generatedAppName,
+        appIcon: appIcon || undefined,
         location: appLocation,
         language: selectedFramework,
         repository: repoLocation,
@@ -262,6 +277,32 @@ export default function CreateApplicationPage() {
               <p className="text-xs text-muted-foreground">
                 Final name will be generated as <span className="font-mono">{generatedAppName || '[name]_neupappify_[random8]'}</span>
               </p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="appIcon">App Icon</Label>
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-14 rounded-xl border bg-muted overflow-hidden flex items-center justify-center shrink-0">
+                  {appIcon ? (
+                    <img src={appIcon} alt="App icon preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <AppWindow className="h-6 w-6 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="outline" onClick={() => appIconInputRef.current?.click()}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload Icon
+                  </Button>
+                  {appIcon && (
+                    <Button type="button" variant="ghost" onClick={() => setAppIcon('')}>
+                      <X className="mr-2 h-4 w-4" />
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <input ref={appIconInputRef} id="appIcon" type="file" accept="image/*" className="hidden" onChange={handleAppIconUpload} />
+              <p className="text-xs text-muted-foreground">Optional. Upload a square image for the card view.</p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="appLocation">Location in Server</Label>

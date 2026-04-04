@@ -1,15 +1,24 @@
 import { Prisma } from '@prisma/client';
+import { randomInt } from 'crypto';
 import type { Application, CreateApplicationData, UpdateApplicationData } from '@/app/applications/types';
 import { prisma } from '@/services/prisma';
 import { createId } from '@/services/shared/create-id';
+import { buildSupervisorServiceName } from './service-name';
 
 function toJsonField(value: Prisma.InputJsonValue | null | undefined) {
   return value === undefined ? undefined : value === null ? Prisma.DbNull : value;
 }
 
+function generateSupervisorServiceToken(length: number = 8) {
+  const characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+  return Array.from({ length }, () => characters[randomInt(0, characters.length)]).join('');
+}
+
 function mapApplication(record: {
   id: string;
   name: string;
+  appIcon: string | null;
   location: string;
   language: string;
   repository: string | null;
@@ -25,6 +34,7 @@ function mapApplication(record: {
   return {
     id: record.id,
     name: record.name,
+    appIcon: record.appIcon ?? undefined,
     location: record.location,
     language: record.language,
     repository: record.repository ?? undefined,
@@ -56,16 +66,25 @@ export async function getApplicationById(id: string) {
 }
 
 export async function createApplication(data: CreateApplicationData) {
+  const applicationId = createId();
+  const information = {
+    ...(data.information ?? {}),
+    supervisorServiceName:
+      data.information?.supervisorServiceName ??
+      buildSupervisorServiceName(applicationId, generateSupervisorServiceToken()),
+  };
+
   const record = await prisma.application.create({
     data: {
-      id: createId(),
+      id: applicationId,
       name: data.name,
+      appIcon: data.appIcon ?? null,
       location: data.location,
       language: data.language,
       repository: data.repository ?? null,
       networkAccess: data.networkAccess ?? [],
       commands: toJsonField((data.commands ?? null) as Prisma.InputJsonValue | null),
-      information: toJsonField((data.information ?? null) as Prisma.InputJsonValue | null),
+      information: toJsonField(information as Prisma.InputJsonValue),
       owner: data.owner,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -86,16 +105,27 @@ export async function updateApplication(id: string, data: UpdateApplicationData)
     throw new Error('Application not found');
   }
 
+  const mergedInformation = data.information === undefined
+    ? undefined
+    : {
+        ...((existing.information as Record<string, any> | null) ?? {}),
+        ...data.information,
+        supervisorServiceName:
+          data.information?.supervisorServiceName ??
+          (existing.information as Record<string, any> | null)?.supervisorServiceName,
+      };
+
   const record = await prisma.application.update({
     where: { id },
     data: {
       ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.appIcon !== undefined ? { appIcon: data.appIcon ?? null } : {}),
       ...(data.location !== undefined ? { location: data.location } : {}),
       ...(data.language !== undefined ? { language: data.language } : {}),
       ...(data.repository !== undefined ? { repository: data.repository ?? null } : {}),
       ...(data.networkAccess !== undefined ? { networkAccess: data.networkAccess } : {}),
       ...(data.commands !== undefined ? { commands: toJsonField((data.commands ?? null) as Prisma.InputJsonValue | null) } : {}),
-      ...(data.information !== undefined ? { information: toJsonField((data.information ?? null) as Prisma.InputJsonValue | null) } : {}),
+      ...(data.information !== undefined ? { information: toJsonField((mergedInformation ?? null) as Prisma.InputJsonValue | null) } : {}),
       ...(data.owner !== undefined ? { owner: data.owner } : {}),
       ...(data.environments !== undefined ? { environments: toJsonField((data.environments ?? null) as Prisma.InputJsonValue | null) } : {}),
       ...(data.files !== undefined ? { files: toJsonField((data.files ?? null) as Prisma.InputJsonValue | null) } : {}),

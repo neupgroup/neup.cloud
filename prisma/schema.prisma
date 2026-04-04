@@ -54,6 +54,7 @@ model SavedCommand {
 model Application {
   id            String   @id @db.Text
   name          String   @db.Text
+  appIcon       String?  @map("appIcon") @db.Text
   location      String   @db.Text
   language      String   @db.Text
   repository    String?  @db.Text
