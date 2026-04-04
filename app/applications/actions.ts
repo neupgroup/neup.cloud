@@ -470,7 +470,7 @@ export async function saveRunningProcesses(serverId: string) {
     await executeQuickCommand(serverId, commandMatch[0]);
   }
 
-  revalidatePath('/applications/running');
+  revalidatePath('/applications');
   return { success: true, output: saveResult.output };
 }
 

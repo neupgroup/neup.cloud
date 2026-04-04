@@ -1,26 +1,21 @@
 'use client';
 
-import { Activity, RefreshCw, Hash, CircleDot, RotateCw, Loader2, ArrowRight } from "lucide-react";
+import { Activity, Hash, CircleDot } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getSupervisorProcesses, restartSupervisorProcess } from "@/app/applications/actions";
-import { Button } from "@/components/ui/button";
+import { getSupervisorProcesses } from "@/app/applications/actions";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { useToast } from "../hooks/use-toast";
 
 interface RunningProcessesCardProps {
     serverId: string;
 }
 
 export function RunningProcessesCard({ serverId }: RunningProcessesCardProps) {
-    const { toast } = useToast();
     const [processes, setProcesses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [actionLoading, setActionLoading] = useState<string | null>(null);
 
     const fetchProcesses = async () => {
         setLoading(true);
@@ -47,31 +42,6 @@ export function RunningProcessesCard({ serverId }: RunningProcessesCardProps) {
             fetchProcesses();
         }
     }, [serverId]);
-
-    const handleRestart = async (e: React.MouseEvent, proc: any) => {
-        e.preventDefault();
-        e.stopPropagation(); // Prevent card click
-
-        if (!serverId) return;
-
-        const id = proc.name;
-        setActionLoading(`restart-${id}`);
-
-        try {
-            const result = await restartSupervisorProcess(serverId, proc.name);
-
-            if (result.error) {
-                toast({ variant: 'destructive', title: 'Restart Failed', description: result.error });
-            } else {
-                toast({ title: 'Process Restarted', description: `Process ${proc.name} has been restarted.` });
-                await fetchProcesses();
-            }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
-        } finally {
-            setActionLoading(null);
-        }
-    };
 
     // Helper to determine status color and state
     const getProcessState = (proc: any) => {
@@ -129,11 +99,10 @@ export function RunningProcessesCard({ serverId }: RunningProcessesCardProps) {
                         }[state];
 
                         return (
-                            <Link
+                            <div
                                 key={uniqueId}
-                                href={`/applications/running/supervisor.${proc.name}`}
                                 className={cn(
-                                    "block p-4 min-w-0 w-full transition-colors hover:bg-muted/50 text-left",
+                                    "block p-4 min-w-0 w-full",
                                     index !== processes.length - 1 && "border-b border-border"
                                 )}
                             >
@@ -171,7 +140,7 @@ export function RunningProcessesCard({ serverId }: RunningProcessesCardProps) {
                                         </div>
                                     </div>
                                 </div>
-                            </Link>
+                            </div>
                         );
                     })}
                 </Card>

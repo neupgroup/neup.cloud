@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getInstalledPackages, type PackageUpdate } from '../updates/actions';
 import { cn } from '@/lib/utils';
-import { useToast } from '../../hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 const COLORS = [
     'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500', 'bg-lime-500',
@@ -79,7 +79,7 @@ export function PackagesClient({ serverId, serverName, showTitle = true }: { ser
     };
 
     const handleItemClick = (name: string) => {
-        router.push(`/packages/${name}`);
+        router.push(`/system/packages/${name}`);
     };
 
     return (
@@ -136,7 +136,7 @@ export function PackagesClient({ serverId, serverName, showTitle = true }: { ser
                             {/* Install New Package Card */}
                             <div
                                 className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 cursor-pointer border-b border-border"
-                                onClick={() => router.push('/packages/install')}
+                                onClick={() => router.push('/system/packages/install')}
                             >
                                 <div className="flex items-center gap-4">
                                     <div className="h-9 w-9 rounded-md flex items-center justify-center bg-primary/10 text-primary shrink-0 font-bold shadow-sm">

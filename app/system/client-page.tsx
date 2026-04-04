@@ -15,8 +15,8 @@ import { Folder, File, Database, Server } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import StartupClient from './startup/startup-client';
-import { UpdatesClient } from '@/app/updates/updates-client';
-import { PackagesClient } from '@/app/packages/packages-client';
+import { UpdatesClient } from '@/app/system/updates/updates-client';
+import { PackagesClient } from '@/app/system/packages/packages-client';
 import FirewallNetworkClient from '@/app/firewall/network/network-client';
 
 const storageItems = [

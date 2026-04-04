@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '../../../hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { getPackageVersions, installPackage, uninstallPackage, reinstallPackage, type PackageVersionInfo } from '../actions';
 import { cn } from '@/lib/utils';
 
@@ -140,7 +140,7 @@ export function PackageDetailsClient({ serverId, serverName, packageName }: { se
                 <PageTitleBackWithComponent
                     title="Package Error"
                     serverName={serverName}
-                    backHref="/packages"
+                    backHref="/system/packages"
                     actionComponent={<div />}
                 />
                 <Alert variant="destructive">
@@ -159,7 +159,7 @@ export function PackageDetailsClient({ serverId, serverName, packageName }: { se
                 title={packageName}
                 description="Manage versions and installation"
                 serverName={serverName}
-                backHref="/packages"
+                backHref="/system/packages"
                 actionComponent={<div />}
             />
 

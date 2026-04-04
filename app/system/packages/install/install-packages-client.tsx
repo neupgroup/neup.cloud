@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { searchAvailablePackages } from '../actions';
 import { cn } from '@/lib/utils';
-import { useToast } from '../../../hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from 'use-debounce';
 
 const COLORS = [
@@ -48,11 +48,11 @@ export function InstallPackagesClient({ serverId, serverName }: { serverId: stri
     useEffect(() => {
         if (debouncedSearch.length > 2) {
             handleSearch(debouncedSearch);
-            router.replace(`/packages/install?query=${encodeURIComponent(debouncedSearch)}`, { scroll: false });
+            router.replace(`/system/packages/install?query=${encodeURIComponent(debouncedSearch)}`, { scroll: false });
         } else {
             setSearchResults([]);
             if (debouncedSearch.length === 0) {
-                router.replace('/packages/install', { scroll: false });
+                router.replace('/system/packages/install', { scroll: false });
             }
         }
     }, [debouncedSearch, router]);
@@ -71,7 +71,7 @@ export function InstallPackagesClient({ serverId, serverName }: { serverId: stri
     }
 
     const handleItemClick = (name: string) => {
-        router.push(`/packages/install/${name}`);
+        router.push(`/system/packages/install/${name}`);
     };
 
     return (

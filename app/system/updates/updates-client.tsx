@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useToast } from '../../hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { getSystemUpdates, refreshPackageList, getInstalledPackages, type PackageUpdate } from './actions';
 import { cn } from '@/lib/utils';
@@ -79,7 +79,7 @@ export function UpdatesClient({ serverId, serverName, showTitle = true }: { serv
     };
 
     const handleItemClick = (type: 'sys', name: string) => {
-        router.push(`/updates/${type}.${name}`);
+        router.push(`/system/updates/${type}.${name}`);
     };
 
     const SystemUpdatesSection = () => (

@@ -1,6 +1,6 @@
 'use server';
 
-import { getServerForRunner } from '../servers/actions';
+import { getServerForRunner } from '../../servers/actions';
 import { runCommandOnServer } from '@/services/ssh';
 
 export type PackageUpdate = {

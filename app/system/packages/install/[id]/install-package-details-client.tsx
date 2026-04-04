@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '../../../../hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { getPackageVersions, installPackage, type PackageVersionInfo } from '../../actions';
 import { cn } from '@/lib/utils'; // Correct import path assuming this file is deep
 
@@ -116,7 +116,7 @@ export function InstallPackageDetailsClient({ serverId, serverName, packageName 
             <div className="space-y-6">
                 <PageTitleBackWithComponent
                     title="Package Error"
-                    backHref="/packages/install"
+                    backHref="/system/packages/install"
                     actionComponent={<div />}
                 />
                 <Alert variant="destructive">
@@ -134,7 +134,7 @@ export function InstallPackageDetailsClient({ serverId, serverName, packageName 
             <PageTitleBackWithComponent
                 title={packageName}
                 description="Install new package"
-                backHref="/packages/install"
+                backHref="/system/packages/install"
                 actionComponent={<div />}
             />
 
@@ -219,7 +219,7 @@ export function InstallPackageDetailsClient({ serverId, serverName, packageName 
                     <Button
                         variant="ghost"
                         className="w-full sm:w-auto text-muted-foreground"
-                        onClick={() => router.push(`/packages/${packageName}`)}
+                        onClick={() => router.push(`/system/packages/${packageName}`)}
                     >
                         Go to Package Management <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
                     </Button>
