@@ -33,7 +33,7 @@ function PackageIcon({ name }: { name: string }) {
     );
 }
 
-export function PackagesClient({ serverId, serverName }: { serverId: string, serverName: string }) {
+export function PackagesClient({ serverId, serverName, showTitle = true }: { serverId: string, serverName: string, showTitle?: boolean }) {
     const { toast } = useToast();
     const router = useRouter();
 
@@ -84,12 +84,14 @@ export function PackagesClient({ serverId, serverName }: { serverId: string, ser
 
     return (
         <div className="space-y-6">
-            <PageTitleWithComponent
-                title="Packages"
-                description={`Software library (${installedPackages.length} installed)`}
-                serverName={serverName}
-                actionComponent={<div />}
-            />
+            {showTitle && (
+                <PageTitleWithComponent
+                    title="Packages"
+                    description={`Software library (${installedPackages.length} installed)`}
+                    serverName={serverName}
+                    actionComponent={<div />}
+                />
+            )}
 
             <div className="space-y-4">
                 <div className="relative">

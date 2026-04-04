@@ -34,7 +34,7 @@ function PackageIcon({ name }: { name: string }) {
     );
 }
 
-export function UpdatesClient({ serverId, serverName }: { serverId: string, serverName: string }) {
+export function UpdatesClient({ serverId, serverName, showTitle = true }: { serverId: string, serverName: string, showTitle?: boolean }) {
     const { toast } = useToast();
     const router = useRouter();
     const [systemUpdates, setSystemUpdates] = useState<PackageUpdate[]>([]);
@@ -161,12 +161,14 @@ export function UpdatesClient({ serverId, serverName }: { serverId: string, serv
 
     return (
         <div className="space-y-8">
-            <PageTitleWithComponent
-                title="System Updates"
-                description="Manage system package updates"
-                serverName={serverName}
-                actionComponent={<div />}
-            />
+            {showTitle && (
+                <PageTitleWithComponent
+                    title="System Updates"
+                    description="Manage system package updates"
+                    serverName={serverName}
+                    actionComponent={<div />}
+                />
+            )}
 
             {error && (
                 <Alert variant="destructive">
