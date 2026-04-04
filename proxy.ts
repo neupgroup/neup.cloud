@@ -14,22 +14,24 @@ export default function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Remove this line of code only during the development.
-  // =================>
-  if (process.env.NODE_ENV === 'development') {
-   return NextResponse.next();
-  }
-  // =================>
-  // Enable these lines of code only during the development.
+  // // Remove this line of code only during the development.
+  // // =================>
+  // if (process.env.NODE_ENV === 'development') {
+  //  return NextResponse.next();
+  // }
+  // // =================>
+  // // Enable these lines of code only during the development.
 
-  return NextResponse.redirect(
-    new URL(
-      'https://neupgroup.com/account/auth/start?appid=' + encodeURIComponent(process.env.APP_ID || '') + '&redirectsTo=' +
-        encodeURIComponent(request.nextUrl.href),
-    ),
-  );
+  const appid = Math.random().toString(36).substring(2, 10);
+  const redirectUrl = new URL('https://neupgroup.com/account/auth/start');
+  redirectUrl.searchParams.set('appid', process.env.APP_ID || appid);
+  redirectUrl.searchParams.set('redirectsTo', request.nextUrl.href);
+
+  return NextResponse.redirect(redirectUrl);
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)'],
+  matcher: [
+    '/((?!_next(?:/.*)?|bridge(?:/.*)?|robots\\.txt$|sitemap\\.xml$|sitemap(?:/.*)?|favicon\\.ico$|humans\\.txt$|\\.well-known(?:/.*)?).*)',
+  ],
 };
