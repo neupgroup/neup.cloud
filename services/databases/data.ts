@@ -5,11 +5,12 @@ import type { ExternalDatabase } from '@/app/database/types';
 type DatabaseDelegate = {
   findMany: (...args: any[]) => Promise<any[]>;
   create: (...args: any[]) => Promise<any>;
+  delete: (...args: any[]) => Promise<any>;
 };
 
 function getDatabaseDelegate(): DatabaseDelegate | null {
   const maybeDelegate = (prisma as any)?.database;
-  if (maybeDelegate?.findMany && maybeDelegate?.create) {
+  if (maybeDelegate?.findMany && maybeDelegate?.create && maybeDelegate?.delete) {
     return maybeDelegate as DatabaseDelegate;
   }
 
@@ -182,4 +183,31 @@ export async function createDatabase(data: Omit<ExternalDatabase, 'id'>) {
   }
 
   return mapDatabase(record);
+}
+
+export async function updateDatabaseConnectionStatus(
+  id: string,
+  connectionStatus: ExternalDatabase['connectionStatus'],
+  checkedAt: string
+) {
+  const record = await prisma.database.update({
+    where: { id },
+    data: {
+      connectionStatus,
+      lastValidatedAt: new Date(checkedAt),
+    },
+  });
+
+  return mapDatabase(record);
+}
+
+export async function deleteDatabase(id: string) {
+  const delegate = getDatabaseDelegate();
+
+  if (delegate) {
+    await delegate.delete({ where: { id } });
+    return;
+  }
+
+  await prisma.$executeRawUnsafe(`DELETE FROM "databases" WHERE id = $1`, id);
 }

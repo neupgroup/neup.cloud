@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { PageTitleBack } from '@/components/page-header';
 import { getDatabaseById } from '@/services/databases/data';
+import { CheckConnectionButton } from './check-connection-button';
+import { DeleteConnectionButton } from './delete-connection-button';
 
 export const metadata: Metadata = {
   title: 'Database Connection, Neup.Cloud',
@@ -57,6 +59,35 @@ export default async function DatabaseConnectionDetailsPage({ params }: Props) {
           <div className="text-sm font-mono break-all">{connection.credentails}</div>
         </Card>
       </div>
+
+      <Card className="p-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <div className="text-xs uppercase text-muted-foreground mb-1">Connection Test</div>
+            <p className="text-sm text-muted-foreground">
+              Check whether the saved connection can still be maintained.
+            </p>
+          </div>
+          <CheckConnectionButton connectionId={connection.id} />
+        </div>
+        {connection.lastValidatedAt && (
+          <div className="mt-3 text-xs text-muted-foreground">
+            Last checked: {new Date(connection.lastValidatedAt).toLocaleString()}
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-4 border-destructive/20 bg-destructive/5">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <div className="text-xs uppercase text-muted-foreground mb-1">Danger Zone</div>
+            <p className="text-sm text-muted-foreground">
+              Remove this saved connection from Neup.Cloud.
+            </p>
+          </div>
+          <DeleteConnectionButton connectionId={connection.id} connectionTitle={connection.title} />
+        </div>
+      </Card>
 
       <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
         <Link href={`/database/${connection.id}/table`} className="block">
