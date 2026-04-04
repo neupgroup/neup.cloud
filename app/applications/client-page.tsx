@@ -97,8 +97,8 @@ export default function AppsPage() {
         owner: process.source,
       } satisfies Application,
       status: getProcessCardStatus(process),
-      href: undefined,
-      sourceLabel: undefined as string | undefined,
+      href: `/applications/${encodeURIComponent(`supervisor_${process.name}`)}`,
+      sourceLabel: 'Supervisor',
     })),
   ];
 

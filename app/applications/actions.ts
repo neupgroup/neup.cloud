@@ -526,6 +526,43 @@ export async function restartSupervisorProcess(serverId: string, name: string) {
   return { success: true, output: result.output };
 }
 
+export async function stopSupervisorOnlyProcess(name: string) {
+  const cookieStore = await cookies();
+  const serverId = cookieStore.get('selected_server')?.value;
+  if (!serverId) throw new Error('No server selected');
+
+  const result = await executeQuickCommand(serverId, `sudo supervisorctl stop '${name}' || true`);
+  if (result.error) {
+    throw new Error(result.error);
+  }
+
+  revalidatePath('/applications');
+  revalidatePath(`/applications/${encodeURIComponent(`supervisor_${name}`)}`);
+  return { success: true, output: result.output };
+}
+
+export async function deleteSupervisorOnlyProcess(name: string) {
+  const cookieStore = await cookies();
+  const serverId = cookieStore.get('selected_server')?.value;
+  if (!serverId) throw new Error('No server selected');
+
+  const command = `
+sudo supervisorctl stop '${name}' >/dev/null 2>&1 || true
+sudo rm -f '/etc/supervisor/conf.d/${name}.conf' || true
+sudo supervisorctl reread >/dev/null 2>&1 || true
+sudo supervisorctl update >/dev/null 2>&1 || true
+`;
+
+  const result = await executeQuickCommand(serverId, command);
+  if (result.error) {
+    throw new Error(result.error);
+  }
+
+  revalidatePath('/applications');
+  revalidatePath(`/applications/${encodeURIComponent(`supervisor_${name}`)}`);
+  return { success: true, output: result.output };
+}
+
 export async function resetSupervisorConfiguration(serverId: string) {
   if (!serverId) return { error: 'Server not selected' };
 
