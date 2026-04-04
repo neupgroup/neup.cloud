@@ -155,52 +155,27 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
   const serverLinks = [
     { href: "/status", label: "Status", icon: HeartPulse },
     { href: "/applications", label: "Applications", icon: Activity },
-    { href: "/processes", label: "Processes", icon: FileCode },
-    { href: "/network", label: "Network", icon: Network },
     { href: "/database", label: "Databases", icon: Database },
     { href: "/commands", label: "Commands", icon: Terminal },
-  ]
-
-  /* Maintenance Links removed as they are moved to System */
-
-  const firewallLinks = [
-    { href: "/firewall", label: "Home", icon: ShieldAlert },
-    { href: "/firewall/network", label: "Network", icon: Network },
-    { href: "/firewall/users", label: "Users", icon: Users },
-    { href: "/firewall/keys", label: "Keys", icon: Key },
-  ]
-
-  const rootLinks = [
-    { href: "/root/servers", label: "Manage Servers", icon: Settings },
-    { href: "/errors", label: "Errors", icon: ShieldAlert },
-  ]
-
-  // Build webservices links dynamically
-  const webservicesLinks = [];
-  webservicesLinks.push({ href: "/webservices", label: "Home", icon: Globe });
-
-  if (serverData?.proxyHandler && serverData.proxyHandler !== 'None') {
-    const proxyPath = serverData.proxyHandler === 'Nginx' ? '/webservices/nginx' : '/webservices/proxy';
-    webservicesLinks.push({ href: proxyPath, label: `Manage Proxy`, icon: Network });
-  }
-
-  if (serverData?.loadBalancer && serverData.loadBalancer !== 'None') {
-    const balancerPath = '/webservices/balancer';
-    webservicesLinks.push({ href: balancerPath, label: `Manage Balancer`, icon: Network });
-  }
-
-  webservicesLinks.push({ href: "/webservices/certificates", label: "Certificates", icon: FileKey });
-
-  webservicesLinks.push({ href: "/webservices/configure", label: "Configure", icon: Settings });
-
-  const systemLinks = [
-    { href: "/system", label: "Home", icon: LayoutGrid },
+    { href: "/firewall", label: "Firewall", icon: ShieldAlert },
     { href: "/files", label: "File Manager", icon: FolderKanban },
     { href: "/packages", label: "Packages", icon: Package },
     { href: "/updates", label: "Updates", icon: ArrowUpCircle },
     { href: "/storage", label: "Storage", icon: HardDrive },
     { href: "/system/startup", label: "Startup", icon: Play },
     { href: "/system/requirement", label: "Requirements", icon: ListChecks },
+    { href: "/webservices", label: "Webservices", icon: Globe },
+  ]
+
+  /* Maintenance Links removed as they are moved to System */
+
+  const rootLinks = [
+    { href: "/root/servers", label: "Manage Servers", icon: Settings },
+    { href: "/errors", label: "Errors", icon: ShieldAlert },
+  ]
+
+  const systemLinks = [
+    { href: "/system", label: "Home", icon: LayoutGrid },
   ];
 
   // Collect all paths for longest match calculation
@@ -212,8 +187,6 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     ...accountLinks.map(l => l.href),
     ...(isServerSelected ? serverLinks.map(l => l.href) : []),
     // maintenanceLinks removed
-    ...(isServerSelected ? firewallLinks.map(l => l.href) : []),
-    ...(isServerSelected ? webservicesLinks.map(l => l.href) : []),
 
     ...systemLinks.map(l => l.href),
     ...rootLinks.map(l => l.href),
@@ -272,34 +245,6 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
             Server
           </div>
           {serverLinks.map(({ href, label, icon: Icon }) => (
-            <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
-              <Icon className="h-4 w-4" />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-        </div>
-      )}
-
-      {isServerSelected && (
-        <div className="space-y-2">
-          <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
-            Firewall
-          </div>
-          {firewallLinks.map(({ href, label, icon: Icon }) => (
-            <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
-              <Icon className="h-4 w-4" />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-        </div>
-      )}
-
-      {isServerSelected && (
-        <div className="space-y-2">
-          <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
-            Webservices
-          </div>
-          {webservicesLinks.map(({ href, label, icon: Icon }) => (
             <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
               <Icon className="h-4 w-4" />
               <span>{label}</span>

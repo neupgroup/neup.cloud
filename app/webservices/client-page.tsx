@@ -6,7 +6,7 @@ import Cookies from 'universal-cookie';
 import { getServer } from '@/app/servers/actions';
 import { Button } from '@/components/ui/button';
 import { useToast } from '../../hooks/use-toast';
-import { Loader2, Globe, Wind, Server, ArrowRight, Settings } from 'lucide-react';
+import { Loader2, Globe, Wind, Server, ArrowRight, Settings, FileKey } from 'lucide-react';
 import Link from 'next/link';
 
 import {
@@ -87,23 +87,48 @@ export default function WebServicesPage() {
                 serverName={server.name}
             />
 
-            {/* Configure Server Card */}
-            <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-                <Link href="/webservices/configure">
-                    <div className="p-4 flex items-center gap-4">
-                        <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-                            <Settings className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium mb-0.5">Server Configuration</p>
-                            <p className="text-xs text-muted-foreground">
-                                Configure proxy handler, load balancer, and network settings
-                            </p>
-                        </div>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                    </div>
-                </Link>
-            </Card>
+            <div className="space-y-4">
+                <div>
+                    <h2 className="text-2xl font-medium font-headline tracking-tight">Quick Access</h2>
+                    <p className="text-muted-foreground">Open key webservices pages in one click</p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                    <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+                        <Link href="/webservices/configure">
+                            <div className="p-4 flex items-center gap-4">
+                                <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                                    <Settings className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium mb-0.5">Configure</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Configure proxy handler, load balancer, and network settings
+                                    </p>
+                                </div>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                            </div>
+                        </Link>
+                    </Card>
+
+                    <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+                        <Link href="/webservices/certificates">
+                            <div className="p-4 flex items-center gap-4">
+                                <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                                    <FileKey className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium mb-0.5">Certificates</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Manage SSL/TLS certificates and domain bindings
+                                    </p>
+                                </div>
+                                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                            </div>
+                        </Link>
+                    </Card>
+                </div>
+            </div>
 
             <div className="space-y-4">
                 <div>

@@ -14,10 +14,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, HeartPulse, Server, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Activity, HeartPulse, Server, Loader2, ChevronLeft, ChevronRight, Cpu, User, Hash, Search, XCircle, Globe, ArrowLeftRight } from "lucide-react";
 import { startStatusTracking, stopStatusTracking, getStatus, type StatusData } from './actions';
+import { getProcesses, killProcess, type Process } from '@/app/processes/actions';
+import { getNetworkConnections, type NetworkConnection } from '@/app/network/actions';
 import { useToast } from '../../hooks/use-toast';
 import { PageTitleWithComponent } from '@/components/page-header';
+import { Input } from '@/components/ui/input';
 import {
     AreaChart,
     Area,
@@ -64,6 +67,159 @@ const CustomTooltip = ({ active, payload, label, unit }: any) => {
     return null;
 };
 
+function ProcessesList({ processes, onKill }: { processes: Process[], onKill: (pid: string) => void }) {
+    const [killingPid, setKillingPid] = useState<string | null>(null);
+
+    const handleKillClick = async (pid: string) => {
+        setKillingPid(pid);
+        await onKill(pid);
+        setKillingPid(null);
+    };
+
+    return (
+        <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+            {processes.map((process, index) => (
+                <div key={process.pid} className={cn(
+                    "p-4 min-w-0 w-full transition-colors hover:bg-muted/50",
+                    index !== processes.length - 1 && "border-b border-border"
+                )}>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground break-all font-mono leading-tight mb-3">
+                            {process.name}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <Hash className="h-3.5 w-3.5" />
+                                <span className="font-mono">{process.pid}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <User className="h-3.5 w-3.5" />
+                                <span>{process.user}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <Cpu className="h-3.5 w-3.5" />
+                                <span className="font-medium">{process.cpu} CPU</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-memory-stick"><path d="M6 3v18" /><path d="M18 3v18" /><path d="M6 9h12" /><path d="M6 15h12" /><path d="M9 3v18" /><path d="M15 3v18" /></svg>
+                                <span className="font-medium">{process.memory}% RAM</span>
+                            </div>
+                            <button
+                                onClick={() => handleKillClick(process.pid)}
+                                disabled={killingPid === process.pid}
+                                className="flex items-center gap-1.5 shrink-0 text-red-500 hover:text-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {killingPid === process.pid ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                    <XCircle className="h-3.5 w-3.5" />
+                                )}
+                                <span className="font-medium">Kill</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </Card>
+    )
+}
+
+function NetworkList({ connections }: { connections: NetworkConnection[] }) {
+    const getStatusColor = (status: string) => {
+        const s = status.toUpperCase();
+        if (s === 'LISTEN') return 'text-blue-500';
+        if (s === 'ESTAB') return 'text-green-500';
+        if (s === 'CLOSE_WAIT' || s === 'TIME_WAIT') return 'text-orange-500';
+        return 'text-muted-foreground';
+    };
+
+    return (
+        <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+            {connections.map((conn, index) => (
+                <div key={`${conn.protocol}-${conn.port}-${conn.pid}-${index}`} className={cn(
+                    "p-4 min-w-0 w-full transition-colors hover:bg-muted/50",
+                    index !== connections.length - 1 && "border-b border-border"
+                )}>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground break-all font-mono leading-tight mb-3">
+                            {conn.process !== '-' ? conn.process : 'System / Unknown'}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <Hash className="h-3.5 w-3.5" />
+                                <span className="font-mono">{conn.port}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                <ArrowLeftRight className="h-3.5 w-3.5" />
+                                <span>{conn.protocol}</span>
+                            </div>
+                            <div className={`flex items-center gap-1.5 shrink-0 ${getStatusColor(conn.state)}`}>
+                                <Activity className="h-3.5 w-3.5" />
+                                <span className="font-medium">{conn.state}</span>
+                            </div>
+                            {conn.state !== 'LISTEN' && (
+                                <div className="flex items-center gap-1.5 shrink-0" title={`Peer: ${conn.peerAddress}`}>
+                                    <Globe className="h-3.5 w-3.5" />
+                                    <span className="font-mono truncate max-w-[150px]">{conn.peerAddress}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </Card>
+    );
+}
+
+function ProcessesLoadingSkeleton() {
+    return (
+        <div className="space-y-6">
+            <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+                {[...Array(9)].map((_, i) => (
+                    <div key={i} className={cn(
+                        "p-4 min-w-0 w-full",
+                        i !== 8 && "border-b border-border"
+                    )}>
+                        <div className="space-y-3">
+                            <Skeleton className="h-4 w-full" />
+                            <div className="flex gap-6">
+                                <Skeleton className="h-3 w-16" />
+                                <Skeleton className="h-3 w-16" />
+                                <Skeleton className="h-3 w-16" />
+                                <Skeleton className="h-3 w-16" />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </Card>
+        </div>
+    )
+}
+
+function NetworkLoadingSkeleton() {
+    return (
+        <div className="space-y-6">
+            <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
+                {[...Array(6)].map((_, i) => (
+                    <div key={i} className={cn(
+                        "p-4 min-w-0 w-full",
+                        i !== 5 && "border-b border-border"
+                    )}>
+                        <div className="space-y-3">
+                            <Skeleton className="h-4 w-1/3" />
+                            <div className="flex gap-6">
+                                <Skeleton className="h-3 w-12" />
+                                <Skeleton className="h-3 w-12" />
+                                <Skeleton className="h-3 w-16" />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </Card>
+        </div>
+    )
+}
+
 const TIME_FRAMES = {
     '1h': { label: 'Last 1 Hour', minutes: 60 },
     '24h': { label: 'Last 24 Hours', minutes: 1440 },
@@ -78,12 +234,25 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
     const [isLoading, setIsLoading] = useState(true);
     const [isToggling, setIsToggling] = useState(false);
 
+    const [processes, setProcesses] = useState<Process[]>([]);
+    const [isProcessesLoading, setIsProcessesLoading] = useState(false);
+    const [processesSearch, setProcessesSearch] = useState('');
+    const [visibleProcessesCount, setVisibleProcessesCount] = useState(3);
+    const [killingPid, setKillingPid] = useState<string | null>(null);
+
+    const [connections, setConnections] = useState<NetworkConnection[]>([]);
+    const [isNetworkLoading, setIsNetworkLoading] = useState(false);
+    const [networkSearch, setNetworkSearch] = useState('');
+    const [visibleConnectionsCount, setVisibleConnectionsCount] = useState(3);
+
     const [endTime, setEndTime] = useState<number>(Date.now());
     const [timeFrame, setTimeFrame] = useState<keyof typeof TIME_FRAMES>('1h');
 
     useEffect(() => {
         if (!serverId) {
             setIsLoading(false);
+            setIsProcessesLoading(false);
+            setIsNetworkLoading(false);
             return;
         };
 
@@ -101,6 +270,81 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
         }
         fetchStatus();
     }, [serverId, toast, endTime, timeFrame]);
+
+    useEffect(() => {
+        if (!serverId) {
+            setIsProcessesLoading(false);
+            return;
+        }
+        
+        const fetchProcesses = async () => {
+            setIsProcessesLoading(true);
+            try {
+                const result = await getProcesses(serverId);
+                if (result.error) {
+                    toast({ variant: 'destructive', title: 'Error', description: result.error });
+                    setProcesses([]);
+                } else {
+                    setProcesses(Array.isArray(result.processes) ? result.processes : []);
+                }
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch processes' });
+                setProcesses([]);
+            } finally {
+                setIsProcessesLoading(false);
+            }
+        };
+        
+        fetchProcesses();
+    }, [serverId, toast]);
+
+    useEffect(() => {
+        setVisibleProcessesCount(3);
+    }, [processesSearch, serverId]);
+
+    useEffect(() => {
+        if (!serverId) {
+            setIsNetworkLoading(false);
+            return;
+        }
+        
+        const fetchNetwork = async () => {
+            setIsNetworkLoading(true);
+            try {
+                const result = await getNetworkConnections(serverId);
+                if (result.error) {
+                    toast({ variant: 'destructive', title: 'Error', description: result.error });
+                    setConnections([]);
+                } else {
+                    setConnections(Array.isArray(result.connections) ? result.connections : []);
+                }
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch network connections' });
+                setConnections([]);
+            } finally {
+                setIsNetworkLoading(false);
+            }
+        };
+        
+        fetchNetwork();
+    }, [serverId, toast]);
+
+    useEffect(() => {
+        setVisibleConnectionsCount(3);
+    }, [networkSearch, serverId]);
+
+    const handleKillProcess = async (pid: string) => {
+        setKillingPid(pid);
+        try {
+            await killProcess(serverId || '', pid);
+            setProcesses(prev => prev.filter(p => p.pid !== pid));
+            toast({ title: 'Process terminated' });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to kill process' });
+        } finally {
+            setKillingPid(null);
+        }
+    };
 
     const handleToggleTracking = async () => {
         if (!serverId) return;
@@ -156,6 +400,22 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
     const totalRam = statusData?.ramHistory[0]?.total || 0;
     const avgRamPercent = totalRam > 0 ? ((Number(avgRam) / totalRam) * 100).toFixed(1) : 0;
 
+    const filteredProcesses = (Array.isArray(processes) ? processes : []).filter(p =>
+        p.name.toLowerCase().includes(processesSearch.toLowerCase()) ||
+        p.user.toLowerCase().includes(processesSearch.toLowerCase()) ||
+        p.pid.toString().includes(processesSearch)
+    );
+
+    const filteredConnections = (Array.isArray(connections) ? connections : []).filter(conn =>
+        (conn.process || '').toLowerCase().includes(networkSearch.toLowerCase()) ||
+        conn.port.toString().includes(networkSearch) ||
+        conn.protocol.toLowerCase().includes(networkSearch.toLowerCase()) ||
+        (conn.peerAddress || '').toLowerCase().includes(networkSearch.toLowerCase()) ||
+        conn.state.toLowerCase().includes(networkSearch.toLowerCase())
+    );
+
+    const visibleProcesses = filteredProcesses.slice(0, visibleProcessesCount);
+    const visibleConnections = filteredConnections.slice(0, visibleConnectionsCount);
 
     const startTime = new Date(endTime - TIME_FRAMES[timeFrame].minutes * 60 * 1000);
 
@@ -401,6 +661,92 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
                                         </ResponsiveContainer>
                                     ) : (
                                         <div className="flex justify-center items-center h-full text-muted-foreground">No Network data available for this period.</div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="font-headline">Processes</CardTitle>
+                                    <CardDescription>Running processes on the server</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Search processes by name, PID, or user..."
+                                            value={processesSearch}
+                                            onChange={(e) => setProcessesSearch(e.target.value)}
+                                            className="pl-9"
+                                        />
+                                    </div>
+
+                                    {isProcessesLoading ? (
+                                        <ProcessesLoadingSkeleton />
+                                    ) : processes.length === 0 ? (
+                                        <Card className="p-8 text-center">
+                                            <p>No running processes found or unable to fetch them.</p>
+                                        </Card>
+                                    ) : filteredProcesses.length === 0 ? (
+                                        <div className="text-center p-12 border rounded-lg border-dashed text-muted-foreground">
+                                            <p>No processes found matching &quot;{processesSearch}&quot;</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <ProcessesList processes={visibleProcesses} onKill={handleKillProcess} />
+                                            {visibleProcessesCount < filteredProcesses.length && (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => setVisibleProcessesCount((prev) => prev + 10)}
+                                                >
+                                                    View more
+                                                </Button>
+                                            )}
+                                        </>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="font-headline">Network Connections</CardTitle>
+                                    <CardDescription>Active network connections on the server</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Search connections by process, port, protocol..."
+                                            value={networkSearch}
+                                            onChange={(e) => setNetworkSearch(e.target.value)}
+                                            className="pl-9"
+                                        />
+                                    </div>
+
+                                    {isNetworkLoading ? (
+                                        <NetworkLoadingSkeleton />
+                                    ) : connections.length === 0 ? (
+                                        <Card className="p-8 text-center">
+                                            <p>No active network connections found.</p>
+                                        </Card>
+                                    ) : filteredConnections.length === 0 ? (
+                                        <div className="text-center p-12 border rounded-lg border-dashed text-muted-foreground">
+                                            <p>No connections found matching &quot;{networkSearch}&quot;</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <NetworkList connections={visibleConnections} />
+                                            {visibleConnectionsCount < filteredConnections.length && (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => setVisibleConnectionsCount((prev) => prev + 10)}
+                                                >
+                                                    View more
+                                                </Button>
+                                            )}
+                                        </>
                                     )}
                                 </CardContent>
                             </Card>
