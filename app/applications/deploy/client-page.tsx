@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useServerName } from '../../../hooks/use-server-name';
+import { generateApplicationName, generateApplicationNameSuffix, normalizeApplicationNameInput } from '@/app/applications/name';
 
 const FRAMEWORKS = [
   {
@@ -65,6 +66,7 @@ export default function CreateApplicationPage() {
   // Application Basics
   const [appName, setAppName] = useState('');
   const [appLocation, setAppLocation] = useState('');
+  const [nameSuffix] = useState(() => generateApplicationNameSuffix());
 
   // Repository Info
   const [repoLocation, setRepoLocation] = useState('');
@@ -89,6 +91,7 @@ export default function CreateApplicationPage() {
   const [newCmdName, setNewCmdName] = useState('');
   const [newCmdDesc, setNewCmdDesc] = useState('');
   const [newCmdValue, setNewCmdValue] = useState('');
+  const generatedAppName = appName ? generateApplicationName(appName, nameSuffix) : '';
 
   const handleFrameworkChange = (val: string) => {
     setSelectedFramework(val);
@@ -209,7 +212,7 @@ export default function CreateApplicationPage() {
 
     try {
       const appId = await createApplication({
-        name: appName,
+        name: generatedAppName,
         location: appLocation,
         language: selectedFramework,
         repository: repoLocation,
@@ -249,7 +252,16 @@ export default function CreateApplicationPage() {
           <CardContent className="space-y-4">
             <div className="grid gap-2">
               <Label htmlFor="appName">Application Name</Label>
-              <Input id="appName" placeholder="e.g. My Awesome App" value={appName} onChange={e => setAppName(e.target.value)} />
+              <Input
+                id="appName"
+                placeholder="e.g. myapp"
+                value={appName}
+                onChange={e => setAppName(normalizeApplicationNameInput(e.target.value))}
+                maxLength={64}
+              />
+              <p className="text-xs text-muted-foreground">
+                Final name will be generated as <span className="font-mono">{generatedAppName || '[name]_neupappify_[random8]'}</span>
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="appLocation">Location in Server</Label>

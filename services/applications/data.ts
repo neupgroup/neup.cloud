@@ -78,6 +78,14 @@ export async function createApplication(data: CreateApplicationData) {
 }
 
 export async function updateApplication(id: string, data: UpdateApplicationData) {
+  const existing = await prisma.application.findUnique({
+    where: { id },
+  });
+
+  if (!existing) {
+    throw new Error('Application not found');
+  }
+
   const record = await prisma.application.update({
     where: { id },
     data: {

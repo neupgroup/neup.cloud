@@ -1,6 +1,5 @@
 'use client';
 
-import { createApplication, generateRepositoryKeys, updateApplication } from '@/app/applications/actions';
 import { PageTitleBack } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { generateRepositoryKeys, updateApplication } from '@/app/applications/actions';
 import {
     Select,
     SelectContent,
@@ -21,7 +21,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '../../../../hooks/use-toast';
 import { Copy, ExternalLink, Key, Plus, Trash, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { generateApplicationName, normalizeApplicationNameInput } from '@/app/applications/name';
 
 const FRAMEWORKS = [
     {
@@ -67,6 +68,7 @@ export default function EditApplicationForm({ application }: EditApplicationForm
     // Application Basics
     const [appName, setAppName] = useState(application.name || '');
     const [appLocation, setAppLocation] = useState(application.location || '');
+    const nameLocked = Boolean(application.name);
 
     // Repository Info
     const repoInfo = application.information?.repoInfo || {};
@@ -198,6 +200,8 @@ export default function EditApplicationForm({ application }: EditApplicationForm
             return;
         }
 
+        const resolvedName = nameLocked ? application.name : generateApplicationName(appName);
+
         const updatedRepoInfo = {
             location: repoLocation,
             isPrivate,
@@ -236,7 +240,7 @@ export default function EditApplicationForm({ application }: EditApplicationForm
         });
 
         const updatedData = {
-            name: appName,
+            name: resolvedName,
             location: appLocation,
             language: selectedFramework,
             repository: repoLocation,
@@ -279,7 +283,20 @@ export default function EditApplicationForm({ application }: EditApplicationForm
                     <CardContent className="space-y-4">
                         <div className="grid gap-2">
                             <Label htmlFor="appName">Application Name</Label>
-                            <Input id="appName" placeholder="e.g. My Awesome App" value={appName} onChange={e => setAppName(e.target.value)} />
+                            <Input
+                                id="appName"
+                                placeholder="e.g. myapp"
+                                value={appName}
+                                onChange={e => {
+                                    if (nameLocked) return;
+                                    setAppName(normalizeApplicationNameInput(e.target.value));
+                                }}
+                                disabled={nameLocked}
+                                maxLength={64}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                {nameLocked ? 'Application name is locked after it has been set.' : 'The saved name will be generated automatically from this value.'}
+                            </p>
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="appLocation">Location in Server</Label>
