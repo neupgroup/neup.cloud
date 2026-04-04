@@ -2,6 +2,7 @@ import * as Go from '@/core/go';
 import * as NextJs from '@/core/nextjs';
 import * as NodeJs from '@/core/nodejs';
 import * as Python from '@/core/python';
+import { getStopMatchingSupervisorServicesScript } from '@/core/supervisor';
 import { sanitizeAppName } from '@/core/universal';
 import type { Application, CreateApplicationData, UpdateApplicationData } from '@/app/applications/types';
 
@@ -53,30 +54,35 @@ export function getApplicationStopCommand(application: Application) {
   const commands = application.commands || {};
   const customStopKey = Object.keys(commands).find((key) => key === 'lifecycle.stop' || key === 'stop');
   const supervisorServiceName = application.information?.supervisorServiceName;
+  const stopMatchingServicesScript = getStopMatchingSupervisorServicesScript(application.id);
 
   if (customStopKey) {
     const encodedCommand = commands[customStopKey];
+    let decodedCommand = encodedCommand;
 
     try {
-      return Buffer.from(encodedCommand, 'base64').toString('utf-8');
+      decodedCommand = Buffer.from(encodedCommand, 'base64').toString('utf-8');
     } catch {
-      return encodedCommand;
+      decodedCommand = encodedCommand;
     }
+
+    return `${stopMatchingServicesScript}\n${decodedCommand}`;
   }
 
   switch (application.language) {
     case 'next':
-      return NextJs.getStopCommand(application.name, supervisorServiceName);
+      return NextJs.getStopCommand(application.name, supervisorServiceName, application.id);
     case 'node':
-      return NodeJs.getStopCommand(application.name, supervisorServiceName);
+      return NodeJs.getStopCommand(application.name, supervisorServiceName, application.id);
     case 'python':
-      return Python.getStopCommand(application.name, supervisorServiceName);
+      return Python.getStopCommand(application.name, supervisorServiceName, application.id);
     case 'go':
-      return Go.getStopCommand(application.name, supervisorServiceName);
+      return Go.getStopCommand(application.name, supervisorServiceName, application.id);
     default:
-      return supervisorServiceName
-        ? `sudo supervisorctl stop "${supervisorServiceName}"`
-        : `pm2 stop "${sanitizeAppName(application.name)}"`;
+      return `${stopMatchingServicesScript}
+${supervisorServiceName
+        ? `sudo supervisorctl stop "${supervisorServiceName}" || true`
+        : `pm2 stop "${sanitizeAppName(application.name)}" || true`}`;
   }
 }
 

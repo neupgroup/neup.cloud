@@ -23,6 +23,7 @@ import {
 } from '@/services/applications/logic';
 import type { Application, CreateApplicationData, UpdateApplicationData } from './types';
 import { findApplicationProcess, type ServerProcess } from './status';
+import { buildSupervisorServiceName, generateSupervisorServiceToken } from '@/services/applications/service-name';
 
 const execAsync = promisify(exec);
 
@@ -31,7 +32,27 @@ export async function getApplications(): Promise<Application[]> {
 }
 
 export async function getApplication(id: string): Promise<Application | null> {
-  return getApplicationById(id);
+  const application = await getApplicationById(id);
+
+  if (!application) {
+    return null;
+  }
+
+  if (application.information?.supervisorServiceName) {
+    return application;
+  }
+
+  const supervisorServiceName = buildSupervisorServiceName(id, generateSupervisorServiceToken());
+
+  return updateApplicationRecord(
+    id,
+    prepareApplicationUpdateData({
+      information: {
+        ...application.information,
+        supervisorServiceName,
+      },
+    })
+  );
 }
 
 export async function createApplication(appData: CreateApplicationData) {

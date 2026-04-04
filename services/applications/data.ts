@@ -1,18 +1,11 @@
 import { Prisma } from '@prisma/client';
-import { randomInt } from 'crypto';
 import type { Application, CreateApplicationData, UpdateApplicationData } from '@/app/applications/types';
 import { prisma } from '@/services/prisma';
 import { createId } from '@/services/shared/create-id';
-import { buildSupervisorServiceName } from './service-name';
+import { buildSupervisorServiceName, generateSupervisorServiceToken } from './service-name';
 
 function toJsonField(value: Prisma.InputJsonValue | null | undefined) {
   return value === undefined ? undefined : value === null ? Prisma.DbNull : value;
-}
-
-function generateSupervisorServiceToken(length: number = 8) {
-  const characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-
-  return Array.from({ length }, () => characters[randomInt(0, characters.length)]).join('');
 }
 
 function mapApplication(record: {

@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppStatusResult, checkApplicationStatus } from "@/app/applications/status-actions";
-import { Activity, AlertCircle, CheckCircle, Clock, Loader2, PlayCircle, StopCircle, XCircle } from "lucide-react";
+import { AlertCircle, Clock, Loader2, PlayCircle, StopCircle, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,13 @@ export function StatusDashboard({ applicationId }: StatusDashboardProps) {
                         {status.metrics.memory && <p className="text-xs text-muted-foreground mt-1">Mem: {status.metrics.memory} | CPU: {status.metrics.cpu}</p>}
                     </div>
                 );
+            case 'error':
+                return (
+                    <div className="flex items-center gap-2 text-orange-500">
+                        <AlertCircle className="h-5 w-5" />
+                        <span className="text-2xl font-bold text-foreground">Crashed</span>
+                    </div>
+                );
             case 'stopped':
                 return (
                     <div className="flex items-center gap-2 text-destructive">
@@ -61,11 +68,18 @@ export function StatusDashboard({ applicationId }: StatusDashboardProps) {
                         <span className="text-2xl font-bold text-foreground">Stopped</span>
                     </div>
                 );
+            case 'not_running':
+                return (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <StopCircle className="h-5 w-5" />
+                        <span className="text-2xl font-bold text-foreground">Not Running</span>
+                    </div>
+                );
             default:
                 return (
-                    <div className="flex items-center gap-2 text-orange-500">
+                    <div className="flex items-center gap-2 text-muted-foreground">
                         <AlertCircle className="h-5 w-5" />
-                        <span className="text-2xl font-bold text-foreground">Unknown</span>
+                        <span className="text-2xl font-bold text-foreground">Not Running</span>
                     </div>
                 );
         }

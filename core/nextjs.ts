@@ -4,6 +4,7 @@
  */
 
 import { sanitizeAppName } from './universal';
+import { getStartOrRestartSupervisorServiceScript, getStopMatchingSupervisorServicesScript } from './supervisor';
 
 export interface CommandDefinition {
     title: string;
@@ -19,6 +20,7 @@ export interface CommandDefinition {
 }
 
 export interface CommandContext {
+    applicationId?: string;
     appName: string;
     appLocation: string;
     preferredPorts?: number[];
@@ -33,6 +35,8 @@ export interface CommandContext {
 export const getCommands = (context: CommandContext): CommandDefinition[] => {
     const sanitizedAppName = sanitizeAppName(context.appName);
     const supervisorServiceName = context.supervisorServiceName || sanitizedAppName;
+    const stopMatchingServicesScript = getStopMatchingSupervisorServicesScript(context.applicationId);
+    const refreshSupervisorServiceScript = getStartOrRestartSupervisorServiceScript(supervisorServiceName);
     const portsStr = context.preferredPorts?.join(' ') || '';
 
     const portFinderScript = portsStr ? `
@@ -91,8 +95,10 @@ if ! command -v supervisorctl &> /dev/null; then
     sudo DEBIAN_FRONTEND=noninteractive apt-get update
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y supervisor
     sudo systemctl enable supervisor
-    sudo systemctl start supervisor
+sudo systemctl start supervisor
 fi
+
+${stopMatchingServicesScript}
 
 sudo mkdir -p /etc/supervisor/conf.d/
 
@@ -115,9 +121,7 @@ stdout_logfile=$LOG_OUT
 environment=PORT="$CHOSEN_PORT",NODE_ENV="production"
 EOF
 
-sudo supervisorctl reread
-sudo supervisorctl update
-sudo supervisorctl restart ${supervisorServiceName}
+${refreshSupervisorServiceScript}
 `
             }
         },
@@ -138,8 +142,10 @@ if ! command -v supervisorctl &> /dev/null; then
     sudo DEBIAN_FRONTEND=noninteractive apt-get update
     sudo DEBIAN_FRONTEND=noninteractive apt-get install -y supervisor
     sudo systemctl enable supervisor
-    sudo systemctl start supervisor
+sudo systemctl start supervisor
 fi
+
+${stopMatchingServicesScript}
 
 sudo mkdir -p /etc/supervisor/conf.d/
 
@@ -162,9 +168,7 @@ stdout_logfile=$LOG_OUT
 environment=PORT="$CHOSEN_PORT"
 EOF
 
-sudo supervisorctl reread
-sudo supervisorctl update
-sudo supervisorctl restart ${supervisorServiceName}
+${refreshSupervisorServiceScript}
 `
             }
         },
@@ -177,10 +181,7 @@ sudo supervisorctl restart ${supervisorServiceName}
             status: 'published',
             type: 'destructive',
             command: {
-                mainCommand: `sudo supervisorctl stop ${supervisorServiceName}
-sudo rm /etc/supervisor/conf.d/${supervisorServiceName}.conf
-sudo supervisorctl reread
-sudo supervisorctl update`
+                mainCommand: `${stopMatchingServicesScript}`
             }
         }
     ];
@@ -204,15 +205,15 @@ export const getAllCommands = (context: CommandContext): Record<string, CommandD
 /**
  * Legacy compatibility functions
  */
-export const getStartCommand = (appName: string, appLocation: string, preferredPorts: number[] = [], supervisorServiceName?: string) => {
-    const commands = getCommands({ appName, appLocation, preferredPorts, supervisorServiceName });
+export const getStartCommand = (appName: string, appLocation: string, preferredPorts: number[] = [], supervisorServiceName?: string, applicationId?: string) => {
+    const commands = getCommands({ appName, appLocation, preferredPorts, supervisorServiceName, applicationId });
     const cmd = commands.find(c => c.title === 'Start');
     if (!cmd) return '';
     return `${cmd.command.preCommand || ''}\n${cmd.command.mainCommand}`;
 };
 
-export const getStopCommand = (appName: string, supervisorServiceName?: string) => {
-    const commands = getCommands({ appName, appLocation: '', supervisorServiceName });
+export const getStopCommand = (appName: string, supervisorServiceName?: string, applicationId?: string) => {
+    const commands = getCommands({ appName, appLocation: '', supervisorServiceName, applicationId });
     const cmd = commands.find(c => c.title === 'Stop');
     return cmd?.command.mainCommand || '';
 };
@@ -230,8 +231,8 @@ export const getInstallCommand = (appLocation: string) => {
     return cmd?.command.mainCommand || '';
 };
 
-export const getDevCommand = (appName: string, appLocation: string, preferredPorts: number[] = [], supervisorServiceName?: string) => {
-    const commands = getCommands({ appName, appLocation, preferredPorts, supervisorServiceName });
+export const getDevCommand = (appName: string, appLocation: string, preferredPorts: number[] = [], supervisorServiceName?: string, applicationId?: string) => {
+    const commands = getCommands({ appName, appLocation, preferredPorts, supervisorServiceName, applicationId });
     const cmd = commands.find(c => c.title === 'Dev');
     if (!cmd) return '';
     return `${cmd.command.preCommand || ''}\n${cmd.command.mainCommand}`;

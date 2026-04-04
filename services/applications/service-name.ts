@@ -1,6 +1,7 @@
 export const SUPERVISOR_SERVICE_SEPARATOR = '_serving_';
 export const SUPERVISOR_SERVICE_TOKEN_LENGTH = 8;
 
+const supervisorServiceTokenCharacters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const supervisorServiceTokenPattern = `[0-9A-Za-z]{${SUPERVISOR_SERVICE_TOKEN_LENGTH}}`;
 
 function escapeRegExp(value: string) {
@@ -19,6 +20,13 @@ function getSupervisorStateRank(state?: string) {
 
 export function buildSupervisorServiceName(applicationId: string, token: string) {
   return `${applicationId}${SUPERVISOR_SERVICE_SEPARATOR}${token}`;
+}
+
+export function generateSupervisorServiceToken(length: number = SUPERVISOR_SERVICE_TOKEN_LENGTH) {
+  return Array.from(
+    { length },
+    () => supervisorServiceTokenCharacters[Math.floor(Math.random() * supervisorServiceTokenCharacters.length)]
+  ).join('');
 }
 
 export function getSupervisorServiceNameMatcher(applicationId: string) {

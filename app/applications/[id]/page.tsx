@@ -41,7 +41,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
             application.language === 'python' ? 'Python' :
                 application.language === 'go' ? 'Go' : 'Custom';
 
-    // Inject Default Commands if missing using new unified structure
+    // Always regenerate managed framework lifecycle commands from the stored supervisor service name.
     if (!application.commands) {
         application.commands = {};
     }
@@ -50,6 +50,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
     const uniquePorts = application.networkAccess?.map(Number).filter((p: number) => !isNaN(p) && p > 0) || [];
 
     const context = {
+        applicationId: application.id,
         appName: application.name,
         appLocation: application.location,
         preferredPorts: uniquePorts,
@@ -73,15 +74,12 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
     // Inject commands into application.commands
     commandsArray.forEach((cmdDef: any) => {
         const name = cmdDef.title.toLowerCase();
-        if (!application.commands[name]) {
-            // Build the full command string from pre/main/post
-            const parts = [];
-            if (cmdDef.command.preCommand) parts.push(cmdDef.command.preCommand);
-            parts.push(cmdDef.command.mainCommand);
-            if (cmdDef.command.postCommand) parts.push(cmdDef.command.postCommand);
+        const parts = [];
+        if (cmdDef.command.preCommand) parts.push(cmdDef.command.preCommand);
+        parts.push(cmdDef.command.mainCommand);
+        if (cmdDef.command.postCommand) parts.push(cmdDef.command.postCommand);
 
-            application.commands[name] = parts.join('\n');
-        }
+        application.commands[name] = parts.join('\n');
     });
 
     // Store command definitions for the UI
