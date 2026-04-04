@@ -6,7 +6,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { Database, Settings, Activity, ShieldCheck, HardDrive, Trash2, Key, Users, Table, Terminal, RefreshCw, ChevronRight, Plus, Download } from "lucide-react";
+import { Database, Settings, Activity, ShieldCheck, HardDrive, Trash2, Key, Users, Terminal, RefreshCw, ChevronRight, Plus, Download } from "lucide-react";
 import { cookies } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { PageTitleBack } from "@/components/page-header";
@@ -90,18 +90,15 @@ export default async function DatabaseDetailsPage({ params }: Props) {
                         </p>
                     </CardContent>
                 </Card>
-                <Link href={`/server/database/${id}/table`}>
-                    <Card className="transition-all hover:bg-muted/50 cursor-pointer h-full">
-                        <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Tables</CardTitle>
-                            <Table className="h-4 w-4 text-muted-foreground opacity-70" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{details.tablesCount}</div>
-                            <p className="text-[10px] text-muted-foreground mt-1">Schema defined</p>
-                        </CardContent>
-                    </Card>
-                </Link>
+                <Card>
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                        <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Tables</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{details.tablesCount}</div>
+                        <p className="text-[10px] text-muted-foreground mt-1">Schema defined</p>
+                    </CardContent>
+                </Card>
                 <Card>
                     <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                         <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Users</CardTitle>
@@ -129,29 +126,6 @@ export default async function DatabaseDetailsPage({ params }: Props) {
                 <h2 className="text-xl font-semibold font-headline tracking-tight">Management</h2>
 
                 <Card className="min-w-0 w-full rounded-lg border bg-card text-card-foreground shadow-sm">
-                    {/* Database Tables */}
-                    <Link href={`/server/database/${id}/table`} className="block">
-                        <div className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 border-b border-border">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4 min-w-0 flex-1">
-                                    <div className="p-2 rounded-lg shrink-0 bg-cyan-500/10 text-cyan-500">
-                                        <Table className="h-5 w-5" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-bold text-base">Database Tables</span>
-                                            <Badge variant="secondary" className="text-[10px]">{details.tablesCount} tables</Badge>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground">
-                                            View schema information, row counts, and storage usage
-                                        </p>
-                                    </div>
-                                </div>
-                                <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
-                            </div>
-                        </div>
-                    </Link>
-
                     {/* Manage Users */}
                     <Link href={`/server/database/${id}/users`} className="block">
                         <div className="p-4 min-w-0 w-full transition-colors hover:bg-muted/50 border-b border-border">

@@ -236,3 +236,18 @@ model PipelineLog {
   @@index([pipelineId, timestamp], map: "pipeline_logs_pipeline_id_timestamp_idx")
   @@map("pipeline_logs")
 }
+
+model Database {
+  id             String    @id @db.Text
+  title          String    @db.Text
+  description    String    @db.Text
+  connectionType String @map("connectionType") @db.Text
+  connectionStatus String @default("connected") @map("connectionStatus") @db.Text
+  credentails    String    @db.Text
+  authConfig     Json
+  lastValidatedAt DateTime? @map("lastValidatedAt") @db.Timestamp(6)
+  createdAt      DateTime  @default(now()) @map("createdAt") @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @map("updatedAt") @db.Timestamp(6)
+
+  @@map("databases")
+}

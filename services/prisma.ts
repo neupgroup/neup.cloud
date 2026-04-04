@@ -5,6 +5,10 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
+function hasRequiredDelegates(client: PrismaClient) {
+  return 'database' in client;
+}
+
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
 
@@ -18,7 +22,12 @@ function createPrismaClient() {
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+const prismaClient =
+  globalForPrisma.prisma && hasRequiredDelegates(globalForPrisma.prisma)
+    ? globalForPrisma.prisma
+    : createPrismaClient();
+
+export const prisma = prismaClient;
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;

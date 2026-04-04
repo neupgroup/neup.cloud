@@ -12,7 +12,6 @@ import type {
     DatabaseInstance,
     DatabaseDetails,
     DatabaseUser,
-    DatabaseTable,
     OperationResult,
     BackupResult,
     QueryResult,
@@ -232,56 +231,6 @@ export async function executeDatabaseQuery(
         return executeMariaDBQuery(serverId, dbName, query);
     } else {
         return executePostgresQuery(serverId, dbName, query);
-    }
-}
-
-/**
- * Get database tables
- */
-export async function getDatabaseTables(
-    serverId: string,
-    engine: 'mariadb' | 'postgres',
-    dbName: string
-): Promise<DatabaseTable[]> {
-    try {
-        let query = '';
-        if (engine === 'mariadb') {
-            query = `
-                SELECT 
-                    table_name as name, 
-                    table_rows as rows, 
-                    ROUND((data_length + index_length) / 1024 / 1024, 2) as size_mb,
-                    create_time as created
-                FROM information_schema.TABLES 
-                WHERE table_schema = '${dbName}'
-                ORDER BY table_name;
-            `;
-        } else {
-            query = `
-                SELECT
-                    relname as name,
-                    n_live_tup as rows,
-                    pg_size_pretty(pg_total_relation_size(relid)) as size
-                FROM pg_stat_user_tables
-                ORDER BY relname;
-            `;
-        }
-
-        const result = await executeDatabaseQuery(serverId, engine, dbName, query);
-
-        if (!result.success || !result.data) {
-            return [];
-        }
-
-        return result.data.map(row => ({
-            name: row.name,
-            rows: parseInt(row.rows || '0'),
-            size: engine === 'mariadb' ? `${row.size_mb} MB` : row.size,
-            created: row.created
-        }));
-    } catch (error) {
-        console.error('Error fetching database tables:', error);
-        return [];
     }
 }
 

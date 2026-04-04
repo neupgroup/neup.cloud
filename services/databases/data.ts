@@ -1,0 +1,185 @@
+import { prisma } from '@/services/prisma';
+import { createId } from '@/services/shared/create-id';
+import type { ExternalDatabase } from '@/app/database/types';
+
+type DatabaseDelegate = {
+  findMany: (...args: any[]) => Promise<any[]>;
+  create: (...args: any[]) => Promise<any>;
+};
+
+function getDatabaseDelegate(): DatabaseDelegate | null {
+  const maybeDelegate = (prisma as any)?.database;
+  if (maybeDelegate?.findMany && maybeDelegate?.create) {
+    return maybeDelegate as DatabaseDelegate;
+  }
+
+  return null;
+}
+
+function normalizeDate(value: Date | string | null) {
+  if (!value) {
+    return undefined;
+  }
+
+  return (value instanceof Date ? value : new Date(value)).toISOString();
+}
+
+function mapDatabase(record: {
+  id: string;
+  title: string;
+  description: string;
+  connectionType: string;
+  connectionStatus: string;
+  credentails: string;
+  authConfig: unknown;
+  lastValidatedAt: Date | string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}): ExternalDatabase {
+  return {
+    id: record.id,
+    title: record.title,
+    description: record.description,
+    connectionType: record.connectionType as ExternalDatabase['connectionType'],
+    connectionStatus: record.connectionStatus as ExternalDatabase['connectionStatus'],
+    credentails: record.credentails,
+    authConfig: record.authConfig as ExternalDatabase['authConfig'],
+    lastValidatedAt: normalizeDate(record.lastValidatedAt),
+    createdAt: normalizeDate(record.createdAt),
+    updatedAt: normalizeDate(record.updatedAt),
+  };
+}
+
+export async function getDatabaseById(id: string) {
+  const delegate = getDatabaseDelegate();
+
+  if (delegate) {
+    const record = await (delegate as any).findUnique?.({ where: { id } });
+    if (!record) {
+      return null;
+    }
+
+    return mapDatabase(record);
+  }
+
+  const records = await prisma.$queryRawUnsafe<Array<{
+    id: string;
+    title: string;
+    description: string;
+    connectionType: string;
+    connectionStatus: string;
+    credentails: string;
+    authConfig: unknown;
+    lastValidatedAt: Date | string | null;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+  }>>(
+    `SELECT id, title, description, "connectionType", "connectionStatus", credentails, "authConfig", "lastValidatedAt", "createdAt", "updatedAt"
+     FROM "databases"
+     WHERE id = $1
+     LIMIT 1`,
+    id
+  );
+
+  if (!records[0]) {
+    return null;
+  }
+
+  return mapDatabase(records[0]);
+}
+
+export async function getDatabases() {
+  const delegate = getDatabaseDelegate();
+
+  if (delegate) {
+    const records = await delegate.findMany({
+      orderBy: { title: 'asc' },
+    });
+
+    return records.map(mapDatabase);
+  }
+
+  const records = await prisma.$queryRawUnsafe<Array<{
+    id: string;
+    title: string;
+    description: string;
+    connectionType: string;
+    connectionStatus: string;
+    credentails: string;
+    authConfig: unknown;
+    lastValidatedAt: Date | string | null;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+  }>>(
+    `SELECT id, title, description, "connectionType", "connectionStatus", credentails, "authConfig", "lastValidatedAt", "createdAt", "updatedAt"
+     FROM "databases"
+     ORDER BY title ASC`
+  );
+
+  return records.map(mapDatabase);
+}
+
+export async function createDatabase(data: Omit<ExternalDatabase, 'id'>) {
+  const delegate = getDatabaseDelegate();
+
+  if (delegate) {
+    const record = await delegate.create({
+      data: {
+        id: createId(),
+        title: data.title,
+        description: data.description,
+        connectionType: data.connectionType,
+        connectionStatus: data.connectionStatus,
+        credentails: data.credentails,
+        authConfig: data.authConfig,
+        lastValidatedAt: data.lastValidatedAt ? new Date(data.lastValidatedAt) : null,
+      },
+    });
+
+    return mapDatabase(record);
+  }
+
+  const id = createId();
+  const now = new Date();
+  const lastValidatedAt = data.lastValidatedAt ? new Date(data.lastValidatedAt) : null;
+
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "databases" (id, title, description, "connectionType", "connectionStatus", credentails, "authConfig", "lastValidatedAt", "createdAt", "updatedAt")
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10)`,
+    id,
+    data.title,
+    data.description,
+    data.connectionType,
+    data.connectionStatus,
+    data.credentails,
+    JSON.stringify(data.authConfig),
+    lastValidatedAt,
+    now,
+    now
+  );
+
+  const [record] = await prisma.$queryRawUnsafe<Array<{
+    id: string;
+    title: string;
+    description: string;
+    connectionType: string;
+    connectionStatus: string;
+    credentails: string;
+    authConfig: unknown;
+    lastValidatedAt: Date | string | null;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+  }>>(
+    `SELECT id, title, description, "connectionType", "connectionStatus", credentails, "authConfig", "lastValidatedAt", "createdAt", "updatedAt"
+     FROM "databases"
+     WHERE id = $1
+     LIMIT 1`,
+    id
+  );
+
+  if (!record) {
+    throw new Error('Failed to persist database connection.');
+  }
+
+  return mapDatabase(record);
+}
