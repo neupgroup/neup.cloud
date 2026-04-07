@@ -40,6 +40,76 @@ server {
 `;
 }
 
+function buildServerName(subdomain: string | undefined, domainName: string): string {
+  if (!subdomain || subdomain === '@') {
+    return domainName;
+  }
+
+  if (subdomain === '#') {
+    return `*.${domainName}`;
+  }
+
+  return `${subdomain}.${domainName}`;
+}
+
+function buildSslPaths(sslCertificateFile: string) {
+  const certificateFileInput = sslCertificateFile.trim();
+  const certFileNameOnly = certificateFileInput.includes('/')
+    ? certificateFileInput.split('/').pop() || certificateFileInput
+    : certificateFileInput;
+
+  const certFileName = /\.[^.]+$/.test(certFileNameOnly)
+    ? certFileNameOnly
+    : `${certFileNameOnly}.pem`;
+
+  const certBaseName = certFileName.replace(/\.[^.]+$/, '');
+  const keyFileName = `${certBaseName}.key`;
+
+  return {
+    certPath: `/etc/nginx/ssl/${certFileName}`,
+    keyPath: `/etc/nginx/ssl/${keyFileName}`,
+  };
+}
+
+function renderLocationRules(normalizedRules: PathRule[]): string {
+  let locations = '';
+
+  for (const rule of normalizedRules) {
+    locations += `
+    location ${rule.path} {
+`;
+
+    if (rule.action === 'return-404') {
+      locations += '        return 404;\n';
+    } else if (rule.action.startsWith('redirect-')) {
+      const statusCode = rule.action.split('-')[1];
+      const suffix = rule.passParameters ? '$request_uri' : '';
+      locations += `        return ${statusCode} ${rule.redirectTarget || '/'}${suffix};\n`;
+    } else if (rule.proxyTarget === 'local-port' && rule.localPort) {
+      locations += `        proxy_pass http://127.0.0.1:${rule.localPort};\n`;
+    } else if (rule.proxyTarget === 'remote-server' && rule.serverIp) {
+      locations += `        proxy_pass http://${rule.serverIp}${rule.port ? `:${rule.port}` : ''};\n`;
+    }
+
+    if (rule.proxySettings?.setHost) locations += '        proxy_set_header Host $host;\n';
+    if (rule.proxySettings?.setRealIp) locations += '        proxy_set_header X-Real-IP $remote_addr;\n';
+    if (rule.proxySettings?.setForwardedFor) locations += '        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n';
+    if (rule.proxySettings?.setForwardedProto) locations += '        proxy_set_header X-Forwarded-Proto $scheme;\n';
+    if (rule.proxySettings?.upgradeWebSocket) {
+      locations += '        proxy_set_header Upgrade $http_upgrade;\n';
+      locations += '        proxy_set_header Connection "upgrade";\n';
+    }
+
+    for (const header of rule.proxySettings?.customHeaders || []) {
+      locations += `        proxy_set_header ${header.key} ${header.value};\n`;
+    }
+
+    locations += '    }\n';
+  }
+
+  return locations;
+}
+
 export function generateNginxConfigFromContext(config: NginxConfiguration): GenerateNginxConfigResult {
   let nginxConfig = '';
 
@@ -49,7 +119,53 @@ export function generateNginxConfigFromContext(config: NginxConfiguration): Gene
 
   for (const block of config.blocks) {
     const normalizedRules = (block.pathRules || []).map(normalizePathRule);
-    const serverName = block.subdomain ? `${block.subdomain}.${block.domainName}` : block.domainName;
+    const serverName = buildServerName(block.subdomain, block.domainName);
+    const renderedLocations = renderLocationRules(normalizedRules);
+
+    if (block.sslEnabled) {
+      if (!block.sslCertificateFile) {
+        return {
+          success: false,
+          error: `SSL is enabled for ${serverName} but no certificate file is selected.`,
+        };
+      }
+
+      const { certPath, keyPath } = buildSslPaths(block.sslCertificateFile);
+
+      if (block.httpsRedirection) {
+        nginxConfig += `
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${serverName};
+    return 301 https://$host$request_uri;
+}
+`;
+      } else {
+        nginxConfig += `
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${serverName};
+${renderedLocations}}
+`;
+      }
+
+      nginxConfig += `
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name ${serverName};
+
+    ssl_certificate ${certPath};
+    ssl_certificate_key ${keyPath};
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+${renderedLocations}}
+`;
+
+      continue;
+    }
 
     nginxConfig += `
 server {
@@ -58,47 +174,7 @@ server {
     server_name ${serverName};
 `;
 
-    if (block.httpsRedirection) {
-      nginxConfig += `
-    if ($scheme != "https") {
-        return 301 https://$host$request_uri;
-    }
-`;
-    }
-
-    for (const rule of normalizedRules) {
-      nginxConfig += `
-    location ${rule.path} {
-`;
-
-      if (rule.action === 'return-404') {
-        nginxConfig += '        return 404;\n';
-      } else if (rule.action.startsWith('redirect-')) {
-        const statusCode = rule.action.split('-')[1];
-        const suffix = rule.passParameters ? '$request_uri' : '';
-        nginxConfig += `        return ${statusCode} ${rule.redirectTarget || '/'}${suffix};\n`;
-      } else if (rule.proxyTarget === 'local-port' && rule.localPort) {
-        nginxConfig += `        proxy_pass http://127.0.0.1:${rule.localPort};\n`;
-      } else if (rule.proxyTarget === 'remote-server' && rule.serverIp) {
-        nginxConfig += `        proxy_pass http://${rule.serverIp}${rule.port ? `:${rule.port}` : ''};\n`;
-      }
-
-      if (rule.proxySettings?.setHost) nginxConfig += '        proxy_set_header Host $host;\n';
-      if (rule.proxySettings?.setRealIp) nginxConfig += '        proxy_set_header X-Real-IP $remote_addr;\n';
-      if (rule.proxySettings?.setForwardedFor) nginxConfig += '        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n';
-      if (rule.proxySettings?.setForwardedProto) nginxConfig += '        proxy_set_header X-Forwarded-Proto $scheme;\n';
-      if (rule.proxySettings?.upgradeWebSocket) {
-        nginxConfig += '        proxy_set_header Upgrade $http_upgrade;\n';
-        nginxConfig += '        proxy_set_header Connection "upgrade";\n';
-      }
-
-      for (const header of rule.proxySettings?.customHeaders || []) {
-        nginxConfig += `        proxy_set_header ${header.key} ${header.value};\n`;
-      }
-
-      nginxConfig += '    }\n';
-    }
-
+    nginxConfig += renderedLocations;
     nginxConfig += '}\n';
   }
 
