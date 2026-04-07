@@ -72,10 +72,10 @@ echo "Selected Port: $CHOSEN_PORT"
             command: {
                 preCommand: `${portFinderScript}
                 cd ${context.appLocation} && 
-                PORT=$CHOSEN_PORT npm install &&
                 rm -rf .next`,
-                mainCommand: `cd ${context.appLocation} && 
-                PORT=$CHOSEN_PORT NODE_OPTIONS="--max-old-space-size=1400" npm run build`
+                mainCommand: `cd ${context.appLocation} &&
+                npm install &&
+                PORT=$CHOSEN_PORT NODE_OPTIONS="--max-old-space-size=600" npm run build`
             }
         },
 
