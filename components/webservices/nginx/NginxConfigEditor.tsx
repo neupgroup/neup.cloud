@@ -350,10 +350,13 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                 // Set mode based on first block or default
                                 if (val.blocks.length > 0) {
                                     const first = val.blocks[0];
-                                    if (first.domainId && first.domainId !== 'manual-domain') {
+                                    if (first.domainId) {
                                         setDomainMode('domain');
-                                        setSelectedDomainId(first.domainId);
-                                        setSelectedDomainName(first.domainName);
+                                        // Only set selected domain if it's a managed domain (not manual-domain)
+                                        if (first.domainId !== 'manual-domain') {
+                                            setSelectedDomainId(first.domainId);
+                                            setSelectedDomainName(first.domainName);
+                                        }
                                     } else {
                                         setDomainMode('none');
                                     }
@@ -362,12 +365,15 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                 // LEGACY Structure: val is the block itself
 
                                 // Determine mode
-                                if (val.domainId === 'manual-domain' || !val.domainId) {
-                                    setDomainMode('none');
-                                } else {
+                                if (val.domainId) {
                                     setDomainMode('domain');
-                                    setSelectedDomainId(val.domainId);
-                                    setSelectedDomainName(val.domainName || '');
+                                    // Only set selected domain if it's a managed domain (not manual-domain)
+                                    if (val.domainId !== 'manual-domain') {
+                                        setSelectedDomainId(val.domainId);
+                                        setSelectedDomainName(val.domainName || '');
+                                    }
+                                } else {
+                                    setDomainMode('none');
                                 }
 
                                 const block: DomainBlock = {
@@ -1319,7 +1325,7 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                             >
                                 <RadioGroupItem value="none" id="mode-ip" className="mt-1" />
                                 <div className="space-y-1">
-                                    <Label htmlFor="mode-ip" className="font-bold cursor-pointer">IP Address Only</Label>
+                                    <Label htmlFor="mode-ip" className="font-bold cursor-pointer">IP Address</Label>
                                     <p className="text-[11px] text-muted-foreground leading-relaxed">Direct IP routing without using a domain name.</p>
                                 </div>
                             </div>
