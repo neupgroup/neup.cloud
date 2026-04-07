@@ -399,6 +399,7 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
     const avgRam = statusData ? calculateAverage(statusData.ramHistory, 'used') : 0; // Avg used MB
     const totalRam = statusData?.ramHistory[0]?.total || 0;
     const avgRamPercent = totalRam > 0 ? ((Number(avgRam) / totalRam) * 100).toFixed(1) : 0;
+    const avgTemperature = statusData ? calculateAverage(statusData.temperatureHistory, 'celsius') : 0;
 
     const filteredProcesses = (Array.isArray(processes) ? processes : []).filter(p =>
         p.name.toLowerCase().includes(processesSearch.toLowerCase()) ||
@@ -609,6 +610,53 @@ export default function StatusClient({ serverId, serverName }: { serverId?: stri
                                         </ResponsiveContainer>
                                     ) : (
                                         <div className="flex justify-center items-center h-full text-muted-foreground">No RAM data available for this period.</div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <CardTitle className="font-headline">Temperature History</CardTitle>
+                                            <CardDescription>
+                                                Average for selected period: <span className="font-semibold text-foreground">{avgTemperature}°C</span>
+                                            </CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="h-[250px] w-full">
+                                    {statusData && statusData.temperatureHistory.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={statusData.temperatureHistory} margin={{ top: 5, right: 20, left: -20, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.8} />
+                                                        <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                                <Tooltip content={<CustomTooltip unit="°C" />} />
+                                                <Area type="monotone" dataKey="celsius" name="Temperature" strokeWidth={2} stroke="hsl(var(--chart-4))" fill="url(#colorTemp)" />
+                                                <XAxis
+                                                    dataKey="timestamp"
+                                                    stroke="hsl(var(--muted-foreground))"
+                                                    fontSize={12}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    tickFormatter={(value) => {
+                                                        const date = new Date(value);
+                                                        if (isNaN(date.getTime())) return "";
+                                                        return format(date, timeFrame === '1h' ? "h:mm a" : "MMM d");
+                                                    }}
+                                                    interval="preserveStartEnd"
+                                                    minTickGap={30}
+                                                />
+                                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}°C`} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="flex justify-center items-center h-full text-muted-foreground">No Temperature data available for this period.</div>
                                     )}
                                 </CardContent>
                             </Card>

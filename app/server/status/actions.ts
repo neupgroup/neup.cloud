@@ -11,6 +11,7 @@ const PID_FILE = `${STATUS_DIR}/status.pid`;
 const CPU_LOG = `${STATUS_DIR}/cpu.usage`;
 const RAM_LOG = `${STATUS_DIR}/ram.usage`;
 const NET_LOG = `${STATUS_DIR}/network.usage`;
+const TEMP_LOG = `${STATUS_DIR}/temperature.usage`;
 
 const SCRIPT_CONTENT = `
 mkdir -p ~/${STATUS_DIR}
@@ -31,18 +32,42 @@ get_net_bytes() {
     grep "$IFACE" /proc/net/dev | sed 's/:/ /' | awk '{print $2, $10}'
 }
 
+get_temp_c() {
+    if command -v sensors > /dev/null 2>&1; then
+        sensor_temp=$(sensors 2>/dev/null | awk 'match($0, /([+-]?[0-9]+([.][0-9]+)?)°C/, m) { gsub(/^\+/, "", m[1]); print m[1]; exit }')
+        if [ -n "$sensor_temp" ]; then
+            echo "$sensor_temp"
+            return
+        fi
+    fi
+
+    zone_temp=$(awk 'BEGIN { max = "" } { if ($1 ~ /^[0-9]+$/) { val = $1 / 1000; if (max == "" || val > max) max = val } } END { if (max != "") printf "%.1f\n", max }' /sys/class/thermal/thermal_zone*/temp 2>/dev/null)
+    if [ -n "$zone_temp" ]; then
+        echo "$zone_temp"
+        return
+    fi
+
+    echo "nan"
+}
+
 # Initialize previous values
 read PREV_RX PREV_TX <<< $(get_net_bytes)
 
 echo "Starting status tracking in the background..."
 while true; do
+    ts=$(date +%s)
+
     # CPU usage: user, system, idle
     cpu_info=$(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\\([0-9.]*\\)%* id.*/\\1/" | awk '{print 100 - $1}')
-    echo "$(date +%s) $cpu_info" >> ~/${CPU_LOG}
+    echo "$ts $cpu_info" >> ~/${CPU_LOG}
 
     # RAM usage: total, used, free
     ram_info=$(free -m | grep Mem | awk '{print $2, $3, $4}')
-    echo "$(date +%s) $ram_info" >> ~/${RAM_LOG}
+    echo "$ts $ram_info" >> ~/${RAM_LOG}
+
+    # Temperature usage: celsius
+    temp_info=$(get_temp_c)
+    echo "$ts $temp_info" >> ~/${TEMP_LOG}
     
     # Network usage: calc delta
     read CURR_RX CURR_TX <<< $(get_net_bytes)
@@ -53,7 +78,7 @@ while true; do
     if [ $DIFF_RX -lt 0 ]; then DIFF_RX=0; fi
     if [ $DIFF_TX -lt 0 ]; then DIFF_TX=0; fi
     
-    echo "$(date +%s) $DIFF_RX $DIFF_TX" >> ~/${NET_LOG}
+    echo "$ts $DIFF_RX $DIFF_TX" >> ~/${NET_LOG}
     
     PREV_RX=$CURR_RX
     PREV_TX=$CURR_TX
@@ -106,6 +131,7 @@ export type StatusData = {
     isTracking: boolean;
     cpuHistory: { timestamp: number; usage: number }[];
     ramHistory: { timestamp: number; used: number; total: number }[];
+    temperatureHistory: { timestamp: number; celsius: number }[];
     networkHistory: { timestamp: number; incoming: number; outgoing: number }[];
 };
 
@@ -185,12 +211,26 @@ export async function getStatus(
             }
            ' ~/${NET_LOG} 2>/dev/null | sort -n`;
 
+    const readTempCmd = intervalSec === 0
+        ? `awk -v start=${startSec} -v end=${endSec} '$1 >= start && $1 <= end && $2 != "nan"' ~/${TEMP_LOG} 2>/dev/null`
+        : `awk -v start=${startSec} -v end=${endSec} -v interval=${intervalSec} '
+            $1 >= start && $1 <= end && $2 != "nan" {
+                bin = int($1 / interval) * interval;
+                sumTemp[bin] += $2;
+                count[bin]++;
+            }
+            END {
+                for (b in sumTemp) printf "%s %.2f\\n", b, sumTemp[b]/count[b]
+            }
+           ' ~/${TEMP_LOG} 2>/dev/null | sort -n`;
+
     try {
-        const [pidResult, cpuResult, ramResult, netResult] = await Promise.all([
+        const [pidResult, cpuResult, ramResult, netResult, tempResult] = await Promise.all([
             runCommandOnServer(server.publicIp, server.username, server.privateKey, checkPidCmd),
             runCommandOnServer(server.publicIp, server.username, server.privateKey, readCpuCmd),
             runCommandOnServer(server.publicIp, server.username, server.privateKey, readRamCmd),
             runCommandOnServer(server.publicIp, server.username, server.privateKey, readNetCmd),
+            runCommandOnServer(server.publicIp, server.username, server.privateKey, readTempCmd),
         ]);
 
         const isTracking = pidResult.stdout.trim() === 'active';
@@ -215,7 +255,12 @@ export async function getStatus(
             };
         });
 
-        return { data: { isTracking, cpuHistory, ramHistory, networkHistory } };
+        const temperatureHistory = tempResult.stdout.trim().split('\n').filter(Boolean).map(line => {
+            const [timestamp, celsius] = line.split(' ');
+            return { timestamp: parseInt(timestamp) * 1000, celsius: parseFloat(celsius) };
+        }).filter(point => Number.isFinite(point.celsius));
+
+        return { data: { isTracking, cpuHistory, ramHistory, temperatureHistory, networkHistory } };
 
     } catch (e: any) {
         return { error: `Failed to get status: ${e.message}` };

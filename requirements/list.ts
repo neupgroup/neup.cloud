@@ -195,20 +195,21 @@ fi`,
     {
         id: 'system-logger',
         title: 'System Performance Logger',
-        description: 'Enables high-resolution performance monitoring and historical data collection. Essential for real-time server health tracking.',
+        description: 'Enables high-resolution performance monitoring and historical data collection for CPU, RAM, network, and temperature.',
         icon: 'Activity',
         steps: [
             {
                 name: 'Install Logging Script',
-                description: 'Deploy the background monitoring script to your home directory.',
+                description: 'Deploy the background monitoring script that records CPU, RAM, network, and temperature on the same timeline.',
                 icon: 'FileCode',
-                checkCommand: '[ -f ~/.status/logger.sh ]',
+                checkCommand: '[ -f ~/.status/logger.sh ] && grep -q "TEMP_LOG=\"temperature.usage\"" ~/.status/logger.sh && grep -q "get_temp_c()" ~/.status/logger.sh',
                 installCommand: `mkdir -p ~/.status && cat << 'EOF' > ~/.status/logger.sh
 #!/bin/bash
 STATUS_DIR=".status"
 CPU_LOG="cpu.usage"
 RAM_LOG="ram.usage"
 NET_LOG="network.usage"
+TEMP_LOG="temperature.usage"
 
 mkdir -p ~/$STATUS_DIR
 cd ~/$STATUS_DIR
@@ -221,25 +222,53 @@ get_net_bytes() {
     grep "$IFACE" /proc/net/dev | sed 's/:/ /' | awk '{print $2, $10}'
 }
 
+get_temp_c() {
+    if command -v sensors > /dev/null 2>&1; then
+        sensor_temp=$(sensors 2>/dev/null | awk 'match($0, /([+-]?[0-9]+([.][0-9]+)?)°C/, m) { gsub(/^\+/, "", m[1]); print m[1]; exit }')
+        if [ -n "$sensor_temp" ]; then
+            echo "$sensor_temp"
+            return
+        fi
+    fi
+
+    zone_temp=$(awk 'BEGIN { max = "" } { if ($1 ~ /^[0-9]+$/) { val = $1 / 1000; if (max == "" || val > max) max = val } } END { if (max != "") printf "%.1f\n", max }' /sys/class/thermal/thermal_zone*/temp 2>/dev/null)
+    if [ -n "$zone_temp" ]; then
+        echo "$zone_temp"
+        return
+    fi
+
+    echo "nan"
+}
+
 read PREV_RX PREV_TX <<< $(get_net_bytes)
 
 while true; do
+    ts=$(date +%s)
+
     cpu_info=$(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\\([0-9.]*\\)%* id.*/\\1/" | awk '{print 100 - $1}')
-    echo "$(date +%s) $cpu_info" >> $CPU_LOG
+    echo "$ts $cpu_info" >> $CPU_LOG
+
     ram_info=$(free -m | grep Mem | awk '{print $2, $3, $4}')
-    echo "$(date +%s) $ram_info" >> $RAM_LOG
+    echo "$ts $ram_info" >> $RAM_LOG
+
+    temp_info=$(get_temp_c)
+    echo "$ts $temp_info" >> $TEMP_LOG
+
     read CURR_RX CURR_TX <<< $(get_net_bytes)
     DIFF_RX=$((CURR_RX - PREV_RX))
     DIFF_TX=$((CURR_TX - PREV_TX))
     if [ $DIFF_RX -lt 0 ]; then DIFF_RX=0; fi
     if [ $DIFF_TX -lt 0 ]; then DIFF_TX=0; fi
-    echo "$(date +%s) $DIFF_RX $DIFF_TX" >> $NET_LOG
+    echo "$ts $DIFF_RX $DIFF_TX" >> $NET_LOG
     PREV_RX=$CURR_RX
     PREV_TX=$CURR_TX
     sleep 60
 done
 EOF
-chmod +x ~/.status/logger.sh`
+chmod +x ~/.status/logger.sh
+if systemctl list-unit-files 2>/dev/null | grep -q '^neup-logger.service'; then
+    sudo systemctl restart neup-logger || true
+fi`
             },
             {
                 name: 'Configure System Service',

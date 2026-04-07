@@ -149,6 +149,8 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
     // Certificate List State
     const [availableCertificates, setAvailableCertificates] = useState<any[]>([]);
     const [loadingCerts, setLoadingCerts] = useState(false);
+    const isEditMode = !!configId && configId !== 'new';
+    const isReservedConfigName = configName.trim().toLowerCase() === 'new';
 
     // Auto-link certificates when available
     useEffect(() => {
@@ -778,6 +780,15 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
             return;
         }
 
+        if (isReservedConfigName) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Name',
+                description: 'Configuration name "new" is reserved. Please choose a different name.',
+            });
+            return;
+        }
+
         if (domainBlocks.length === 0) {
             toast({
                 variant: 'destructive',
@@ -893,6 +904,15 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                 variant: 'destructive',
                 title: 'Error',
                 description: 'Please enter a Configuration Name in Step 1 before generating a certificate.',
+            });
+            return;
+        }
+
+        if (isReservedConfigName) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Name',
+                description: 'Configuration name "new" is reserved. Please choose a different name.',
             });
             return;
         }
@@ -1028,6 +1048,15 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                 variant: 'destructive',
                 title: 'Error',
                 description: 'Please select a server first.',
+            });
+            return;
+        }
+
+        if (isReservedConfigName) {
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Name',
+                description: 'Configuration name "new" is reserved. Please choose a different name.',
             });
             return;
         }
@@ -1225,8 +1254,13 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                             }}
                             placeholder="e.g., example.com"
                             className="max-w-[400px]"
-                            disabled={!!configId}
+                            disabled={isEditMode}
                         />
+                        {isReservedConfigName && (
+                            <p className="text-xs text-destructive">
+                                Configuration name "new" is reserved. Please use another name.
+                            </p>
+                        )}
                         <p className="text-xs text-muted-foreground">
                             Used as the filename on the server. Lowercase letters, numbers, and dots only.
                         </p>
@@ -1235,7 +1269,7 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
             </div>
 
             {/* Step 2: Configuration Mode */}
-            {selectedServerId && configName && (
+            {selectedServerId && configName && !isReservedConfigName && (
                 <div className="space-y-6 pt-6">
                     <div className="px-1">
                         <h3 className="text-xl font-semibold flex items-center gap-2">
@@ -1309,7 +1343,7 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
             )}
 
             {/* Step 3: Manage Subdomain Blocks */}
-            {selectedServerId && configName && (domainMode === 'none' || selectedDomainId) && (
+            {selectedServerId && configName && !isReservedConfigName && (domainMode === 'none' || selectedDomainId) && (
                 <div className="space-y-6 pt-6">
                     <div className="px-1 flex justify-between items-center">
                         <div>
@@ -1772,7 +1806,7 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
 
             {/* Step 4: Generate Configuration */}
             {
-                selectedServerId && configName && (domainBlocks.length > 0) && (
+                selectedServerId && configName && !isReservedConfigName && (domainBlocks.length > 0) && (
                     <div className="space-y-4">
                         <div className="px-1">
                             <h3 className="text-xl font-semibold flex items-center gap-2">
@@ -1821,7 +1855,7 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
 
             {/* Step 5: Deploy - Only show if config is generated */}
             {
-                selectedServerId && configName && showPreview && generatedConfig && (
+                selectedServerId && configName && !isReservedConfigName && showPreview && generatedConfig && (
                     <div className="space-y-4">
                         <div className="px-1">
                             <h3 className="text-xl font-semibold flex items-center gap-2">

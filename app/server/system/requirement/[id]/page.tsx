@@ -69,6 +69,7 @@ export default function RequirementDetailPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isInstalling, setIsInstalling] = useState(false);
     const [isUninstalling, setIsUninstalling] = useState(false);
+    const [isRepairing, setIsRepairing] = useState(false);
 
     const cookies = new Cookies(null, { path: '/' });
     const serverId = cookies.get('selected_server');
@@ -84,6 +85,7 @@ export default function RequirementDetailPage() {
     const checkAllSteps = async () => {
         if (!config || !serverId) return;
 
+        setIsLoading(true);
         setStepStatus({}); // Reset status
 
         for (let i = 0; i < config.steps.length; i++) {
@@ -91,11 +93,12 @@ export default function RequirementDetailPage() {
 
             const res = await checkRequirementStep(serverId, config.steps[i].checkCommand);
 
-            if (res.completed) {
+            if (res.error) {
+                setStepStatus(prev => ({ ...prev, [i]: 'failed' }));
+            } else if (res.completed) {
                 setStepStatus(prev => ({ ...prev, [i]: 'completed' }));
             } else {
                 setStepStatus(prev => ({ ...prev, [i]: 'pending' }));
-                break; // Stop checking further steps if current one fails
             }
         }
 
@@ -139,6 +142,7 @@ export default function RequirementDetailPage() {
 
         toast({ title: 'Success', description: `${config.title} is fully configured.` });
         setIsInstalling(false);
+        await checkAllSteps();
     };
 
     const handleUninstall = async () => {
@@ -175,7 +179,76 @@ export default function RequirementDetailPage() {
 
         toast({ title: 'Uninstalled', description: `${config.title} has been removed.` });
         setIsUninstalling(false);
-        checkAllSteps(); // Refresh state
+        await checkAllSteps(); // Refresh state
+    };
+
+    const handleRepair = async () => {
+        if (!config || !serverId) return;
+
+        if (!confirm(`Repair ${config.title}? This will run uninstall and then install in one action.`)) {
+            return;
+        }
+
+        setIsRepairing(true);
+
+        // 1) Attempt full uninstall in reverse order.
+        for (let i = config.steps.length - 1; i >= 0; i--) {
+            const step = config.steps[i];
+            if (!step.uninstallCommand) continue;
+
+            setStepStatus(prev => ({ ...prev, [i]: 'checking' }));
+
+            const uninstallRes = await uninstallRequirementStep(serverId, step.uninstallCommand);
+            if (uninstallRes.error) {
+                toast({
+                    variant: 'destructive',
+                    title: `Repair Uninstall Step ${i + 1} Warning`,
+                    description: uninstallRes.error,
+                });
+            }
+
+            const postCheckRes = await checkRequirementStep(serverId, step.checkCommand);
+            if (!postCheckRes.completed) {
+                setStepStatus(prev => ({ ...prev, [i]: 'pending' }));
+            } else {
+                setStepStatus(prev => ({ ...prev, [i]: 'failed' }));
+            }
+        }
+
+        // 2) Re-install and verify each step in order.
+        for (let i = 0; i < config.steps.length; i++) {
+            setStepStatus(prev => ({ ...prev, [i]: 'checking' }));
+            const installRes = await installRequirementStep(serverId, config.steps[i].installCommand);
+
+            if (installRes.error) {
+                toast({
+                    variant: 'destructive',
+                    title: `Repair Install Step ${i + 1} Failed`,
+                    description: installRes.error,
+                });
+                setStepStatus(prev => ({ ...prev, [i]: 'failed' }));
+                setIsRepairing(false);
+                return;
+            }
+
+            const verifyRes = await checkRequirementStep(serverId, config.steps[i].checkCommand);
+            if (verifyRes.completed) {
+                setStepStatus(prev => ({ ...prev, [i]: 'completed' }));
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: `Repair Verification Step ${i + 1} Failed`,
+                    description: verifyRes.error || 'Command ran but check failed.',
+                });
+                setStepStatus(prev => ({ ...prev, [i]: 'failed' }));
+                setIsRepairing(false);
+                return;
+            }
+        }
+
+        toast({ title: 'Repair Complete', description: `${config.title} was uninstalled and installed successfully.` });
+        setIsRepairing(false);
+        await checkAllSteps();
     };
 
     if (!config) {
@@ -187,7 +260,6 @@ export default function RequirementDetailPage() {
     }
 
     const allCompleted = config.steps.every((_, i) => stepStatus[i] === 'completed');
-
     return (
         <div className="space-y-8 max-w-5xl animate-in fade-in duration-500 pb-10">
             <PageTitleBack
@@ -277,13 +349,13 @@ export default function RequirementDetailPage() {
                         </div>
                     ) : (
                         <div
-                            onClick={!allCompleted && !isInstalling ? handleInstall : undefined}
+                            onClick={!allCompleted && !isInstalling && !isUninstalling && !isRepairing ? handleInstall : undefined}
                             className={cn(
                                 "flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t transition-all",
                                 allCompleted
                                     ? "bg-muted/5 opacity-70 cursor-not-allowed"
                                     : "hover:bg-muted/50 cursor-pointer bg-muted/10",
-                                (isInstalling) && "opacity-70 cursor-not-allowed"
+                                (isInstalling || isUninstalling || isRepairing) && "opacity-70 cursor-not-allowed"
                             )}
                         >
                             <div className="space-y-1 text-center sm:text-left flex-1">
@@ -305,6 +377,28 @@ export default function RequirementDetailPage() {
                                         ? "This requirement is fully configured on your server."
                                         : `Execute the steps above to install and configure ${config.title}.`
                                     }
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {!isLoading && config.steps.some(s => s.uninstallCommand) && (
+                        <div
+                            onClick={!isRepairing && !isInstalling && !isUninstalling ? handleRepair : undefined}
+                            className={cn(
+                                "flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t transition-all bg-amber-50/60",
+                                (!isRepairing && !isInstalling && !isUninstalling)
+                                    ? "hover:bg-amber-100/60 cursor-pointer"
+                                    : "opacity-70 cursor-not-allowed"
+                            )}
+                        >
+                            <div className="space-y-1 text-center sm:text-left flex-1">
+                                <h3 className="font-medium flex items-center gap-2 text-amber-900 justify-center sm:justify-start">
+                                    <Icons.Wrench className="h-4 w-4" />
+                                    {isRepairing ? "Repairing..." : "Repair"}
+                                </h3>
+                                <p className="text-sm text-amber-800/80">
+                                    Uninstalls and installs in one action.
                                 </p>
                             </div>
                         </div>
@@ -366,10 +460,10 @@ export default function RequirementDetailPage() {
 
                         {/* Uninstall Action Item */}
                         <div
-                            onClick={!isUninstalling ? handleUninstall : undefined}
+                            onClick={!isUninstalling && !isInstalling && !isRepairing ? handleUninstall : undefined}
                             className={cn(
                                 "flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-destructive/10 transition-all hover:bg-destructive/10 cursor-pointer bg-destructive/5",
-                                (isUninstalling) && "opacity-70 cursor-not-allowed hover:bg-destructive/5"
+                                (isUninstalling || isInstalling || isRepairing) && "opacity-70 cursor-not-allowed hover:bg-destructive/5"
                             )}
                         >
                             <div className="space-y-1 text-center sm:text-left flex-1">
