@@ -1393,7 +1393,7 @@ export default function NginxConfigEditor({ configId }: NginxConfigEditorProps) 
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm font-medium text-muted-foreground">
-                                                {domainMode === 'domain' ? 'subdomain:' : 'block identifier:'}
+                                                {domainMode === 'domain' ? 'subdomain:' : 'Block Identifier:'}
                                             </span>
                                             <Input
                                                 value={block.subdomain}
