@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Copy, ExternalLink, Key, Plus, Trash, X, Upload, AppWindow } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, { useRef, useState } from 'react';
-import { generateApplicationName, normalizeApplicationNameInput } from '@/app/server/applications/name';
+import { normalizeApplicationNameInput } from '@/app/server/applications/name';
 
 const FRAMEWORKS = [
     {
@@ -69,7 +69,6 @@ export default function EditApplicationForm({ application }: EditApplicationForm
     const [appName, setAppName] = useState(application.name || '');
     const [appIcon, setAppIcon] = useState(application.appIcon || '');
     const [appLocation, setAppLocation] = useState(application.location || '');
-    const nameLocked = Boolean(application.name);
     const appIconInputRef = useRef<HTMLInputElement | null>(null);
 
     // Repository Info
@@ -214,8 +213,6 @@ export default function EditApplicationForm({ application }: EditApplicationForm
             return;
         }
 
-        const resolvedName = nameLocked ? application.name : generateApplicationName(appName);
-
         const updatedRepoInfo = {
             location: repoLocation,
             isPrivate,
@@ -254,7 +251,7 @@ export default function EditApplicationForm({ application }: EditApplicationForm
         });
 
         const updatedData = {
-            name: resolvedName,
+            name: appName.trim(),
             appIcon: appIcon || undefined,
             location: appLocation,
             language: selectedFramework,
@@ -300,18 +297,11 @@ export default function EditApplicationForm({ application }: EditApplicationForm
                             <Label htmlFor="appName">Application Name</Label>
                             <Input
                                 id="appName"
-                                placeholder="e.g. myapp"
+                                placeholder="Application Name"
                                 value={appName}
-                                onChange={e => {
-                                    if (nameLocked) return;
-                                    setAppName(normalizeApplicationNameInput(e.target.value));
-                                }}
-                                disabled={nameLocked}
+                                onChange={e => setAppName(normalizeApplicationNameInput(e.target.value))}
                                 maxLength={64}
                             />
-                            <p className="text-xs text-muted-foreground">
-                                {nameLocked ? 'Application name is locked after it has been set.' : 'The saved name will be generated automatically from this value.'}
-                            </p>
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="appIcon">App Icon</Label>

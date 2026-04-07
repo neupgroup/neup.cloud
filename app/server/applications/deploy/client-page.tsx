@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useServerName } from '@/hooks/use-server-name';
-import { generateApplicationName, generateApplicationNameSuffix, normalizeApplicationNameInput } from '@/app/server/applications/name';
+import { normalizeApplicationNameInput } from '@/app/server/applications/name';
 
 const FRAMEWORKS = [
   {
@@ -67,7 +67,6 @@ export default function CreateApplicationPage() {
   const [appName, setAppName] = useState('');
   const [appIcon, setAppIcon] = useState('');
   const [appLocation, setAppLocation] = useState('');
-  const [nameSuffix] = useState(() => generateApplicationNameSuffix());
   const appIconInputRef = useRef<HTMLInputElement | null>(null);
 
   // Repository Info
@@ -93,7 +92,6 @@ export default function CreateApplicationPage() {
   const [newCmdName, setNewCmdName] = useState('');
   const [newCmdDesc, setNewCmdDesc] = useState('');
   const [newCmdValue, setNewCmdValue] = useState('');
-  const generatedAppName = appName ? generateApplicationName(appName, nameSuffix) : '';
 
   const handleFrameworkChange = (val: string) => {
     setSelectedFramework(val);
@@ -175,7 +173,7 @@ export default function CreateApplicationPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    if (!appName || !appLocation || !selectedFramework) {
+    if (!appName.trim() || !appLocation || !selectedFramework) {
       toast({ variant: "destructive", title: "Missing fields", description: "Name, Location and Framework are required." });
       setIsLoading(false);
       return;
@@ -226,7 +224,7 @@ export default function CreateApplicationPage() {
 
     try {
       const appId = await createApplication({
-        name: generatedAppName,
+        name: appName.trim(),
         appIcon: appIcon || undefined,
         location: appLocation,
         language: selectedFramework,
@@ -269,14 +267,11 @@ export default function CreateApplicationPage() {
               <Label htmlFor="appName">Application Name</Label>
               <Input
                 id="appName"
-                placeholder="e.g. myapp"
+                placeholder="Application Name"
                 value={appName}
                 onChange={e => setAppName(normalizeApplicationNameInput(e.target.value))}
                 maxLength={64}
               />
-              <p className="text-xs text-muted-foreground">
-                Final name will be generated as <span className="font-mono">{generatedAppName || '[name]_neupappify_[random8]'}</span>
-              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="appIcon">App Icon</Label>
