@@ -1,6 +1,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
+import { executeCommand } from '@/app/server/commands/actions';
 import { executeQuickCommand } from '@/app/server/commands/actions';
 
 export async function getCertificates() {
@@ -201,4 +202,76 @@ export async function deleteCertificate(fileName: string) {
     }
 
     return { success: true, output: result.output };
+}
+
+export async function reissueCertificate(fileName: string, domain: string) {
+    const cookieStore = await cookies();
+    const serverId = cookieStore.get('selected_server')?.value;
+
+    if (!serverId) {
+        throw new Error("No server selected");
+    }
+
+    // Safety check on filename
+    if (!fileName || fileName.includes('/') || fileName.includes('..') || !fileName.endsWith('.pem')) {
+        throw new Error("Invalid certificate filename");
+    }
+
+    if (!domain || domain.trim() === '') {
+        throw new Error("Domain is required");
+    }
+
+    const reissueThresholdDays = 30;
+    const cleanDomain = domain.trim();
+    const certName = fileName.replace('.pem', '');
+
+    const expiryResult = await executeQuickCommand(
+        serverId,
+        `if [ -f /etc/nginx/ssl/${fileName} ]; then openssl x509 -in /etc/nginx/ssl/${fileName} -noout -enddate; fi`
+    );
+
+    const endDateMatch = (expiryResult.output || '').match(/notAfter=(.*)/);
+    const daysRemaining = endDateMatch
+        ? Math.floor((new Date(endDateMatch[1]).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        : null;
+
+    const renewalFlag = daysRemaining !== null && daysRemaining > reissueThresholdDays ? '--expand' : '--reinstall';
+
+    const certbotCommand = `sudo certbot certonly --nginx ${renewalFlag} --force-renewal --non-interactive --agree-tos -m encryption.cloud@neupgroup.com -d ${cleanDomain} --cert-name ${certName}`;
+
+    /**
+     * Reissuance Strategy:
+     * Use the nginx authenticator and choose --expand or --reinstall based on remaining days.
+     */
+    const command = `
+        ${certbotCommand} 2>&1
+        
+        if [ $? -eq 0 ]; then
+            echo "SUCCESS: Certificate reissued successfully for ${cleanDomain}"
+        else
+            echo "ERROR: Certbot renewal failed"
+        fi
+    `;
+
+    try {
+        const result = await executeCommand(
+            serverId,
+            command,
+            `Reissue Certificate: ${cleanDomain}${daysRemaining !== null ? ` (${daysRemaining} days left)` : ''}`,
+            certbotCommand
+        );
+
+        if (result.error) {
+            throw new Error(`Reissuance failed: ${result.error}`);
+        }
+
+        const output = result.output || '';
+        if (output.includes("ERROR")) {
+            throw new Error(output.substring(output.indexOf("ERROR")));
+        }
+
+        return { success: true, output };
+    } catch (err: any) {
+        throw err;
+    }
 }

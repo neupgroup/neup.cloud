@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, Calendar, CheckCircle2, Copy, FileText, Globe, Key, Shield, ShieldCheck, Trash2, XCircle } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle2, Copy, FileText, Globe, Key, RefreshCw, Shield, ShieldCheck, Trash2, XCircle } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { deleteCertificate, getCertificate } from '../actions';
+import { deleteCertificate, getCertificate, reissueCertificate } from '../actions';
 
 interface CertificateDetails {
     fileName: string;
@@ -35,6 +35,7 @@ export default function CertificateDetailsPage() {
     const [cert, setCert] = useState<CertificateDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
+    const [reissuing, setReissuing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -72,6 +73,25 @@ export default function CertificateDetailsPage() {
             toast({ variant: 'destructive', title: 'Error deleting certificate', description: err.message });
         } finally {
             setDeleting(false);
+        }
+    };
+
+    const handleReissue = async () => {
+        if (!cert) return;
+
+        setReissuing(true);
+        try {
+            await reissueCertificate(cert.fileName, cert.commonName);
+            toast({ title: 'Certificate reissued successfully', description: `Certificate for ${cert.commonName} has been reissued.` });
+            // Reload the certificate data to show updated validity dates
+            const updated = await getCertificate(id);
+            if (updated) {
+                setCert(updated);
+            }
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error reissuing certificate', description: err.message });
+        } finally {
+            setReissuing(false);
         }
     };
 
@@ -133,6 +153,10 @@ export default function CertificateDetailsPage() {
                         <StatusIcon className="h-4 w-4" />
                         {status.label}
                     </div>
+                    <Button variant="outline" size="sm" onClick={handleReissue} disabled={reissuing}>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        {reissuing ? 'Reissuing...' : 'Reissue'}
+                    </Button>
                     <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
                         <Trash2 className="h-4 w-4 mr-2" />
                         {deleting ? 'Deleting...' : 'Delete'}
