@@ -6,9 +6,10 @@ import { executeCommand, executeQuickCommand } from '@/app/server/commands/actio
 import { getServerForRunner } from '@/app/servers/actions';
 import { getServerPublicIp as getServerPublicIpLogic } from '@/app/server/webservices/actions';
 import {
-    getNginxConfiguration as getNginxConfigurationRecord,
-    saveNginxConfiguration as saveNginxConfigurationRecord,
-} from '@/services/webservices/nginx/data';
+    createWebService,
+    getLatestWebService,
+    updateWebService,
+} from '@/services/webservices/data';
 import { generateNginxConfigFromContext as generateNginxConfigFromContextLogic } from '@/services/webservices/nginx/logic';
 
 export interface SubPath {
@@ -82,13 +83,28 @@ export async function saveNginxConfiguration(
     config: NginxConfiguration
 ) {
     try {
-        await saveNginxConfigurationRecord({
-            serverId,
+        const latest = await getLatestWebService('nginx', serverId);
+        const value = {
             serverIp: config.serverIp,
             configName: config.configName,
             blocks: config.blocks ?? [],
-            domainRedirects: config.domainRedirects ?? null,
-        });
+            domainRedirects: config.domainRedirects ?? [],
+        };
+
+        if (latest?.id) {
+            await updateWebService(latest.id, {
+                name: config.configName,
+                value,
+            });
+        } else {
+            await createWebService({
+                type: 'nginx',
+                name: config.configName,
+                createdBy: 'System',
+                value,
+                serverId,
+            });
+        }
 
         revalidatePath('/server/webservices/nginx');
 
@@ -104,17 +120,24 @@ export async function saveNginxConfiguration(
  */
 export async function getNginxConfiguration(serverId: string) {
     try {
-        const row = await getNginxConfigurationRecord(serverId);
-        if (!row) {
+        const config = await getLatestWebService('nginx', serverId);
+        if (!config) {
             return null;
         }
 
+        const value = (config.value ?? {}) as {
+            serverIp?: string;
+            configName?: string;
+            blocks?: DomainBlock[];
+            domainRedirects?: DomainRedirect[];
+        };
+
         return {
-          serverIp: row.serverIp,
-          configName: row.configName,
-          blocks: (row.blocks as unknown as DomainBlock[]) ?? [],
-          domainRedirects: (row.domainRedirects as unknown as DomainRedirect[] | null) ?? [],
-          updatedAt: row.updatedAt.toISOString(),
+          serverIp: value.serverIp ?? '',
+          configName: value.configName ?? config.name ?? 'default',
+          blocks: value.blocks ?? [],
+          domainRedirects: value.domainRedirects ?? [],
+          updatedAt: config.updated_on ?? config.created_on,
         } as NginxConfiguration;
     } catch (error: any) {
         console.error('Error fetching nginx configuration:', error);

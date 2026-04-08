@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
-import ProcessesClient from './processes-client';
+import ProcessesClient from '@/app/server/status/processes/processes-client';
 
 export const metadata: Metadata = {
     title: 'Server Processes, Neup.Cloud',

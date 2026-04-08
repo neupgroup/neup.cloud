@@ -131,17 +131,6 @@ model WebService {
   @@map("webservices")
 }
 
-model NginxConfiguration {
-  serverId        String    @id @map("serverId") @db.Text
-  serverIp        String    @map("serverIp") @db.Text
-  configName      String    @map("configName") @db.Text
-  blocks          Json
-  domainRedirects Json?
-  updatedAt       DateTime  @map("updatedAt") @db.Timestamp(6)
-
-  @@map("nginx_configurations")
-}
-
 model LiveSession {
   id          String   @id @db.Text
   createdAt   DateTime @map("createdAt") @db.Timestamp(6)
