@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // basePath: '/account',
+  basePath: '/cloud',
   // assetPrefix: '/account/',
   images: {
     remotePatterns: [
