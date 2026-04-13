@@ -100,7 +100,13 @@ export default async function DatabaseTableDataPage({ params, searchParams }: Pr
         backHref={`/database/${connection.id}/table`}
         title={tableName}
         description={`${connection.connectionType === 'firestore' ? 'Viewing documents from' : 'Viewing data from'} ${connection.title}`}
-      />
+      >
+        <Button variant="outline" asChild>
+          <Link href={`/database/${id}/table/${encodeURIComponent(tableName)}/properties`}>
+            Properties
+          </Link>
+        </Button>
+      </PageTitleBack>
 
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">Rows per page:</span>

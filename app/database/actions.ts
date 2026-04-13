@@ -14,7 +14,22 @@ import {
   normalizeDatabaseConnectionInput,
   testDatabaseConnection,
 } from '@/services/database/connection-service';
-import { executeConnectionShellQuery } from '@/services/database/explorer';
+import {
+  addConnectionTablePrimaryKey,
+  createConnectionTableIndex,
+  dropConnectionTable,
+  dropConnectionTableColumn,
+  dropConnectionTableIndex,
+  executeConnectionShellQuery,
+} from '@/services/database/explorer';
+
+function revalidateTablePaths(connectionId: string, tableName: string) {
+  const encodedTableName = encodeURIComponent(tableName);
+
+  revalidatePath(`/database/${connectionId}/table`);
+  revalidatePath(`/database/${connectionId}/table/${encodedTableName}`);
+  revalidatePath(`/database/${connectionId}/table/${encodedTableName}/properties`);
+}
 
 export async function getDatabases(): Promise<ExternalDatabase[]> {
   try {
@@ -123,5 +138,160 @@ export async function deleteDatabaseConnection(connectionId: string): Promise<{ 
   return {
     success: true,
     message: `Deleted "${connection.title}" successfully.`,
+  };
+}
+
+export async function createTableIndexAction(input: {
+  connectionId: string;
+  tableName: string;
+  indexName: string;
+  columnNames: string[];
+  unique?: boolean;
+}): Promise<{ success: boolean; message: string }> {
+  if (!input.connectionId?.trim()) {
+    throw new Error('Connection id is required.');
+  }
+
+  if (!input.tableName?.trim()) {
+    throw new Error('Table name is required.');
+  }
+
+  const connection = await getDatabaseById(input.connectionId);
+
+  if (!connection) {
+    throw new Error('Database connection not found.');
+  }
+
+  await createConnectionTableIndex(connection, input.tableName, {
+    indexName: input.indexName,
+    columnNames: input.columnNames,
+    unique: Boolean(input.unique),
+  });
+
+  revalidateTablePaths(connection.id, input.tableName);
+
+  return {
+    success: true,
+    message: `Created ${input.unique ? 'unique ' : ''}index "${input.indexName}" on ${input.tableName}.`,
+  };
+}
+
+export async function addTablePrimaryKeyAction(input: {
+  connectionId: string;
+  tableName: string;
+  columnNames: string[];
+  constraintName?: string;
+}): Promise<{ success: boolean; message: string }> {
+  if (!input.connectionId?.trim()) {
+    throw new Error('Connection id is required.');
+  }
+
+  if (!input.tableName?.trim()) {
+    throw new Error('Table name is required.');
+  }
+
+  const connection = await getDatabaseById(input.connectionId);
+
+  if (!connection) {
+    throw new Error('Database connection not found.');
+  }
+
+  await addConnectionTablePrimaryKey(connection, input.tableName, {
+    columnNames: input.columnNames,
+    constraintName: input.constraintName,
+  });
+
+  revalidateTablePaths(connection.id, input.tableName);
+
+  return {
+    success: true,
+    message: `Added a primary key on ${input.tableName}.`,
+  };
+}
+
+export async function dropTableColumnAction(input: {
+  connectionId: string;
+  tableName: string;
+  columnName: string;
+}): Promise<{ success: boolean; message: string }> {
+  if (!input.connectionId?.trim()) {
+    throw new Error('Connection id is required.');
+  }
+
+  if (!input.tableName?.trim()) {
+    throw new Error('Table name is required.');
+  }
+
+  const connection = await getDatabaseById(input.connectionId);
+
+  if (!connection) {
+    throw new Error('Database connection not found.');
+  }
+
+  await dropConnectionTableColumn(connection, input.tableName, input.columnName);
+
+  revalidateTablePaths(connection.id, input.tableName);
+
+  return {
+    success: true,
+    message: `Dropped column "${input.columnName}" from ${input.tableName}.`,
+  };
+}
+
+export async function dropTableIndexAction(input: {
+  connectionId: string;
+  tableName: string;
+  indexName: string;
+}): Promise<{ success: boolean; message: string }> {
+  if (!input.connectionId?.trim()) {
+    throw new Error('Connection id is required.');
+  }
+
+  if (!input.tableName?.trim()) {
+    throw new Error('Table name is required.');
+  }
+
+  const connection = await getDatabaseById(input.connectionId);
+
+  if (!connection) {
+    throw new Error('Database connection not found.');
+  }
+
+  await dropConnectionTableIndex(connection, input.tableName, input.indexName);
+
+  revalidateTablePaths(connection.id, input.tableName);
+
+  return {
+    success: true,
+    message: `Dropped index "${input.indexName}" from ${input.tableName}.`,
+  };
+}
+
+export async function deleteTableAction(input: {
+  connectionId: string;
+  tableName: string;
+}): Promise<{ success: boolean; message: string }> {
+  if (!input.connectionId?.trim()) {
+    throw new Error('Connection id is required.');
+  }
+
+  if (!input.tableName?.trim()) {
+    throw new Error('Table name is required.');
+  }
+
+  const connection = await getDatabaseById(input.connectionId);
+
+  if (!connection) {
+    throw new Error('Database connection not found.');
+  }
+
+  await dropConnectionTable(connection, input.tableName);
+
+  revalidatePath(`/database/${connection.id}/table`);
+  revalidatePath(`/database/${connection.id}`);
+
+  return {
+    success: true,
+    message: `Deleted table "${input.tableName}".`,
   };
 }

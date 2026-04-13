@@ -59,6 +59,35 @@ export interface DatabaseRelation {
   type: 'table' | 'view' | 'collection';
 }
 
+export interface DatabaseTableColumn {
+  name: string;
+  dataType: string;
+  isNullable: boolean;
+  defaultValue: string | null;
+  isPrimaryKey: boolean;
+  indexNames: string[];
+}
+
+export interface DatabaseTableIndex {
+  name: string;
+  columns: string[];
+  isUnique: boolean;
+  isPrimary: boolean;
+}
+
+export interface DatabaseTableProperties {
+  relationName: string;
+  schema: string | null;
+  table: string;
+  relationType: DatabaseRelation['type'];
+  columns: DatabaseTableColumn[];
+  indexes: DatabaseTableIndex[];
+  primaryKeyColumns: string[];
+  rowCount: number | null;
+  supportsSchemaChanges: boolean;
+  supportsIndexes: boolean;
+}
+
 export interface DatabaseTableDataPage {
   columns: string[];
   rows: Record<string, unknown>[];
