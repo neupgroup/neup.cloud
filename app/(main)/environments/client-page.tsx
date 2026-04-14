@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageTitle } from '@/components/page-header';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { DeleteButton } from '@/components/delete-button';
 import { Input } from '@/components/ui/input';
 import { Trash, Search, Globe, Server, Lock, ChevronRight, PlusCircle, ShieldAlert, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -35,10 +35,6 @@ export default function EnvironmentsPage() {
     }, [toast]);
 
     const handleDelete = async (id: string) => {
-        // In a real app, use a proper dialog. For quick implementation, window.confirm is acceptable temporarily
-        // or we could implementing a proper AlertDialog if accessible. Sticking to simple for now.
-        if (!confirm("Are you sure you want to delete this variable?")) return;
-
         const res = await deleteEnvironmentVariable(id);
         if (res.success) {
             setVariables(variables.filter(v => v.id !== id));
@@ -168,15 +164,19 @@ export default function EnvironmentsPage() {
                                 </div>
 
                                 <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity self-center">
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
+                                    <DeleteButton
+                                        iconOnly
                                         className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                        onClick={() => handleDelete(variable.id)}
-                                        title="Delete Variable"
-                                    >
-                                        <Trash className="h-4 w-4" />
-                                    </Button>
+                                        onDelete={() => handleDelete(variable.id)}
+                                        confirmTitle="Delete Environment Variable?"
+                                        confirmDescription={
+                                            <span>
+                                                This action cannot be undone. The variable will be <strong>deleted</strong> immediately.<br /><br />
+                                                Note: This may affect running applications.
+                                            </span>
+                                        }
+                                        confirmLabel="Delete Variable"
+                                    />
                                 </div>
                             </div>
                         ))
