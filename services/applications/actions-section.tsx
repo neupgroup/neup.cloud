@@ -1,6 +1,7 @@
-import { executeApplicationCommand } from "@/app/server/applications/actions";
 import { useToast } from '@/hooks/use-toast';
 import { useState } from "react";
+
+import { executeApplicationCommand } from "./actions";
 
 export interface ActionsSectionProps {
     application: any;

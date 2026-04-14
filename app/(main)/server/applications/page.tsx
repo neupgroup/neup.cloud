@@ -1,10 +1,12 @@
 import { Metadata } from "next";
-import ClientPage from "./client-page";
+
+import { ApplicationsPage } from "@/services/applications/list-page";
 
 export const metadata: Metadata = {
     title: "Applications, Neup.Cloud",
 };
 
 export default function Page() {
-    return <ClientPage />;
+    return <ApplicationsPage />;
 }
+ 

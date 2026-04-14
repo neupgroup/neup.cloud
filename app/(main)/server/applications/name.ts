@@ -1,1 +1,0 @@
-export { normalizeApplicationNameInput } from '@/services/applications/name';

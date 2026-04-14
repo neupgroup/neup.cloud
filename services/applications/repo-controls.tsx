@@ -1,6 +1,7 @@
 import { useToast } from '@/hooks/use-toast';
 import { useState } from "react";
-import { performGitOperation } from '@/app/(main)/server/applications/actions';
+
+import { performGitOperation } from './actions';
 
 export interface RepoControlsProps {
     applicationId: string;

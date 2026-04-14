@@ -1,59 +1,87 @@
+'use server';
 
+import { exec as rawExec } from 'child_process';
+import { readFile, unlink } from 'fs/promises';
+import { promisify } from 'util';
 
-import type { Application, CreateApplicationData, UpdateApplicationData } from '@/services/applications/type';
+import * as Git from '@/core/github';
+import * as Go from '@/core/go';
+import * as NextJs from '@/core/nextjs';
+import * as NodeJs from '@/core/nodejs';
+import * as Python from '@/core/python';
+import { executeCommand, executeQuickCommand } from '@/services/saved-commands/logic';
+import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
 
-// Service imports
-import { getApplications as getApplicationsService } from '@/services/applications/create';
-import { updateApplication as updateApplicationService } from '@/services/applications/update';
-import { createApplication as createApplicationService } from '@/services/applications/create';
-import { deleteApplication as deleteApplicationService } from '@/services/applications/delete';
-import { syncApplicationsWithServer as syncApplicationsWithServerService } from '@/services/applications/sync';
+import { buildSupervisorServiceName, createApplication as createApplicationRecord, generateSupervisorServiceToken } from './create';
+import { deleteApplication as deleteApplicationRecord } from './delete';
+import { getApplication as getApplicationRecord, getApplications as getApplicationsData } from './data';
+import type { Application, CreateApplicationData, UpdateApplicationData } from './type';
+import { getRunningProcesses as getRunningProcessesForServer, getSupervisorProcesses as getSupervisorProcessesForServer } from './processes';
+import { syncApplicationsWithServer as syncApplicationsWithServerForServer } from './sync';
+import { updateApplication as updateApplicationRecord } from './update';
+
+const execAsync = promisify(rawExec);
+
+function sanitizeStageName(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'custom_command';
+}
+
+async function getSelectedServerId() {
+  const cookieStore = await cookies();
+  return cookieStore.get('selected_server')?.value;
+}
 
 export async function getApplications(): Promise<Application[]> {
-  return getApplicationsService();
+  return getApplicationsData();
 }
 
 export async function getApplication(id: string): Promise<Application | null> {
-  const applications = await getApplicationsService();
-  const application = applications.find(app => app.id === id) || null;
+  const application = await getApplicationRecord(id);
   if (!application) return null;
   if (application.information?.supervisorServiceName) return application;
-  // Generate supervisorServiceName if missing
-  const { buildSupervisorServiceName, generateSupervisorServiceToken } = await import('@/services/applications/create');
+
   const supervisorServiceName = buildSupervisorServiceName(id, generateSupervisorServiceToken());
-  // Update and return the updated application
-  await updateApplicationService(id, { information: { ...application.information, supervisorServiceName } });
-  // Fetch the updated application
-  const updatedApplications = await getApplicationsService();
-  return updatedApplications.find(app => app.id === id) || null;
+  await updateApplicationRecord(id, {
+    information: {
+      ...(application.information ?? {}),
+      supervisorServiceName,
+    },
+  });
+
+  return getApplicationRecord(id);
 }
 
 export async function createApplication(appData: CreateApplicationData) {
-  const application = await createApplicationService(appData);
-  // Optionally revalidate path if needed
+  const application = await createApplicationRecord(appData);
+  revalidatePath('/server/applications');
   return application.id;
 }
 
 export async function deleteApplication(id: string) {
-  await deleteApplicationService(id);
+  await deleteApplicationRecord(id);
+  revalidatePath('/server/applications');
 }
 
 export async function updateApplication(id: string, data: UpdateApplicationData) {
   if (Object.keys(data).length === 0) return;
-  await updateApplicationService(id, data);
+  await updateApplicationRecord(id, data);
+  revalidatePath('/server/applications');
+  revalidatePath(`/server/applications/${id}`);
 }
 
+export async function syncApplicationsWithServer() {
+  const serverId = await getSelectedServerId();
+  if (!serverId) {
+    throw new Error('No server selected');
+  }
 
-type SyncApplicationsWithServerResult = {
-  applications: Application[];
-  serverOnlyApplications: any[];
-};
-
-export async function syncApplicationsWithServer(): Promise<SyncApplicationsWithServerResult> {
-  return syncApplicationsWithServerService();
+  return syncApplicationsWithServerForServer(serverId);
 }
-
-
 
 export async function executeApplicationCommand(
   applicationId: string,
@@ -63,9 +91,7 @@ export async function executeApplicationCommand(
   const app = await getApplication(applicationId);
   if (!app) throw new Error('Application not found');
 
-  const cookieStore = await cookies();
-  const serverId = cookieStore.get('selected_server')?.value;
-
+  const serverId = await getSelectedServerId();
   if (!serverId) {
     throw new Error('No server selected. Please select a server first.');
   }
@@ -165,8 +191,7 @@ export async function performGitOperation(
   const app = await getApplication(applicationId);
   if (!app) throw new Error('Application not found');
 
-  const cookieStore = await cookies();
-  const serverId = cookieStore.get('selected_server')?.value;
+  const serverId = await getSelectedServerId();
   if (!serverId) throw new Error('No server selected');
 
   let repoUrl = app.repository;
@@ -259,121 +284,15 @@ ${cmdGenerator('"$KEY_PATH"')}
 }
 
 export async function getRunningProcesses() {
-  const cookieStore = await cookies();
-  const serverId = cookieStore.get('selected_server')?.value;
+  const serverId = await getSelectedServerId();
   if (!serverId) throw new Error('No server selected');
-
-  const delimiter = '---NEUP_CLOUD_SPLIT---';
-  const command = `
-        if command -v pm2 &> /dev/null; then
-            pm2 jlist && echo "${delimiter}" && (if [ -s ~/.pm2/dump.pm2 ]; then cat ~/.pm2/dump.pm2; else echo "[]"; fi)
-        else
-            echo "[]${delimiter}[]"
-        fi
-    `;
-
-  const result = await executeQuickCommand(serverId, command);
-
-  if (result.error) {
-    console.warn('Error fetching pm2 list:', result.error);
-    return [];
-  }
-
-  try {
-    const parts = (result.output || '').split(delimiter);
-    const runningListRaw = parts[0]?.trim();
-    const savedListRaw = parts[1]?.trim();
-
-    const runningList = JSON.parse(runningListRaw || '[]');
-    let savedList = [];
-
-    try {
-      savedList = JSON.parse(savedListRaw || '[]');
-    } catch (error) {
-      console.warn('Failed to parse saved list:', error);
-    }
-
-    const savedNames = new Set(savedList.map((process: any) => process.name));
-
-    return runningList.map((process: any) => ({
-      ...process,
-      isPermanent: savedNames.has(process.name),
-    }));
-  } catch (error) {
-    console.error('Failed to process pm2 output:', error);
-    return [];
-  }
+  return getRunningProcessesForServer(serverId);
 }
 
 export async function getSupervisorProcesses() {
-  const cookieStore = await cookies();
-  const serverId = cookieStore.get('selected_server')?.value;
+  const serverId = await getSelectedServerId();
   if (!serverId) throw new Error('No server selected');
-
-  const command = `
-    if command -v supervisorctl &> /dev/null; then 
-        sudo supervisorctl status 2>/dev/null || true
-    elif [ -f /usr/bin/supervisorctl ]; then
-        sudo /usr/bin/supervisorctl status 2>/dev/null || true
-    elif [ -f /usr/local/bin/supervisorctl ]; then
-        sudo /usr/local/bin/supervisorctl status 2>/dev/null || true
-    else
-        echo "SUPERVISORCTL_NOT_FOUND"
-    fi`;
-
-  const result = await executeQuickCommand(serverId, command);
-
-  if (result.error) {
-    console.warn('Error fetching supervisor list:', result.error);
-    return [];
-  }
-
-  try {
-    const output = (result.output || '').trim();
-    if (!output || output === 'SUPERVISORCTL_NOT_FOUND') return [];
-
-    const lines = output.split('\n');
-    const processes = [];
-
-    for (const line of lines) {
-      if (!line) continue;
-
-      const match = line.match(/^(\S+)\s+(\S+)(?:\s+(.*))?$/);
-      if (!match) continue;
-
-      const name = match[1];
-      const state = match[2];
-      const description = match[3] || '';
-
-      let pid = null;
-      let uptime = null;
-
-      const pidMatch = description.match(/pid (\d+)/);
-      if (pidMatch) {
-        pid = parseInt(pidMatch[1], 10);
-      }
-
-      const uptimeMatch = description.match(/uptime (\S+)/);
-      if (uptimeMatch) {
-        uptime = uptimeMatch[1];
-      }
-
-      processes.push({
-        name,
-        state,
-        description,
-        pid,
-        uptime,
-        source: 'supervisor',
-        isPermanent: true,
-      });
-    }
-
-    return processes;
-  } catch (error) {
-    console.error('Failed to process supervisor output:', error);
-    return [];
-  }
+  return getSupervisorProcessesForServer(serverId);
 }
 
 export async function restartApplicationProcess(serverId: string, pmId: string | number) {
@@ -399,8 +318,7 @@ export async function restartSupervisorProcess(serverId: string, name: string) {
 }
 
 export async function stopSupervisorOnlyProcess(name: string) {
-  const cookieStore = await cookies();
-  const serverId = cookieStore.get('selected_server')?.value;
+  const serverId = await getSelectedServerId();
   if (!serverId) throw new Error('No server selected');
 
   const result = await executeQuickCommand(serverId, `sudo supervisorctl stop '${name}' || true`);
@@ -414,8 +332,7 @@ export async function stopSupervisorOnlyProcess(name: string) {
 }
 
 export async function deleteSupervisorOnlyProcess(name: string) {
-  const cookieStore = await cookies();
-  const serverId = cookieStore.get('selected_server')?.value;
+  const serverId = await getSelectedServerId();
   if (!serverId) throw new Error('No server selected');
 
   const command = `
@@ -461,7 +378,7 @@ sudo rm -rf /lib/systemd/system/supervisor.service
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
 which supervisord || echo "Supervisor removed"
-    `.trim();
+  `.trim();
 
   const result = await executeCommand(serverId, command, 'Purge Supervisor', command);
   if (result.error) {
@@ -509,8 +426,7 @@ export async function rebootSystem(serverId: string) {
 }
 
 export async function getProcessDetails(provider: string, name: string) {
-  const cookieStore = await cookies();
-  const serverId = cookieStore.get('selected_server')?.value;
+  const serverId = await getSelectedServerId();
   if (!serverId) throw new Error('No server selected');
 
   if (provider === 'supervisor') {
@@ -660,8 +576,7 @@ export async function deployConfiguration(applicationId: string) {
   const app = await getApplication(applicationId);
   if (!app) throw new Error('Application not found');
 
-  const cookieStore = await cookies();
-  const serverId = cookieStore.get('selected_server')?.value;
+  const serverId = await getSelectedServerId();
   if (!serverId) throw new Error('No server selected. Please select a server first.');
 
   const location = app.location;
@@ -682,7 +597,7 @@ EOF
   await executeCommand(serverId, envCommand, `Deploying .env for ${app.name}`, envCommand);
 
   if (app.files && Object.keys(app.files).length > 0) {
-    let fileOpsScript = 'echo "Starting Custom File Deployment..."\n';
+    let fileOpsScript = 'echo "Starting Custom File Deployment..."\\n';
 
     for (const [filePath, content] of Object.entries(app.files)) {
       const delimiter = `EOF_${Math.random().toString(36).substring(7).toUpperCase()}`;
@@ -707,4 +622,77 @@ echo "Deployed ${filePath}"
 
   revalidatePath(`/server/applications/${applicationId}`);
   return { success: true };
+}
+
+export async function getApplicationDetailPageData(params: Promise<{ id: string }>) {
+  const { id } = await params;
+  const cookieStore = await cookies();
+  const serverName = cookieStore.get('selected_server_name')?.value;
+
+  if (id.startsWith('supervisor_')) {
+    const processName = id.slice('supervisor_'.length);
+    const [processDetails, supervisorProcesses] = await Promise.all([
+      getProcessDetails('supervisor', processName),
+      getSupervisorProcesses(),
+    ]);
+    const summary = Array.isArray(supervisorProcesses)
+      ? supervisorProcesses.find((process: any) => process.name === processName)
+      : null;
+
+    return { supervisor: true as const, processName, processDetails, summary, serverName };
+  }
+
+  const application = await getApplication(id) as any;
+  if (!application) return { notFound: true as const };
+
+  const appLanguage = application.language === 'next' ? 'Next.js' :
+    application.language === 'node' ? 'Node.js' :
+      application.language === 'python' ? 'Python' :
+        application.language === 'go' ? 'Go' : 'Custom';
+
+  if (!application.commands) {
+    application.commands = {};
+  }
+
+  const uniquePorts = application.networkAccess?.map(Number).filter((p: number) => !isNaN(p) && p > 0) || [];
+  const context = {
+    applicationId: application.id,
+    appName: application.name,
+    appLocation: application.location,
+    preferredPorts: uniquePorts,
+    entryFile: application.information?.entryFile,
+    supervisorServiceName: application.information?.supervisorServiceName,
+  };
+
+  let commandsArray: any[] = [];
+
+  if (application.language === 'next') {
+    commandsArray = NextJs.getCommands(context);
+  } else if (application.language === 'node') {
+    commandsArray = NodeJs.getCommands(context);
+  } else if (application.language === 'python') {
+    commandsArray = Python.getCommands(context);
+  } else if (application.language === 'go') {
+    commandsArray = Go.getCommands(context);
+  }
+
+  commandsArray.forEach((cmdDef: any) => {
+    const name = cmdDef.title.toLowerCase();
+    const parts = [];
+    if (cmdDef.command.preCommand) parts.push(cmdDef.command.preCommand);
+    parts.push(cmdDef.command.mainCommand);
+    if (cmdDef.command.postCommand) parts.push(cmdDef.command.postCommand);
+
+    application.commands[name] = parts.join('\n');
+  });
+
+  application.commandDefinitions = commandsArray;
+
+  return { supervisor: false as const, application, appLanguage, serverName };
+}
+
+export async function getApplicationFilesPageData(params: Promise<{ id: string }>) {
+  const { id } = await params;
+  const application = await getApplication(id);
+  return { id, application };
 }

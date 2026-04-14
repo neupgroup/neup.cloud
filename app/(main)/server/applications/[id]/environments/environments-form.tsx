@@ -13,12 +13,12 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
-import { updateApplication } from "../../actions"
-import { Application } from "../../types"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Plus, Trash2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { updateApplication } from "@/services/applications/actions"
+import type { Application } from "@/services/applications/type"
 
 const envSchema = z.object({
     envs: z.array(z.object({

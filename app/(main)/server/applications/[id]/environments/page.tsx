@@ -1,11 +1,11 @@
 
-import { getApplication } from "../../actions";
 import { notFound } from "next/navigation";
 import { PageTitleBack } from "@/components/page-header";
 import { EnvironmentsForm } from "./environments-form";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { InfoIcon, Lock } from "lucide-react";
+import { getApplication } from "@/services/applications/actions";
 
 export default async function ApplicationEnvironmentsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;

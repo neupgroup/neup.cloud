@@ -18,7 +18,7 @@ import { Edit, Trash, Key, UploadCloud, Loader2, FileText } from "lucide-react";
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { deleteApplication, deployConfiguration } from "./actions";
+import { deleteApplication, deployConfiguration } from "@/services/applications/actions";
 
 interface ApplicationActionsProps {
     applicationId: string;

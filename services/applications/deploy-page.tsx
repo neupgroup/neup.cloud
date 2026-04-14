@@ -2,18 +2,17 @@
 
 import React, { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Plus, Trash, X, Copy, ExternalLink, Key, Upload, AppWindow } from 'lucide-react';
+
+import { PageTitleBack } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { PageTitleBack } from '@/components/page-header';
-import { createApplication, generateRepositoryKeys } from '@/app/(main)/server/applications/actions';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Trash, X, Copy, ExternalLink, Key, Upload, AppWindow } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -23,7 +22,10 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useServerName } from '@/hooks/use-server-name';
-import { normalizeApplicationNameInput } from '@/app/(main)/server/applications/name';
+import { useToast } from '@/hooks/use-toast';
+
+import { createApplication, generateRepositoryKeys } from './actions';
+import { normalizeApplicationNameInput } from './name';
 
 const FRAMEWORKS = [
   {
@@ -54,71 +56,52 @@ const FRAMEWORKS = [
 interface CommandItem {
   name: string;
   description: string;
-  value: string; // This will be the raw value in state, encoded on save
+  value: string;
 }
 
-export default function CreateApplicationPage() {
+export function DeployApplicationPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const serverName = useServerName();
-
-  // Application Basics
   const [appName, setAppName] = useState('');
   const [appIcon, setAppIcon] = useState('');
   const [appLocation, setAppLocation] = useState('');
   const appIconInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Repository Info
   const [repoLocation, setRepoLocation] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [accessKey, setAccessKey] = useState('');
   const [username, setUsername] = useState('');
   const [generatedPublicKey, setGeneratedPublicKey] = useState<string | null>(null);
   const [isGeneratingKey, setIsGeneratingKey] = useState(false);
-
-  // Language/Framework
   const [selectedFramework, setSelectedFramework] = useState('');
-
-  // Network Info
   const [requiresNetwork, setRequiresNetwork] = useState(false);
   const [preferredPorts, setPreferredPorts] = useState<number[]>([]);
   const [portInput, setPortInput] = useState('');
-
-  // Commands
   const [commands, setCommands] = useState<CommandItem[]>([]);
-
-  // Custom Command Input State
   const [newCmdName, setNewCmdName] = useState('');
   const [newCmdDesc, setNewCmdDesc] = useState('');
   const [newCmdValue, setNewCmdValue] = useState('');
 
   const handleFrameworkChange = (val: string) => {
     setSelectedFramework(val);
-    const fw = FRAMEWORKS.find(f => f.id === val);
-    if (fw) {
-      // Load default commands
-      setCommands([...fw.defaultCommands]);
-    } else {
-      setCommands([]);
-    }
+    const framework = FRAMEWORKS.find((item) => item.id === val);
+    setCommands(framework ? [...framework.defaultCommands] : []);
   };
 
   const handlePortKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === ',' || e.key === 'Enter') {
       e.preventDefault();
-      const port = parseInt(portInput.trim());
-      if (!isNaN(port) && port > 0 && port < 65536) {
-        if (!preferredPorts.includes(port)) {
-          setPreferredPorts([...preferredPorts, port]);
-        }
+      const port = parseInt(portInput.trim(), 10);
+      if (!isNaN(port) && port > 0 && port < 65536 && !preferredPorts.includes(port)) {
+        setPreferredPorts([...preferredPorts, port]);
       }
       setPortInput('');
     }
   };
 
   const removePort = (portToRemove: number) => {
-    setPreferredPorts(preferredPorts.filter(p => p !== portToRemove));
+    setPreferredPorts(preferredPorts.filter((port) => port !== portToRemove));
   };
 
   const addCustomCommand = () => {
@@ -133,7 +116,7 @@ export default function CreateApplicationPage() {
   };
 
   const removeCommand = (index: number) => {
-    setCommands(commands.filter((_, i) => i !== index));
+    setCommands(commands.filter((_, currentIndex) => currentIndex !== index));
   };
 
   const handleGenerateKey = async () => {
@@ -143,8 +126,8 @@ export default function CreateApplicationPage() {
       setAccessKey(keys.privateKey);
       setGeneratedPublicKey(keys.publicKey);
       toast({ title: "Key Generated", description: "New access key pair generated." });
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
       toast({ variant: "destructive", title: "Error", description: "Failed to generate key." });
     } finally {
       setIsGeneratingKey(false);
@@ -168,7 +151,6 @@ export default function CreateApplicationPage() {
     reader.readAsDataURL(file);
   };
 
-  // Improved submit handler to use the returned ID
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -179,7 +161,6 @@ export default function CreateApplicationPage() {
       return;
     }
 
-    // Construct Reponse Objects
     const repoInfo = {
       location: repoLocation,
       isPrivate,
@@ -192,32 +173,23 @@ export default function CreateApplicationPage() {
       preferredPort: requiresNetwork ? preferredPorts : [],
     };
 
-    const formattedCommands = commands.map(cmd => {
+    const formattedCommands = commands.map((cmd) => {
       let name = cmd.name;
-      if (selectedFramework === 'custom') {
-        if (['start', 'stop', 'restart', 'build'].includes(cmd.name.toLowerCase())) {
-          name = `lifecycle.${cmd.name.toLowerCase()}`;
-        }
+      if (selectedFramework === 'custom' && ['start', 'stop', 'restart', 'build'].includes(cmd.name.toLowerCase())) {
+        name = `lifecycle.${cmd.name.toLowerCase()}`;
       }
       return {
-        name: name,
+        name,
         description: cmd.description,
-        value: btoa(cmd.value), // client side base64
+        value: btoa(cmd.value),
       };
     });
 
     const simpleCommands: Record<string, string> = {};
-    commands.forEach(cmd => {
+    commands.forEach((cmd) => {
       let key = cmd.name;
-      // Logic from prompt: "if the command is part of the lifecycle command, then we save with the name lifecycle.name"
-      // "but if the app is from framework or language defined and not custom, the lifecycle. will not work."
-      // So ONLY for custom app we prefix? 
-      // Or if the user overrides them? 
-      // I will follow: if custom framework, prefix lifecycle commands.
-      if (selectedFramework === 'custom') {
-        if (['start', 'stop', 'restart', 'build'].includes(cmd.name.toLowerCase())) {
-          key = `lifecycle.${cmd.name.toLowerCase()}`;
-        }
+      if (selectedFramework === 'custom' && ['start', 'stop', 'restart', 'build'].includes(cmd.name.toLowerCase())) {
+        key = `lifecycle.${cmd.name.toLowerCase()}`;
       }
       simpleCommands[key] = cmd.value;
     });
@@ -229,7 +201,7 @@ export default function CreateApplicationPage() {
         location: appLocation,
         language: selectedFramework,
         repository: repoLocation,
-        networkAccess: requiresNetwork ? preferredPorts.map(p => p.toString()) : undefined,
+        networkAccess: requiresNetwork ? preferredPorts.map((port) => port.toString()) : undefined,
         commands: simpleCommands,
         information: {
           repoInfo,
@@ -241,22 +213,19 @@ export default function CreateApplicationPage() {
 
       router.push(`/server/applications/${appId}`);
       toast({ title: "Application Created", description: "Redirecting to application details..." });
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
       toast({ variant: "destructive", title: "Error", description: "Could not create application." });
     } finally {
       setIsLoading(false);
     }
   };
 
-
   return (
     <div className="container max-w-3xl py-8 space-y-8 animate-in fade-in duration-500">
       <PageTitleBack title="Deploy New Application" backHref="/server/applications" serverName={serverName} />
 
       <form onSubmit={onSubmit} className="space-y-8">
-
-        {/* Application Basics */}
         <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>Application Basics</CardTitle>
@@ -269,7 +238,7 @@ export default function CreateApplicationPage() {
                 id="appName"
                 placeholder="Application Name"
                 value={appName}
-                onChange={e => setAppName(normalizeApplicationNameInput(e.target.value))}
+                onChange={(e) => setAppName(normalizeApplicationNameInput(e.target.value))}
                 maxLength={64}
               />
             </div>
@@ -288,12 +257,12 @@ export default function CreateApplicationPage() {
                     <Upload className="mr-2 h-4 w-4" />
                     Upload Icon
                   </Button>
-                  {appIcon && (
+                  {appIcon ? (
                     <Button type="button" variant="ghost" onClick={() => setAppIcon('')}>
                       <X className="mr-2 h-4 w-4" />
                       Remove
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </div>
               <input ref={appIconInputRef} id="appIcon" type="file" accept="image/*" className="hidden" onChange={handleAppIconUpload} />
@@ -301,12 +270,11 @@ export default function CreateApplicationPage() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="appLocation">Location in Server</Label>
-              <Input id="appLocation" placeholder="/var/www/my-app" value={appLocation} onChange={e => setAppLocation(e.target.value)} />
+              <Input id="appLocation" placeholder="/var/www/my-app" value={appLocation} onChange={(e) => setAppLocation(e.target.value)} />
             </div>
           </CardContent>
         </Card>
 
-        {/* Repository Information */}
         <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>Repository Information</CardTitle>
@@ -315,27 +283,25 @@ export default function CreateApplicationPage() {
           <CardContent className="space-y-4">
             <div className="grid gap-2">
               <Label htmlFor="repoLocation">Repository URL (Optional)</Label>
-              <Input id="repoLocation" placeholder="https://github.com/user/repo" value={repoLocation} onChange={e => setRepoLocation(e.target.value)} />
+              <Input id="repoLocation" placeholder="https://github.com/user/repo" value={repoLocation} onChange={(e) => setRepoLocation(e.target.value)} />
             </div>
 
             <div className="flex items-center space-x-2">
-              <Checkbox id="isPrivate" checked={isPrivate} onCheckedChange={(c) => setIsPrivate(!!c)} />
+              <Checkbox id="isPrivate" checked={isPrivate} onCheckedChange={(checked) => setIsPrivate(!!checked)} />
               <Label htmlFor="isPrivate">Private Repository</Label>
             </div>
 
-            {isPrivate && (
+            {isPrivate ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="accessKey">
-                    Access Key / Private Key
-                  </Label>
+                  <Label htmlFor="accessKey">Access Key / Private Key</Label>
                   <div className="flex gap-2">
-                    <Input id="accessKey" type="password" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" value={accessKey} onChange={e => setAccessKey(e.target.value)} />
+                    <Input id="accessKey" type="password" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" value={accessKey} onChange={(e) => setAccessKey(e.target.value)} />
                     <Button type="button" variant="outline" size="icon" onClick={handleGenerateKey} disabled={isGeneratingKey} title="Generate new key pair">
                       <Key className="h-4 w-4" />
                     </Button>
                   </div>
-                  {generatedPublicKey && (
+                  {generatedPublicKey ? (
                     <div className="mt-2 p-3 bg-muted rounded-md text-xs space-y-2 border border-primary/20 animate-in fade-in zoom-in-95">
                       <div className="flex items-center justify-between font-medium">
                         <span className="text-primary flex items-center gap-1.5">
@@ -358,18 +324,17 @@ export default function CreateApplicationPage() {
                         </a>
                       </div>
                     </div>
-                  )}
+                  ) : null}
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="username">Username (Optional)</Label>
-                  <Input id="username" placeholder="git-user" value={username} onChange={e => setUsername(e.target.value)} />
+                  <Input id="username" placeholder="git-user" value={username} onChange={(e) => setUsername(e.target.value)} />
                 </div>
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
 
-        {/* Language / Framework */}
         <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>Framework & Runtime</CardTitle>
@@ -380,15 +345,14 @@ export default function CreateApplicationPage() {
                 <SelectValue placeholder="Select a framework" />
               </SelectTrigger>
               <SelectContent>
-                {FRAMEWORKS.map(fw => (
-                  <SelectItem key={fw.id} value={fw.id}>{fw.name}</SelectItem>
+                {FRAMEWORKS.map((framework) => (
+                  <SelectItem key={framework.id} value={framework.id}>{framework.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </CardContent>
         </Card>
 
-        {/* Network Information */}
         <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>Network Settings</CardTitle>
@@ -399,11 +363,11 @@ export default function CreateApplicationPage() {
               <Label htmlFor="requiresNetwork">Requires Network Access</Label>
             </div>
 
-            {requiresNetwork && (
+            {requiresNetwork ? (
               <div className="grid gap-2 animate-in slide-in-from-top-2">
                 <Label htmlFor="ports">Preferred Ports</Label>
                 <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-background focus-within:ring-2 focus-within:ring-ring">
-                  {preferredPorts.map(port => (
+                  {preferredPorts.map((port) => (
                     <Badge key={port} variant="secondary" className="gap-1 pr-1">
                       {port}
                       <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => removePort(port)} />
@@ -413,65 +377,62 @@ export default function CreateApplicationPage() {
                     className="flex-1 bg-transparent border-none outline-none text-sm min-w-[50px]"
                     placeholder={preferredPorts.length === 0 ? "Type port & press comma..." : ""}
                     value={portInput}
-                    onChange={e => setPortInput(e.target.value)}
+                    onChange={(e) => setPortInput(e.target.value)}
                     onKeyDown={handlePortKeyDown}
                   />
                 </div>
                 <p className="text-[0.8rem] text-muted-foreground">Press comma (,) or Enter to add a port.</p>
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
 
-        {/* Commands */}
         <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle>Commands</CardTitle>
             <CardDescription>Configure existing or add custom commands.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Existing/Default Commands List */}
-            {commands.length > 0 && (
+            {commands.length > 0 ? (
               <div className="space-y-3">
-                {commands.map((cmd, idx) => (
-                  <div key={idx} className="flex flex-col gap-2 p-3 rounded-lg border bg-muted/30 relative group hover:bg-muted/50 transition-colors">
+                {commands.map((cmd, index) => (
+                  <div key={index} className="flex flex-col gap-2 p-3 rounded-lg border bg-muted/30 relative group hover:bg-muted/50 transition-colors">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <div className="font-semibold text-sm flex items-center gap-2">
                           {cmd.name}
-                          {cmd.description && <span className="text-xs font-normal text-muted-foreground">- {cmd.description}</span>}
+                          {cmd.description ? <span className="text-xs font-normal text-muted-foreground">- {cmd.description}</span> : null}
                         </div>
                         <div className="text-xs font-mono bg-background px-2 py-1 rounded border overflow-x-auto max-w-[300px] md:max-w-md lg:max-w-lg">
                           {cmd.value}
                         </div>
                       </div>
-                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeCommand(idx)}>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeCommand(index)}>
                         <Trash className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
+            ) : null}
 
             <Separator />
 
-            {/* Add New Command */}
             <div className="grid gap-4 p-4 border rounded-lg bg-background/50">
               <h4 className="font-medium text-sm">Add Custom Command</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label className="text-xs">Command Name</Label>
-                  <Input value={newCmdName} onChange={e => setNewCmdName(e.target.value.replace(/[^a-zA-Z0-9-]/g, '-'))} placeholder="e.g. migrate" className="h-9" />
+                  <Input value={newCmdName} onChange={(e) => setNewCmdName(e.target.value.replace(/[^a-zA-Z0-9-]/g, '-'))} placeholder="e.g. migrate" className="h-9" />
                 </div>
                 <div className="grid gap-2">
                   <Label className="text-xs">Description</Label>
-                  <Input value={newCmdDesc} onChange={e => setNewCmdDesc(e.target.value)} placeholder="Optional description" className="h-9" />
+                  <Input value={newCmdDesc} onChange={(e) => setNewCmdDesc(e.target.value)} placeholder="Optional description" className="h-9" />
                 </div>
               </div>
               <div className="grid gap-2">
                 <Label className="text-xs">Command Script</Label>
-                <Textarea value={newCmdValue} onChange={e => setNewCmdValue(e.target.value)} placeholder="npm run migrate" className="font-mono text-sm min-h-[80px]" />
+                <Textarea value={newCmdValue} onChange={(e) => setNewCmdValue(e.target.value)} placeholder="npm run migrate" className="font-mono text-sm min-h-[80px]" />
               </div>
               <Button type="button" onClick={addCustomCommand} variant="secondary" size="sm" className="w-full md:w-auto self-end">
                 <Plus className="h-4 w-4 mr-2" /> Add Command
@@ -485,7 +446,6 @@ export default function CreateApplicationPage() {
             {isLoading ? 'Deploying...' : 'Deploy Application'}
           </Button>
         </div>
-
       </form>
     </div>
   );

@@ -2,7 +2,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AppStatusResult, checkApplicationStatus } from "@/app/(main)/server/applications/status-actions";
+import { AppStatusResult, checkApplicationStatus } from "@/services/applications/status-actions";
 import { AlertCircle, Clock, Loader2, PlayCircle, StopCircle, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";

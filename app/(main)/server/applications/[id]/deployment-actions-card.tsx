@@ -1,13 +1,13 @@
 // This file has been removed as it is not UI-only or action logic.
 'use client';
 
-import { deployConfiguration } from "@/app/(main)/server/applications/actions";
 import { Card } from "@/components/ui/card";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from "@/lib/utils";
 import { UploadCloud, Key, Loader2 } from "lucide-react";
 import Link from 'next/link';
 import { useState } from "react";
+import { deployConfiguration } from "@/services/applications/actions";
 
 interface DeploymentActionsCardProps {
     applicationId: string;

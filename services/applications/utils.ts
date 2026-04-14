@@ -1,5 +1,3 @@
-import { Prisma } from '@prisma/client';
-
 import type { Application } from './type';
 
 export type SupervisorProcessLike = {
@@ -12,8 +10,8 @@ export type SupervisorProcessLike = {
   isPermanent?: boolean;
 };
 
-export function toJsonField(value: Prisma.InputJsonValue | null | undefined) {
-  return value === undefined ? undefined : value === null ? Prisma.DbNull : value;
+export function toJsonField(value: unknown) {
+  return value === undefined ? undefined : value;
 }
 
 export function mapApplication(record: any): Application {

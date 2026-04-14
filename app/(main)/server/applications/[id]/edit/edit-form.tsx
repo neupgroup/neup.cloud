@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { generateRepositoryKeys, updateApplication } from '@/app/(main)/server/applications/actions';
 import {
     Select,
     SelectContent,
@@ -22,7 +21,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Copy, ExternalLink, Key, Plus, Trash, X, Upload, AppWindow } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, { useRef, useState } from 'react';
-import { normalizeApplicationNameInput } from '@/app/(main)/server/applications/name';
+import { generateRepositoryKeys, updateApplication } from '@/services/applications/actions';
+import { normalizeApplicationNameInput } from '@/services/applications/name';
 
 const FRAMEWORKS = [
     {

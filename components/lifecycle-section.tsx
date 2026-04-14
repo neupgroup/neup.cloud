@@ -1,7 +1,7 @@
 // Moved from /app/(main)/server/applications/[id]/lifecycle-section.tsx
 'use client';
 
-import { executeApplicationCommand } from "@/app/(main)/server/applications/actions";
+import { executeApplicationCommand } from "@/services/applications/actions";
 import { Card } from "@/components/ui/card";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from "@/lib/utils";

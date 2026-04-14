@@ -8,14 +8,15 @@ import { PageTitle } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { useServerName } from '@/hooks/use-server-name';
 import { useToast } from '@/hooks/use-toast';
-import { ApplicationCard } from "./application-card";
-import { getApplications, syncApplicationsWithServer } from "./actions";
-import { ApplicationCardSkeleton } from "./application-card-skeleton";
-import { getProcessCardStatus, type ServerProcess } from './status';
-import type { Application } from "./types";
-import { getStoredStatus } from '@/services/applications/client-page';
 
-export default function AppsPage() {
+import { getApplications, syncApplicationsWithServer } from "./actions";
+import { ApplicationCard } from "./application-card";
+import { getStoredStatus } from './client-page';
+import { ApplicationCardSkeleton } from "@/app/(main)/server/applications/application-card-skeleton";
+import { getProcessCardStatus, type ServerProcess } from './status';
+import type { Application } from "./type";
+
+export function ApplicationsPage() {
   const { toast } = useToast();
   const serverName = useServerName();
   const [applications, setApplications] = useState<Application[]>([]);
@@ -58,7 +59,7 @@ export default function AppsPage() {
       }
     };
 
-    fetchApplications();
+    void fetchApplications();
 
     return () => {
       cancelled = true;
