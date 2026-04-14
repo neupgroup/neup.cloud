@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { createServer } from '@/app/(main)/servers/actions';
+import { createServer } from '@/services/servers/actions';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';

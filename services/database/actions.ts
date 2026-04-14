@@ -31,6 +31,55 @@ function revalidateTablePaths(connectionId: string, tableName: string) {
   revalidatePath(`/database/${connectionId}/table/${encodedTableName}/properties`);
 }
 
+export async function getDatabaseShellMeta(
+  connectionId: string
+): Promise<Pick<ExternalDatabase, 'id' | 'title' | 'connectionType'> | null> {
+  if (!connectionId?.trim()) {
+    throw new Error('Connection id is required.');
+  }
+
+  const connection = await getDatabaseById(connectionId);
+
+  if (!connection) {
+    return null;
+  }
+
+  return {
+    id: connection.id,
+    title: connection.title,
+    connectionType: connection.connectionType,
+  };
+}
+
+export async function getDatabaseConnectionMeta(
+  connectionId: string
+): Promise<
+  Pick<
+    ExternalDatabase,
+    'id' | 'title' | 'description' | 'connectionType' | 'connectionStatus' | 'credentails' | 'lastValidatedAt'
+  > | null
+> {
+  if (!connectionId?.trim()) {
+    throw new Error('Connection id is required.');
+  }
+
+  const connection = await getDatabaseById(connectionId);
+
+  if (!connection) {
+    return null;
+  }
+
+  return {
+    id: connection.id,
+    title: connection.title,
+    description: connection.description,
+    connectionType: connection.connectionType,
+    connectionStatus: connection.connectionStatus,
+    credentails: connection.credentails,
+    lastValidatedAt: connection.lastValidatedAt,
+  };
+}
+
 export async function getDatabases(): Promise<ExternalDatabase[]> {
   try {
     return await getDatabasesData();

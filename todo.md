@@ -31,3 +31,23 @@ These files import or implement business logic, data fetching, or service-relate
 Add more files to this list as new issues are discovered.
 
 done
+
+# TODO: Merge `*-client.tsx` Into `page.tsx`
+
+These pages are typically a server `page.tsx` that only fetches data and renders a sibling client component. Consider merging by moving the UI into `page.tsx` (making it a client component) and replacing server-only data fetching with narrow server actions (avoid leaking secrets like DB passwords/private keys).
+
+1. (merged) app/(main)/database/[id]/shell/page.tsx + app/(main)/database/[id]/shell/shell-client.tsx
+2. (merged) app/(main)/database/[id]/page.tsx + app/(main)/database/[id]/database-connection-client.tsx
+3. app/(main)/database/[id]/table/[name]/properties/page.tsx + app/(main)/database/[id]/table/[name]/properties/properties-client.tsx
+4. app/(main)/servers/page.tsx + app/(main)/servers/servers-client.tsx
+5. app/(main)/viewer/page.tsx + app/(main)/viewer/viewer-client.tsx
+6. app/(main)/server/commands/live/page.tsx + app/(main)/server/commands/live/client.tsx
+7. app/(main)/server/files/page.tsx + app/(main)/server/files/files-client.tsx
+8. app/(main)/server/status/page.tsx + app/(main)/server/status/status-client.tsx
+9. app/(main)/server/system/startup/page.tsx + app/(main)/server/system/startup/startup-client.tsx
+10. app/(main)/server/system/packages/page.tsx + app/(main)/server/system/packages/packages-client.tsx
+11. app/(main)/server/system/packages/[id]/page.tsx + app/(main)/server/system/packages/[id]/package-details-client.tsx
+12. app/(main)/server/system/updates/page.tsx + app/(main)/server/system/updates/updates-client.tsx
+13. app/(main)/server/system/updates/[id]/page.tsx + app/(main)/server/system/updates/[id]/update-details-client.tsx
+14. app/(main)/server/system/swapper/page.tsx + app/(main)/server/system/swapper/swapper-client.tsx
+15. app/(main)/server/webservices/nginx/default/page.tsx + app/(main)/server/webservices/nginx/default/client.tsx

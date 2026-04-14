@@ -15,7 +15,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { updateServer, deleteServer } from '@/app/(main)/servers/actions';
+import { updateServer, deleteServer } from '@/services/servers/actions';
 import { Loader2, Trash2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { getServer } from '@/services/servers/actions';
