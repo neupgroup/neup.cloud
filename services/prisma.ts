@@ -35,6 +35,9 @@ if (typeof window === 'undefined') {
   if (process.env.NODE_ENV !== 'production') {
     globalForPrisma.prisma = prisma;
   }
+} else {
+  // If imported in the browser, throw an error immediately
+  throw new Error('Prisma cannot be imported in the browser. This is a server-only module.');
 }
 
 export { prisma };

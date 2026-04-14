@@ -1,160 +1,59 @@
-export * from '@/services/applications/actions';
+
+
+import type { Application, CreateApplicationData, UpdateApplicationData } from '@/services/applications/type';
+
+// Service imports
+import { getApplications as getApplicationsService } from '@/services/applications/create';
+import { updateApplication as updateApplicationService } from '@/services/applications/update';
+import { createApplication as createApplicationService } from '@/services/applications/create';
+import { deleteApplication as deleteApplicationService } from '@/services/applications/delete';
+import { syncApplicationsWithServer as syncApplicationsWithServerService } from '@/services/applications/sync';
 
 export async function getApplications(): Promise<Application[]> {
-  return getApplicationsData();
+  return getApplicationsService();
 }
 
 export async function getApplication(id: string): Promise<Application | null> {
-  const application = await getApplicationById(id);
-
-  if (!application) {
-    return null;
-  }
-
-  if (application.information?.supervisorServiceName) {
-    return application;
-  }
-
+  const applications = await getApplicationsService();
+  const application = applications.find(app => app.id === id) || null;
+  if (!application) return null;
+  if (application.information?.supervisorServiceName) return application;
+  // Generate supervisorServiceName if missing
+  const { buildSupervisorServiceName, generateSupervisorServiceToken } = await import('@/services/applications/create');
   const supervisorServiceName = buildSupervisorServiceName(id, generateSupervisorServiceToken());
-
-  return updateApplicationRecord(
-    id,
-    prepareApplicationUpdateData({
-      information: {
-        ...application.information,
-        supervisorServiceName,
-      },
-    })
-  );
+  // Update and return the updated application
+  await updateApplicationService(id, { information: { ...application.information, supervisorServiceName } });
+  // Fetch the updated application
+  const updatedApplications = await getApplicationsService();
+  return updatedApplications.find(app => app.id === id) || null;
 }
 
 export async function createApplication(appData: CreateApplicationData) {
-  const application = await createApplicationRecord(prepareApplicationCreateData(appData));
-  revalidatePath('/server/applications');
+  const application = await createApplicationService(appData);
+  // Optionally revalidate path if needed
   return application.id;
 }
 
 export async function deleteApplication(id: string) {
-  const app = await getApplication(id);
-  if (app) {
-    try {
-      const stopCommand = getApplicationStopCommand(app);
-
-      if (stopCommand) {
-        const cookieStore = await cookies();
-        const serverId = cookieStore.get('selected_server')?.value;
-        if (serverId) {
-          try {
-            await executeCommand(serverId, stopCommand, `Stopping ${app.name}`, stopCommand);
-          } catch (error) {
-            console.warn('Failed to stop application before deletion:', error);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error setting up stop command:', error);
-    }
-  }
-
-  await deleteApplicationRecord(id);
-  revalidatePath('/server/applications');
+  await deleteApplicationService(id);
 }
 
 export async function updateApplication(id: string, data: UpdateApplicationData) {
-  if (Object.keys(data).length === 0) {
-    return;
-  }
-
-  await updateApplicationRecord(id, prepareApplicationUpdateData(data));
-  revalidatePath('/server/applications');
-  revalidatePath(`/server/applications/${id}`);
+  if (Object.keys(data).length === 0) return;
+  await updateApplicationService(id, data);
 }
+
 
 type SyncApplicationsWithServerResult = {
   applications: Application[];
-  serverOnlyApplications: ServerProcess[];
+  serverOnlyApplications: any[];
 };
 
 export async function syncApplicationsWithServer(): Promise<SyncApplicationsWithServerResult> {
-  const applications = await getApplicationsData();
-  const supervisorProcesses = await getSupervisorProcesses();
-  const normalizedSupervisorProcesses: ServerProcess[] = (Array.isArray(supervisorProcesses) ? supervisorProcesses : []).map((process) => ({
-    ...process,
-    source: 'supervisor',
-  }));
-
-  const matchedProcessNames = new Set<string>();
-  let didUpdateAnyApplication = false;
-
-  const syncedApplications = await Promise.all(
-    applications.map(async (application) => {
-      const matchedProcess = findApplicationProcess(
-        application.id,
-        normalizedSupervisorProcesses,
-        application.information?.supervisorServiceName
-      );
-
-      if (matchedProcess) {
-        matchedProcessNames.add(`${matchedProcess.source}:${matchedProcess.name}`);
-      }
-
-      const nextServerSync = matchedProcess
-        ? {
-            status: 'matched' as const,
-            matchedProcessName: matchedProcess.name,
-            matchedProcessState: matchedProcess.state,
-            matchedProcessSource: matchedProcess.source,
-          }
-        : {
-            status: 'missing_on_server' as const,
-          };
-      const nextSupervisorServiceName = matchedProcess?.name ?? application.information?.supervisorServiceName;
-
-      const currentServerSync = application.information?.serverSync;
-      const hasServerSyncChanged =
-        currentServerSync?.status !== nextServerSync.status ||
-        currentServerSync?.matchedProcessName !== nextServerSync.matchedProcessName ||
-        currentServerSync?.matchedProcessState !== nextServerSync.matchedProcessState ||
-        currentServerSync?.matchedProcessSource !== nextServerSync.matchedProcessSource ||
-        application.information?.supervisorServiceName !== nextSupervisorServiceName;
-
-      if (!hasServerSyncChanged) {
-        return {
-          ...application,
-          information: {
-            ...application.information,
-            supervisorServiceName: nextSupervisorServiceName,
-            serverSync: nextServerSync,
-          },
-        };
-      }
-
-      didUpdateAnyApplication = true;
-
-      return updateApplicationRecord(
-        application.id,
-        prepareApplicationUpdateData({
-          information: {
-            ...application.information,
-            supervisorServiceName: nextSupervisorServiceName,
-            serverSync: nextServerSync,
-          },
-        })
-      );
-    })
-  );
-
-  if (didUpdateAnyApplication) {
-    revalidatePath('/server/applications');
-  }
-
-  return {
-    applications: syncedApplications,
-    serverOnlyApplications: normalizedSupervisorProcesses.filter(
-      (process) => !matchedProcessNames.has(`${process.source}:${process.name}`)
-    ),
-  };
+  return syncApplicationsWithServerService();
 }
+
+
 
 export async function executeApplicationCommand(
   applicationId: string,

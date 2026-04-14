@@ -1,5 +1,35 @@
-// Application types and interfaces
-export type Application = {
+export type ApplicationServerSyncStatus = 'matched' | 'missing_on_server';
+
+export type ApplicationServerSyncSource = 'pm2' | 'supervisor';
+
+export type ApplicationServerSyncInfo = {
+  status: ApplicationServerSyncStatus;
+  matchedProcessName?: string;
+  matchedProcessState?: string;
+  matchedProcessSource?: ApplicationServerSyncSource;
+};
+
+export interface ApplicationInformation extends Record<string, any> {
+  repoInfo?: {
+    isPrivate?: boolean;
+    accessKey?: string;
+    username?: string;
+  };
+  supervisorServiceName?: string;
+  serverSync?: ApplicationServerSyncInfo;
+  commandsList?: Array<{
+    name: string;
+    description?: string;
+    value: string;
+  }>;
+  entryFile?: string;
+  networkInfo?: {
+    required?: boolean;
+    preferredPort?: number[];
+  };
+}
+
+export interface Application {
   id: string;
   name: string;
   appIcon?: string;
@@ -8,11 +38,14 @@ export type Application = {
   repository?: string;
   networkAccess?: string[];
   commands?: Record<string, string>;
-  information?: Record<string, any>;
+  information?: ApplicationInformation;
   owner: string;
   createdAt?: string;
   updatedAt?: string;
-};
+  environments?: Record<string, string>;
+  files?: Record<string, string>;
+  commandDefinitions?: any[] | Record<string, any>;
+}
 
-export type CreateApplicationData = Omit<Application, 'id' | 'createdAt' | 'updatedAt'>;
-export type UpdateApplicationData = Partial<Omit<Application, 'id' | 'createdAt' | 'updatedAt'>>;
+export type CreateApplicationData = Omit<Application, 'id' | 'createdAt' | 'updatedAt' | 'commandDefinitions'>;
+export type UpdateApplicationData = Partial<Omit<Application, 'id' | 'createdAt' | 'updatedAt' | 'commandDefinitions'>>;

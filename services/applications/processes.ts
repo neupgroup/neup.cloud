@@ -1,4 +1,4 @@
-import { executeQuickCommand } from '@/services/commands/actions';
+import { executeQuickCommand } from '@/services/saved-commands/logic';
 
 export async function getRunningProcesses(serverId: string) {
   const delimiter = '---NEUP_CLOUD_SPLIT---';
@@ -9,20 +9,27 @@ export async function getRunningProcesses(serverId: string) {
             echo "[]${delimiter}[]"
         fi
     `;
+
   const result = await executeQuickCommand(serverId, command);
   if (result.error) {
     return [];
   }
+
   try {
     const parts = (result.output || '').split(delimiter);
     const runningListRaw = parts[0]?.trim();
     const savedListRaw = parts[1]?.trim();
     const runningList = JSON.parse(runningListRaw || '[]');
+
     let savedList = [];
     try {
       savedList = JSON.parse(savedListRaw || '[]');
-    } catch {}
+    } catch {
+      savedList = [];
+    }
+
     const savedNames = new Set(savedList.map((process: any) => process.name));
+
     return runningList.map((process: any) => ({
       ...process,
       isPermanent: savedNames.has(process.name),
@@ -43,42 +50,53 @@ export async function getSupervisorProcesses(serverId: string) {
     else
         echo "SUPERVISORCTL_NOT_FOUND"
     fi`;
+
   const result = await executeQuickCommand(serverId, command);
   if (result.error) {
     return [];
   }
+
   try {
     const output = (result.output || '').trim();
     if (!output || output === 'SUPERVISORCTL_NOT_FOUND') return [];
+
     const lines = output.split('\n');
     const processes = [];
+
     for (const line of lines) {
       if (!line) continue;
+
       const match = line.match(/^(\S+)\s+(\S+)(?:\s+(.*))?$/);
       if (!match) continue;
+
       const name = match[1];
       const state = match[2];
       const description = match[3] || '';
+
       let pid = null;
       let uptime = null;
+
       const pidMatch = description.match(/pid (\d+)/);
       if (pidMatch) {
         pid = parseInt(pidMatch[1], 10);
       }
+
       const uptimeMatch = description.match(/uptime (\S+)/);
       if (uptimeMatch) {
         uptime = uptimeMatch[1];
       }
+
       processes.push({
         name,
         state,
         description,
         pid,
         uptime,
-        source: 'supervisor',
+        source: 'supervisor' as const,
         isPermanent: true,
       });
     }
+
     return processes;
   } catch {
     return [];
