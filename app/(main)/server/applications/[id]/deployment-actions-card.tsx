@@ -4,18 +4,30 @@
 import { Card } from "@/components/ui/card";
 import { useToast } from '@/hooks/use-toast';
 import { cn } from "@/lib/utils";
-import { UploadCloud, Key, Loader2 } from "lucide-react";
-import Link from 'next/link';
+import { FileText, UploadCloud, Key, Loader2 } from "lucide-react";
+import { useRouter } from 'next/navigation';
 import { useState } from "react";
 import { deployConfiguration } from "@/services/applications/actions";
 
 interface DeploymentActionsCardProps {
     applicationId: string;
+    onOpenEnvironments?: () => void;
+    onOpenFiles?: () => void;
 }
 
-export function DeploymentActionsCard({ applicationId }: DeploymentActionsCardProps) {
+export function DeploymentActionsCard({ applicationId, onOpenEnvironments, onOpenFiles }: DeploymentActionsCardProps) {
     const { toast } = useToast();
+    const router = useRouter();
     const [isDeploying, setIsDeploying] = useState(false);
+
+    const openInline = (view: 'environments' | 'files') => {
+        try {
+            sessionStorage.setItem(`neup:applications:view-intent:${applicationId}`, view);
+        } catch {
+            // ignore
+        }
+        router.push(`/server/applications/${applicationId}`);
+    };
 
     const handleDeploy = async () => {
         setIsDeploying(true);
@@ -42,7 +54,6 @@ export function DeploymentActionsCard({ applicationId }: DeploymentActionsCardPr
         title,
         description,
         onClick,
-        href,
         isLoading = false,
         isLast = false
     }: {
@@ -50,7 +61,6 @@ export function DeploymentActionsCard({ applicationId }: DeploymentActionsCardPr
         title: string,
         description: string,
         onClick?: () => void,
-        href?: string,
         isLoading?: boolean,
         isLast?: boolean
     }) => {
@@ -79,14 +89,6 @@ export function DeploymentActionsCard({ applicationId }: DeploymentActionsCardPr
             isLoading && "opacity-50 pointer-events-none"
         );
 
-        if (href) {
-            return (
-                <Link href={href} className={className}>
-                    <Content />
-                </Link>
-            );
-        }
-
         return (
             <div onClick={onClick} className={className}>
                 <Content />
@@ -114,7 +116,14 @@ export function DeploymentActionsCard({ applicationId }: DeploymentActionsCardPr
                     icon={Key}
                     title="Environment Variables"
                     description="Manage environment variables and secrets for this application"
-                    href={`/server/applications/${applicationId}/environments`}
+                    onClick={onOpenEnvironments ?? (() => openInline('environments'))}
+                />
+
+                <ActionRow
+                    icon={FileText}
+                    title="Custom Files"
+                    description="Manage file overrides that deploy with your configuration"
+                    onClick={onOpenFiles ?? (() => openInline('files'))}
                     isLast
                 />
             </Card>

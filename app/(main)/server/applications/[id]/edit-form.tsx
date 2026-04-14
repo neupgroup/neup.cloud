@@ -1,6 +1,5 @@
 'use client';
 
-import { PageTitleBack } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,9 +57,11 @@ interface CommandItem {
 
 interface EditApplicationFormProps {
     application: any;
+    onCancel?: () => void;
+    onSaved?: () => void;
 }
 
-export default function EditApplicationForm({ application }: EditApplicationFormProps) {
+export default function EditApplicationForm({ application, onCancel, onSaved }: EditApplicationFormProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
@@ -269,9 +270,9 @@ export default function EditApplicationForm({ application }: EditApplicationForm
 
         try {
             await updateApplication(application.id, updatedData);
-            router.push(`/server/applications/${application.id}`);
             toast({ title: "Application Updated", description: "Changes saved successfully." });
             router.refresh();
+            onSaved?.();
         } catch (err) {
             console.error(err);
             toast({ variant: "destructive", title: "Error", description: "Could not update application." });
@@ -281,9 +282,7 @@ export default function EditApplicationForm({ application }: EditApplicationForm
     };
 
     return (
-        <div className="container max-w-3xl py-8 space-y-8 animate-in fade-in duration-500">
-            <PageTitleBack title={`Edit ${application.name}`} backHref={`/server/applications/${application.id}`} />
-
+        <div className="space-y-8 animate-in fade-in duration-500">
             <form onSubmit={onSubmit} className="space-y-8">
 
                 {/* Application Basics */}
@@ -511,7 +510,15 @@ export default function EditApplicationForm({ application }: EditApplicationForm
                 </Card>
 
                 <div className="flex justify-end pt-4">
-                    <Button type="button" variant="outline" className="mr-4" onClick={() => router.back()}>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="mr-4"
+                        onClick={() => {
+                            if (onCancel) return onCancel();
+                            router.back();
+                        }}
+                    >
                         Cancel
                     </Button>
                     <Button type="submit" size="lg" disabled={isLoading} className="w-full md:w-auto min-w-[200px]">

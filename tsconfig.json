@@ -37,6 +37,7 @@
   ],
   "exclude": [
     "node_modules",
-    "Neup.Bridge"
+    "Neup.Bridge",
+    ".next/dev/types"
   ]
 }

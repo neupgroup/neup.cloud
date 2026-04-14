@@ -15,7 +15,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from '@/hooks/use-toast';
 import { Edit, Trash, Key, UploadCloud, Loader2, FileText } from "lucide-react";
-import Link from 'next/link';
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { deleteApplication, deployConfiguration } from "@/services/applications/actions";
@@ -29,6 +28,15 @@ export function ApplicationActions({ applicationId }: ApplicationActionsProps) {
     const router = useRouter();
     const [isDeleting, setIsDeleting] = useState(false);
     const [isDeploying, setIsDeploying] = useState(false);
+
+    const openInline = (view: 'edit' | 'environments' | 'files') => {
+        try {
+            sessionStorage.setItem(`neup:applications:view-intent:${applicationId}`, view);
+        } catch {
+            // ignore
+        }
+        router.push(`/server/applications/${applicationId}`);
+    };
 
     const handleDeploy = async () => {
         setIsDeploying(true);
@@ -86,33 +94,33 @@ export function ApplicationActions({ applicationId }: ApplicationActionsProps) {
             </Button>
 
 
+            <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => openInline('environments')}>
+                <Key className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Env
+                </span>
+            </Button>
 
-            <Link href={`/server/applications/${applicationId}/environments`}>
-                <Button variant="outline" size="sm" className="h-8 gap-1.5">
-                    <Key className="h-4 w-4" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Env
-                    </span>
-                </Button>
-            </Link>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => openInline('files')}>
+                <FileText className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Files
+                </span>
+            </Button>
 
-            <Link href={`/server/applications/${applicationId}/files`}>
-                <Button variant="outline" size="sm" className="h-8 gap-1.5">
-                    <FileText className="h-4 w-4" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Files
-                    </span>
-                </Button>
-            </Link>
-
-            <Link href={`/server/applications/${applicationId}/edit`}>
-                <Button variant="outline" size="sm" className="h-8 gap-1.5">
-                    <Edit className="h-4 w-4" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Edit
-                    </span>
-                </Button>
-            </Link>
+            <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5"
+                onClick={() => {
+                    openInline('edit');
+                }}
+            >
+                <Edit className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Edit
+                </span>
+            </Button>
 
             <AlertDialog>
                 <AlertDialogTrigger asChild>

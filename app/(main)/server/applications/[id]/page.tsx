@@ -1,21 +1,12 @@
-import { AppWindow, Edit } from 'lucide-react';
-import Link from 'next/link';
+import { AppWindow } from 'lucide-react';
 import { notFound } from 'next/navigation';
-
 import { PageTitleBack } from '@/components/page-header';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DeleteApplicationButton } from '@/components/delete-application-button';
 import { getApplicationDetailPageData } from '@/services/applications/actions';
 
-import { DeploymentActionsCard } from './deployment-actions-card';
-import { GitHubSection } from './github-section';
-import { LifecycleSection } from './lifecycle-section';
-import { LogsSection } from './logs-section';
-import { StatusDashboard } from './status-dashboard';
 import { SupervisorOnlyActions } from './supervisor-only-actions';
-import { SystemSection } from './system-section';
+import { ApplicationDetailPanel } from './application-detail-panel';
 
 function getSupervisorBadgeClasses(state: string) {
   const normalizedState = state.toUpperCase();
@@ -109,56 +100,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
 
   return (
     <div className="flex flex-col gap-8 max-w-5xl animate-in fade-in duration-500">
-      <div className="flex flex-col gap-2">
-        <PageTitleBack
-          title={
-            <span className="flex items-center gap-3">
-              {application.appIcon ? (
-                <img
-                  src={application.appIcon}
-                  alt={application.name}
-                  className="h-12 w-12 rounded-lg object-contain border border-border shadow-sm bg-muted/30 p-1"
-                />
-              ) : (
-                <AppWindow className="h-8 w-8 text-primary" />
-              )}
-              {application.name}
-            </span>
-          }
-          description="Application details and management"
-          serverName={serverName}
-          backHref="/server/applications"
-        >
-          <Badge variant="outline" className="text-sm py-1 px-3 border-primary/20 bg-primary/5">
-            {appLanguage}
-          </Badge>
-        </PageTitleBack>
-      </div>
-
-      <StatusDashboard applicationId={application.id} />
-
-      <LifecycleSection application={application} />
-
-      {application.repository ? (
-        <GitHubSection application={application} />
-      ) : null}
-
-      <LogsSection application={application} />
-
-      <SystemSection application={application} />
-
-      <DeploymentActionsCard applicationId={application.id} />
-
-      <div className="flex items-center gap-3 pt-4">
-        <Link href={`/server/applications/${application.id}/edit`}>
-          <Button variant="outline" className="gap-2">
-            <Edit className="h-4 w-4" />
-            Edit Application
-          </Button>
-        </Link>
-
-        <DeleteApplicationButton applicationId={application.id} />
-      </div>
+      <ApplicationDetailPanel application={application} appLanguage={appLanguage} serverName={serverName} />
     </div>
   );
 }
