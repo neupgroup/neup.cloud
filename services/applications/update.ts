@@ -1,0 +1,31 @@
+import { prisma } from '@/services/prisma';
+import type { Application, UpdateApplicationData } from './type';
+import { toJsonField, mapApplication, checkName } from './utils';
+
+export async function updateApplication(id: string, data: UpdateApplicationData): Promise<Application> {
+  if (data.name && !checkName(data.name)) throw new Error('Invalid application name');
+  const existing = await prisma.application.findUnique({ where: { id } });
+  if (!existing) throw new Error('Application not found');
+  const mergedInformation = data.information === undefined ? undefined : {
+    ...((existing.information as Record<string, any> | null) ?? {}),
+    ...data.information,
+    supervisorServiceName:
+      data.information?.supervisorServiceName ?? (existing.information as Record<string, any> | null)?.supervisorServiceName,
+  };
+  const record = await prisma.application.update({
+    where: { id },
+    data: {
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.appIcon !== undefined ? { appIcon: data.appIcon ?? null } : {}),
+      ...(data.location !== undefined ? { location: data.location } : {}),
+      ...(data.language !== undefined ? { language: data.language } : {}),
+      ...(data.repository !== undefined ? { repository: data.repository ?? null } : {}),
+      ...(data.networkAccess !== undefined ? { networkAccess: data.networkAccess } : {}),
+      ...(data.commands !== undefined ? { commands: toJsonField((data.commands ?? null)) } : {}),
+      ...(data.information !== undefined ? { information: toJsonField((mergedInformation ?? null)) } : {}),
+      ...(data.owner !== undefined ? { owner: data.owner } : {}),
+      updatedAt: new Date(),
+    },
+  });
+  return mapApplication(record);
+}

@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { getDatabases } from '@/services/database/actions';
+import { getDatabases } from '@/services/database/database-service';
 import type { ExternalDatabase } from './types';
 
 export default function DatabasePage() {

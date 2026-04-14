@@ -1,5 +1,13 @@
 
+
 # Rules
+## File Naming
+
+- All files must have a short, self-explanatory name that clearly describes their purpose or contents.
+- When renaming files, record the change in `changelog.md` with both the previous and new name. This changelog is used to fix import issues and track refactors.
+
+### Example changelog entry
+- `old/path/oldName.ts` → `new/path/newName.ts`
 
 ## Code Location
 
