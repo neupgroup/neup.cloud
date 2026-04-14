@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { downloadFiles } from '@/app/servers/[id]/actions';
+import { downloadFiles } from '@/app/(main)/servers/[id]/actions';
 import { cookies } from 'next/headers';
 import fs from 'fs/promises';
 

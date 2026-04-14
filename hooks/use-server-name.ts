@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Cookies from 'universal-cookie';
-import { getServer } from '@/app/servers/actions';
+import { getServer } from '@/app/(main)/servers/actions';
 
 export function useServerName() {
     const [serverName, setServerName] = useState<string | null>(null);

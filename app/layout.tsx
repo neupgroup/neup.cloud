@@ -58,7 +58,7 @@ import './globals.css';
 import { ProgressBar } from '@/components/progress-bar';
 import NProgress from 'nprogress';
 import Cookies from 'universal-cookie';
-import { getServer } from '@/app/servers/actions';
+import { getServer } from '@/app/(main)/servers/actions';
 
 // Helper function to find the longest matching path
 function findLongestMatch(currentPath: string, allPaths: string[]): string | null {

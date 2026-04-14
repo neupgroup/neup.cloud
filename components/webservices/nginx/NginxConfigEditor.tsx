@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getServers } from '@/app/servers/actions';
-import { getDomains, type ManagedDomain } from '@/app/domains/actions';
+import { getServers } from '@/app/(main)/servers/actions';
+import { getDomains, type ManagedDomain } from '@/app/(main)/domains/actions';
 import {
     getServerPublicIp,
     generateNginxConfigFromContext,
@@ -11,9 +11,9 @@ import {
     deleteNginxConfig,
     generateSslCertificate,
     saveNginxConfiguration,
-} from '@/app/server/webservices/nginx/actions';
-import { getCertificates } from '@/app/server/webservices/certificates/actions';
-import { getWebOrServerNginxConfig } from '@/app/server/webservices/actions';
+} from '@/app/(main)/server/webservices/nginx/actions';
+import { getCertificates } from '@/app/(main)/server/webservices/certificates/actions';
+import { getWebOrServerNginxConfig } from '@/app/(main)/server/webservices/actions';
 import { Button } from '@/components/ui/button';
 import { useToast } from '../../../hooks/use-toast';
 import {
