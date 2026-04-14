@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PageTitleBack } from '@/components/page-header';
 import { getDatabaseById } from '@/services/databases/data';
 import { getConnectionTableDataPage } from '@/services/database/explorer';
-import type { DatabaseTableDataPage } from '@/app/database/types';
+import type { DatabaseTableDataPage } from '@/services/database/types';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

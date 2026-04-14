@@ -9,8 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { createDatabaseConnection } from '../actions';
-import type { DatabaseConnectionType } from '../types';
+import { createDatabaseConnection } from '@/services/database/actions';
+import type { DatabaseConnectionType } from '@/services/database/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const INITIAL_AUTH_STATE: Record<DatabaseConnectionType, Record<string, string>> = {

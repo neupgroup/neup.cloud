@@ -1,5 +1,5 @@
 import { Pool, type QueryResultRow } from 'pg';
-import type { PostgresAuthConfig } from '@/app/database/types';
+import type { PostgresAuthConfig } from '@/services/database/types';
 
 function parsePort(port: string) {
   const parsed = Number(port);

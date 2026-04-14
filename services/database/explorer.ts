@@ -10,7 +10,7 @@ import type {
   FirestoreAuthConfig,
   MysqlAuthConfig,
   PostgresAuthConfig,
-} from '@/app/database/types';
+} from '@/services/database/types';
 import { createPostgresPool } from '@/services/database/postgres/filesforconnectingandworkingonpostgres';
 import {
   listFirestoreCollections,

@@ -1,5 +1,5 @@
 import { createSign } from 'crypto';
-import type { FirestoreAuthConfig } from '@/app/database/types';
+import type { FirestoreAuthConfig } from '@/services/database/types';
 
 type TokenResponse = {
   access_token: string;

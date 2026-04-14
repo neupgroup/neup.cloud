@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { getDatabases } from '@/services/database/database-service';
-import type { ExternalDatabase } from './types';
+import type { ExternalDatabase } from '@/services/database/types';
 
 export default function DatabasePage() {
   const router = useRouter();

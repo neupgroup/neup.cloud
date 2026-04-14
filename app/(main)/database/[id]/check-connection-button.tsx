@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { checkDatabaseConnection } from '../actions';
+import { checkDatabaseConnection } from '@/services/database/actions';
 
 export function CheckConnectionButton({ connectionId }: { connectionId: string }) {
   const { toast } = useToast();

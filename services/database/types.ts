@@ -105,3 +105,4 @@ export interface DatabaseShellQueryResult {
   executionTimeMs: number;
   message?: string;
 }
+

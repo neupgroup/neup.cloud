@@ -8,7 +8,7 @@ import type {
   MysqlAuthConfig,
   PostgresAuthConfig,
   SqliteAuthConfig,
-} from '@/app/database/types';
+} from '@/services/database/types';
 import { testPostgresConnection } from '@/services/database/postgres/filesforconnectingandworkingonpostgres';
 import { testFirestoreConnection } from '@/services/database/firestore/filesforconnectingandworkingonfirestore';
 

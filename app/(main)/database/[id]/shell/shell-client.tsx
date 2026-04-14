@@ -9,8 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { executeDatabaseShellQuery } from '@/app/(main)/database/actions';
-import type { DatabaseConnectionType, DatabaseShellQueryResult } from '@/app/(main)/database/types';
+import { executeDatabaseShellQuery } from '@/services/database/actions';
+import type { DatabaseConnectionType, DatabaseShellQueryResult } from '@/services/database/types';
 
 const QUICK_QUERIES: Record<DatabaseConnectionType, Array<{ label: string; query: string }>> = {
   postgres: [

@@ -1,6 +1,6 @@
 import { prisma } from '@/services/prisma';
 import { createId } from '@/services/shared/create-id';
-import type { ManagedDomain } from '@/app/domains/actions';
+import type { ManagedDomain } from '@/services/domains/types';
 
 function mapDomain(record: {
   id: string;

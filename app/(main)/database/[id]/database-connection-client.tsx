@@ -10,8 +10,8 @@ import { Card } from "@/components/ui/card";
 import { PageTitleBack } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { checkDatabaseConnection, deleteDatabaseConnection } from "../actions";
-import type { ExternalDatabase } from "@/app/database/types";
+import { checkDatabaseConnection, deleteDatabaseConnection } from "@/services/database/actions";
+import type { ExternalDatabase } from "@/services/database/types";
 
 export default function DatabaseConnectionClient({ connection }: { connection: ExternalDatabase }) {
   const { toast } = useToast();
@@ -172,4 +172,3 @@ export default function DatabaseConnectionClient({ connection }: { connection: E
     </div>
   );
 }
-

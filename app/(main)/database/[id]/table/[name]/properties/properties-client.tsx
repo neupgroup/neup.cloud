@@ -3,13 +3,13 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, KeyRound, Plus, Trash2 } from 'lucide-react';
-import type { DatabaseTableProperties } from '@/app/(main)/database/types';
+import type { DatabaseTableProperties } from '@/services/database/types';
 import { addTablePrimaryKeyAction,
   createTableIndexAction,
   deleteTableAction,
   dropTableColumnAction,
   dropTableIndexAction,
-} from '@/app/(main)/database/actions';
+} from '@/services/database/actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

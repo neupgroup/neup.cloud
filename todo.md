@@ -24,7 +24,7 @@ Below is a numbered list of files in the /app directory that contain service/bus
 7. app/(main)/home/actions.ts
 8. app/(main)/server/applications/status-actions.ts
 9. app/(main)/server/applications/actions.ts
-10. app/(main)/database/actions.ts
+10. (moved) services/database/actions.ts
 
 These files import or implement business logic, data fetching, or service-related operations. Review and move relevant logic to /services as per rules.md.
 
