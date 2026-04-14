@@ -6,8 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { PageTitleBack } from '@/components/page-header';
 import { getDatabaseById } from '@/services/databases/data';
-import { CheckConnectionButton } from './check-connection-button';
-import { DeleteConnectionButton } from './delete-connection-button';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { checkDatabaseConnection, deleteDatabaseConnection } from '../actions';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export const metadata: Metadata = {
   title: 'Database Connection, Neup.Cloud',
@@ -24,6 +27,51 @@ export default async function DatabaseConnectionDetailsPage({ params }: Props) {
   if (!connection) {
     notFound();
   }
+
+  const { toast } = useToast();
+  const router = useRouter();
+  const [isChecking, setIsChecking] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleCheckConnection = async () => {
+    setIsChecking(true);
+    try {
+      const result = await checkDatabaseConnection(connection.id);
+      toast({
+        title: result.success ? 'Connection healthy' : 'Connection failed',
+        description: result.message,
+        variant: result.success ? 'default' : 'destructive',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Connection check failed',
+        description: error?.message || 'Unable to check connection.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleDeleteConnection = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deleteDatabaseConnection(connection.id);
+      toast({
+        title: 'Connection deleted',
+        description: result.message,
+      });
+      router.push('/database');
+    } catch (error: any) {
+      toast({
+        title: 'Delete failed',
+        description: error?.message || 'Unable to delete connection.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="grid gap-8 pb-20">
@@ -68,7 +116,9 @@ export default async function DatabaseConnectionDetailsPage({ params }: Props) {
               Check whether the saved connection can still be maintained.
             </p>
           </div>
-          <CheckConnectionButton connectionId={connection.id} />
+          <Button onClick={handleCheckConnection} variant="outline" disabled={isChecking}>
+            {isChecking ? 'Checking...' : 'Check for connection'}
+          </Button>
         </div>
         {connection.lastValidatedAt && (
           <div className="mt-3 text-xs text-muted-foreground">
@@ -85,7 +135,9 @@ export default async function DatabaseConnectionDetailsPage({ params }: Props) {
               Remove this saved connection from Neup.Cloud.
             </p>
           </div>
-          <DeleteConnectionButton connectionId={connection.id} connectionTitle={connection.title} />
+          <Button onClick={handleDeleteConnection} variant="destructive" disabled={isDeleting}>
+            {isDeleting ? 'Deleting...' : 'Delete connection'}
+          </Button>
         </div>
       </Card>
 
