@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { getServer } from '@/app/(main)/servers/actions';
+import { getServer } from '@/services/servers/actions';
 import ClientTerminal from './client';
 import { Metadata } from 'next';
 

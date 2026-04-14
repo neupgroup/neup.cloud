@@ -1,6 +1,6 @@
 'use server';
 
-import { getServerForRunner } from '../servers/actions';
+import { getServerForRunner } from '@/services/viewer/actions';
 import { runCommandOnServer } from '@/services/ssh';
 import { revalidatePath } from 'next/cache';
 

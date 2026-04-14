@@ -1,6 +1,6 @@
 'use server';
 
-import { getRecentServerLogs } from '@/services/server-logs/data';
+import { getRecentServerLogs } from '@/services/home/actions';
 
 export type ActivityLog = {
   id: string;

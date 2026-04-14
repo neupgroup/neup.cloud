@@ -10,7 +10,7 @@ import {
   Card,
 } from "@/components/ui/card";
 import { useToast } from "../../../hooks/use-toast";
-import { getServers } from "./actions";
+import { getServers } from '@/services/servers/actions';
 import { ServerCard } from "./server-card";
 import { ServerCardSkeleton } from "./server-card-skeleton";
 

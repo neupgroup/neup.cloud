@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Search, CheckCircle, XCircle, ShoppingCart, Loader2, ArrowLeft, ChevronRight, ExternalLink } from 'lucide-react';
-import { checkDomain, type DomainStatus } from '../actions';
+import { checkDomain, type DomainStatus } from '@/services/domains/actions';
 import Link from 'next/link';
 import { PageTitleBack } from '@/components/page-header';
 import { cn } from '@/lib/utils';

@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Trash2, Copy, Check } from "lucide-react";
 import { useParams } from 'next/navigation';
 import { cn } from "@/lib/utils";
-import { getDomain, getDomainDNSRecords, getDomainNameservers, verifyDomain, deleteDomain, ManagedDomain, DNSRecord } from "../actions";
+import { getDomain, getDomainDNSRecords, getDomainNameservers, verifyDomain, deleteDomain, ManagedDomain, DNSRecord } from '@/services/domains/actions';
 import { useEffect, useState } from "react";
 import { PageTitleBack } from "@/components/page-header";
 import { useToast } from '@/hooks/use-toast';

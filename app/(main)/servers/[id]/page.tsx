@@ -1,4 +1,4 @@
-import { getServer } from '@/app/(main)/servers/actions';
+import { getServer } from '@/services/servers/actions';
 import ServerDetailsClientPage from './client-page';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';

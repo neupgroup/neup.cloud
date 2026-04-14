@@ -6,7 +6,7 @@ import {
   deleteSavedCommand as deleteSavedCommandRecord,
   getSavedCommands as getSavedCommandsData,
   updateSavedCommand as updateSavedCommandRecord,
-} from '@/services/saved-commands/data';
+} from '@/services/server/commands/actions';
 import {
   executeCommand as executeCommandLogic,
   executeQuickCommand as executeQuickCommandLogic,

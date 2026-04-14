@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft } from 'lucide-react';
-import { addDomain } from '../actions';
+import { addDomain } from '@/services/domains/actions';
 import Link from 'next/link';
 import { PageTitleBack } from '@/components/page-header';
 

@@ -1,5 +1,9 @@
-import { prisma } from '@/services/prisma';
-import { createId } from '@/services/shared/create-id';
+let prisma: any = null;
+let createId: any = null;
+if (typeof window === 'undefined') {
+  prisma = require('@/services/prisma').prisma;
+  createId = require('@/services/shared/create-id').createId;
+}
 
 export async function createServerLog(data: {
   serverId: string;

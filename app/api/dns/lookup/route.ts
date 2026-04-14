@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as dns } from 'dns';
+let dns: typeof import('dns').promises;
+if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+    dns = require('dns').promises;
+} else {
+    throw new Error('dns module can only be used in a Node.js environment');
+}
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;

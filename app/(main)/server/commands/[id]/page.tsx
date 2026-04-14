@@ -34,7 +34,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-import { getServers } from '@/app/(main)/servers/actions';
+import { getServers } from '@/services/servers/actions';
 import { getSavedCommands, deleteSavedCommand, executeSavedCommand } from '../actions';
 import { SavedCommand } from '../types';
 import { useToast } from '@/hooks/use-toast';

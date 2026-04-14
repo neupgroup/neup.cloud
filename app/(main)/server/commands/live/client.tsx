@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Terminal, Clock, XCircle, Play } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { initLiveSession, executeLiveCommand, endLiveSession } from './actions';
+import { initLiveSession, executeLiveCommand, endLiveSession } from '@/services/server/commands/live/actions';
 
 interface HistoryItem {
     time: string;

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageTitle } from '@/components/page-header';
-import { getServer } from '@/app/(main)/servers/actions';
+import { getServer } from '@/services/servers/actions';
 import { Server } from 'lucide-react';
 import SwapperClient from './swapper-client';
 

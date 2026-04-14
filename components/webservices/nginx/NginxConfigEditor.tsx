@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getServers } from '@/app/(main)/servers/actions';
+import { getServers } from '@/services/servers/actions';
 import { getDomains, type ManagedDomain } from '@/app/(main)/domains/actions';
 import {
     getServerPublicIp,

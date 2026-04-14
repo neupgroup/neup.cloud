@@ -4,7 +4,7 @@ import {
   executeLiveCommand as executeLiveCommandLogic,
   endLiveSession as endLiveSessionLogic,
   initLiveSession as initLiveSessionLogic,
-} from '@/services/live-sessions/logic';
+} from '@/services/server/commands/live/actions';
 
 export async function initLiveSession(sessionId: string, serverId?: string) {
   return initLiveSessionLogic(sessionId, serverId);

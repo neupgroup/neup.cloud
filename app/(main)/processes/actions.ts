@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getServerForRunner } from '../servers/actions';
+import { getServerForRunner } from '@/services/servers/actions';
 import { runCommandOnServer } from '@/services/ssh';
 
 export type Process = {
