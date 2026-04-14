@@ -5,26 +5,9 @@ import { Button } from '@/components/ui/button';
 import { FileQuestion } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-export default function NotFound() {
     const [joke, setJoke] = useState("");
-
     useEffect(() => {
-        const jokes = [
-            "It works on my machine.",
-            "I swear I pushed that commit.",
-            "It must be a caching issue.",
-            "The user is holding it wrong.",
-            "It was working 5 minutes ago.",
-            "That's a hardware problem.",
-            "We'll fix it in post-production.",
-            "Have you tried refreshing?",
-            "This feature is coming soon™.",
-            "Git blame says it was you.",
-            "Unexpected token: You.",
-            "A 404 is just a page playing hide and seek.",
-            "Task failed successfully."
-        ];
-        setJoke(jokes[Math.floor(Math.random() * jokes.length)]);
+        setJoke(getRandomJoke());
     }, []);
 
     return (

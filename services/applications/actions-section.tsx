@@ -1,0 +1,42 @@
+import { executeApplicationCommand } from "@/app/server/applications/actions";
+import { useToast } from '@/hooks/use-toast';
+import { useState } from "react";
+
+export interface ActionsSectionProps {
+    application: any;
+}
+
+export function useActionsSection(application: any) {
+    const { toast } = useToast();
+    const [executing, setExecuting] = useState<string | null>(null);
+
+    if (!application.commands) return { customCommands: [], executing, handleExecute: () => {} };
+
+    const lifecycleNames = ['start', 'stop', 'restart', 'build', 'dev', 'lifecycle.start', 'lifecycle.stop', 'lifecycle.restart', 'lifecycle.build', 'lifecycle.dev'];
+
+    const customCommands = Object.entries(application.commands).filter(([name]) =>
+        !lifecycleNames.includes(name) && !name.startsWith('lifecycle.')
+    );
+
+    const handleExecute = async (name: string, command: string) => {
+        setExecuting(name);
+        try {
+            await executeApplicationCommand(application.id, command, name);
+            toast({
+                title: "Action Started",
+                description: `Running custom action ${name}...`,
+            });
+        } catch (error: any) {
+            console.error(error);
+            toast({
+                variant: "destructive",
+                title: "Execution Failed",
+                description: error.message,
+            });
+        } finally {
+            setExecuting(null);
+        }
+    };
+
+    return { customCommands, executing, handleExecute };
+}

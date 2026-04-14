@@ -1,0 +1,17 @@
+// Moved from /app/(main)/server/applications/[id]/status-dashboard.tsx
+'use client';
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AppStatusResult, checkApplicationStatus } from "@/app/(main)/server/applications/status-actions";
+import { AlertCircle, Clock, Loader2, PlayCircle, StopCircle, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+
+interface StatusDashboardProps {
+    applicationId: string;
+}
+
+export function StatusDashboard({ applicationId }: StatusDashboardProps) {
+    // ...existing code from status-dashboard.tsx...
+}

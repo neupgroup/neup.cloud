@@ -1,3 +1,1 @@
-export function normalizeApplicationNameInput(value: string) {
-  return value.slice(0, 64);
-}
+export { normalizeApplicationNameInput } from '@/services/applications/name';

@@ -1,4 +1,4 @@
-import { findBestSupervisorProcessForApplication } from '@/services/applications/service-name';
+import { findBestSupervisorProcessForApplication } from '@/services/applications/utils';
 
 export type ServerProcess = {
   name: string;

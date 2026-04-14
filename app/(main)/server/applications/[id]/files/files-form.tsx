@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from "react";
 import { Application } from "../../types";
-import { updateApplication } from "../../actions";
+import { useFilesForm, FilesFormProps } from '@/services/applications/files-form';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,86 +31,29 @@ import { FileText, Plus, Trash2, Pencil, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-interface FilesFormProps {
-    application: Application;
-}
 
-export function FilesForm({ application }: FilesFormProps) {
-    const router = useRouter();
-    const [files, setFiles] = useState<Record<string, string>>(application.files || {});
-    const [isSaving, setIsSaving] = useState(false);
 
-    // Dialog states
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [currentFile, setCurrentFile] = useState<{ path: string; content: string } | null>(null);
-    const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
-    const [fileToDelete, setFileToDelete] = useState<string | null>(null);
-
-    // New file vs Edit mode
-    const [isNewFile, setIsNewFile] = useState(false);
-
-    // Form handlers
-    const handleSaveFile = () => {
-        if (!currentFile || !currentFile.path.trim()) return;
-
-        // If renaming (conceptually not supported directly, treated as new add if path changed, but here we just upscale)
-        // Actually, if we change path in edit mode, we should delete old one? 
-        // Let's simplify: Path is read-only in edit mode.
-        // Or if we allow path edit, we remove old key and add new key.
-
-        // For now: allow path edit only if new. If editing, path is locked? 
-        // Usually better to lock path on edit to avoid accidental renames/dupes.
-
-        const updatedFiles = { ...files };
-        updatedFiles[currentFile.path] = currentFile.content;
-
-        setFiles(updatedFiles);
-        setIsEditDialogOpen(false);
-        saveToBackend(updatedFiles);
-    };
-
-    const handleDeleteFile = () => {
-        if (!fileToDelete) return;
-
-        const updatedFiles = { ...files };
-        delete updatedFiles[fileToDelete];
-
-        setFiles(updatedFiles);
-        setIsDeleteAlertOpen(false);
-        saveToBackend(updatedFiles);
-    };
-
-    const saveToBackend = async (newFiles: Record<string, string>) => {
-        setIsSaving(true);
-        try {
-            await updateApplication(application.id, { files: newFiles });
-            toast.success("Files updated successfully");
-            router.refresh();
-        } catch (error) {
-            console.error(error);
-            toast.error("Failed to update files");
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const openNewFileDialog = () => {
-        setCurrentFile({ path: "", content: "" });
-        setIsNewFile(true);
-        setIsEditDialogOpen(true);
-    };
-
-    const openEditDialog = (path: string, content: string) => {
-        setCurrentFile({ path, content });
-        setIsNewFile(false);
-        setIsEditDialogOpen(true);
-    };
-
-    const openDeleteAlert = (path: string) => {
-        setFileToDelete(path);
-        setIsDeleteAlertOpen(true);
-    };
-
+    const {
+        files,
+        setFiles,
+        isSaving,
+        setIsSaving,
+        isEditDialogOpen,
+        setIsEditDialogOpen,
+        currentFile,
+        setCurrentFile,
+        isDeleteAlertOpen,
+        setIsDeleteAlertOpen,
+        fileToDelete,
+        setFileToDelete,
+        isNewFile,
+        setIsNewFile,
+        handleSaveFile,
+        handleDeleteFile,
+        openNewFileDialog,
+        openEditDialog,
+        openDeleteAlert,
+    } = useFilesForm(application);
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">

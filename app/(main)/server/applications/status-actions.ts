@@ -2,9 +2,9 @@
 
 import { cookies } from 'next/headers';
 
-import { executeQuickCommand } from '../commands/actions';
-import { getApplication, getSupervisorProcesses } from './actions';
-import { findBestSupervisorProcessForApplication } from '@/services/applications/service-name';
+import { getSupervisorProcesses } from '@/services/applications/processes';
+import { getApplication } from '@/services/applications/create';
+import { findBestSupervisorProcessForApplication } from '@/services/applications/utils';
 
 export type AppStatusResult = {
     processStatus: 'running' | 'stopped' | 'error' | 'not_running' | 'unknown';

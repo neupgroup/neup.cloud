@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card } from "@/components/ui/card";
@@ -68,4 +67,6 @@ export function LogsSection({ application }: LogsSectionProps) {
             </Card>
         </div>
     );
+}
+
 }

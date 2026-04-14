@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Download } from "lucide-react";
 import type { Metadata } from 'next';
+import { getBillingPageData } from '@/services/billing';
 
 export const metadata: Metadata = {
   title: 'Billing, Neup.Cloud',
@@ -43,6 +44,7 @@ const invoices = [
 ];
 
 export default function BillingPage() {
+  const { plan, paymentMethod, invoices } = getBillingPageData();
   return (
     <div className="grid gap-8">
       <div>
@@ -53,12 +55,12 @@ export default function BillingPage() {
         <Card>
           <CardHeader>
             <CardTitle className="font-headline">Current Plan</CardTitle>
-            <CardDescription>You are currently on the Pro plan.</CardDescription>
+            <CardDescription>You are currently on the {plan.name} plan.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <p className="text-4xl font-bold">$50<span className="text-lg font-normal text-muted-foreground">/month</span></p>
-              <p className="text-sm text-muted-foreground">Your next payment is on July 1, 2024.</p>
+              <p className="text-4xl font-bold">{plan.price}<span className="text-lg font-normal text-muted-foreground">/month</span></p>
+              <p className="text-sm text-muted-foreground">Your next payment is on {plan.nextPayment}.</p>
             </div>
           </CardContent>
           <CardFooter>
@@ -77,8 +79,8 @@ export default function BillingPage() {
               </svg>
             </div>
             <div>
-              <p className="font-semibold">Visa ending in 1234</p>
-              <p className="text-sm text-muted-foreground">Expires 12/26</p>
+              <p className="font-semibold">{paymentMethod.type} ending in {paymentMethod.last4}</p>
+              <p className="text-sm text-muted-foreground">Expires {paymentMethod.expires}</p>
             </div>
           </CardContent>
           <CardFooter>
@@ -101,14 +103,13 @@ export default function BillingPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoices.map((invoice, index) => (
-                <TableRow key={index}>
+              {invoices.map((invoice, i) => (
+                <TableRow key={i}>
                   <TableCell>{invoice.date}</TableCell>
                   <TableCell>{invoice.amount}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm">
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
+                    <Button variant="ghost" size="icon">
+                      <Download className="h-4 w-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -119,4 +120,5 @@ export default function BillingPage() {
       </Card>
     </div>
   );
+// ...existing code ends here (removed extra brace)
 }

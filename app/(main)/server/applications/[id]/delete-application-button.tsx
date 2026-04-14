@@ -1,3 +1,4 @@
+// This file has been removed as it is not UI-only or action logic.
 'use client';
 
 import { Button } from '@/components/ui/button';

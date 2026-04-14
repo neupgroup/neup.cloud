@@ -13,20 +13,7 @@ import { getApplications, syncApplicationsWithServer } from "./actions";
 import { ApplicationCardSkeleton } from "./application-card-skeleton";
 import { getProcessCardStatus, type ServerProcess } from './status';
 import type { Application } from "./types";
-
-function getStoredStatus(application: Application) {
-  const syncInfo = application.information?.serverSync;
-
-  if (!syncInfo || syncInfo.status !== 'matched') {
-    return getProcessCardStatus(null);
-  }
-
-  return getProcessCardStatus({
-    name: syncInfo.matchedProcessName || application.information?.supervisorServiceName || application.name,
-    state: syncInfo.matchedProcessState || 'UNKNOWN',
-    source: 'supervisor',
-  });
-}
+import { getStoredStatus } from '@/services/applications/client-page';
 
 export default function AppsPage() {
   const { toast } = useToast();

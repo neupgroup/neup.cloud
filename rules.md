@@ -1,3 +1,16 @@
+# Clean App Directory Rule
+
+- The `/app` directory must only contain:
+	- `page.tsx`, `route.ts`, and layout files
+	- UI-only client/server components (no direct DB, server, or business logic)
+- All business logic, database access, and server-side actions must be in `/services`.
+- All UI widgets, dashboards, and reusable UI elements must be in `/components`.
+- Any file in `/app` that contains business logic, direct DB/server access, or is not a UI/page/layout/route must be moved to `/services` or `/components`.
+- `/app/(main)/server/applications/[id]/` should contain at most `page.tsx` and minimal UI helpers. All other logic/UI should be in `/components` or `/services`.
+
+**Enforcement:**
+- If you see more than 2-3 files in a route folder, refactor and move logic/UI widgets out.
+- No action files, logics, or business logic in `/app`.
 
 
 # Rules

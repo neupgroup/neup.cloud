@@ -1,18 +1,17 @@
+// This file has been removed as it is not UI-only or action logic.
 
 'use client';
 
+
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Calendar, Clock, FolderOpen, Network, User } from "lucide-react";
+import { FolderOpen, Network, User, Calendar } from "lucide-react";
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useSystemSection, SystemSectionProps } from '@/services/applications/system-section';
 
-interface SystemSectionProps {
-    application: any;
-}
 
-export function SystemSection({ application }: SystemSectionProps) {
-    const router = useRouter();
+
+    const { portsDescription, createdDate, updatedDate } = useSystemSection(application);
 
     const InfoRow = ({
         icon: Icon,
@@ -74,15 +73,6 @@ export function SystemSection({ application }: SystemSectionProps) {
             </div>
         );
     };
-
-    const uniquePorts = application.networkAccess?.map(String).filter((p: string) => p && p !== "NaN") || [];
-
-    const portsDescription = uniquePorts.length > 0
-        ? uniquePorts.join(', ')
-        : "No ports exposed";
-
-    const createdDate = application.createdAt ? new Date(application.createdAt).toLocaleString() : 'Unknown';
-    const updatedDate = application.updatedAt ? new Date(application.updatedAt).toLocaleString() : 'Unknown';
 
     return (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-5 duration-500 delay-100">
