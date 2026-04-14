@@ -15,7 +15,7 @@ import { PageTitleBack } from '@/components/page-header';
 
 import { useToast } from '@/hooks/use-toast';
 import { createSavedCommand } from '@/services/server/commands/actions';
-import { VARIABLE_REGEX } from '../types';
+import { VARIABLE_REGEX } from '@/services/saved-commands/types';
 import { serializeCommandSetCommands } from '@/services/command-sets/serialize';
 
 type CreateMode = 'command' | 'set';

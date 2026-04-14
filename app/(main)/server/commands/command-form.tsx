@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Variable } from 'lucide-react';
-import { CommandFormData, VARIABLE_REGEX } from './types';
+import { CommandFormData, VARIABLE_REGEX } from '@/services/saved-commands/types';
 
 type CommandFormProps = {
     formData: CommandFormData;

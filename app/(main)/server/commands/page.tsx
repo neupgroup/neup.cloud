@@ -37,7 +37,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { type SavedCommand } from './types';
+import { type SavedCommand } from '@/services/saved-commands/types';
 import { cn } from '@/lib/utils';
 import { differenceInDays, differenceInHours, format, formatDistanceToNow } from 'date-fns';
 

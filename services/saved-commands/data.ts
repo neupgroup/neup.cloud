@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import type { CommandVariable, SavedCommand } from '@/app/(main)/server/commands/types';
+import type { CommandVariable, SavedCommand } from '@/services/saved-commands/types';
 import { prisma } from '@/services/prisma';
 import { createId } from '@/services/shared/create-id';
 

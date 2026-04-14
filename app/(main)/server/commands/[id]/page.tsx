@@ -36,7 +36,7 @@ import { Label } from '@/components/ui/label';
 
 import { getServers } from '@/services/servers/actions';
 import { getSavedCommands, deleteSavedCommand, executeSavedCommand } from '@/services/server/commands/actions';
-import { SavedCommand } from '../types';
+import type { SavedCommand } from '@/services/saved-commands/types';
 import { useToast } from '@/hooks/use-toast';
 import { PageTitleBack } from '@/components/page-header';
 
