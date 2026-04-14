@@ -1,10 +1,27 @@
-'use client';
+"use client";
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { FileQuestion } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+function getRandomJoke() {
+    const jokes = [
+        "It worked on my machine!",
+        "404: The page took a coffee break.",
+        "Our codebase is a maze, you found a wall!",
+        "This page is still in beta. Like everything else.",
+        "If you find the page, let us know!",
+        "¯\\_(ツ)_/¯",
+        "Oops! Looks like the page was garbage collected.",
+        "Try turning it off and on again.",
+        "This is not the page you are looking for.",
+        "Somewhere, a developer is fixing this. Maybe."
+    ];
+    return jokes[Math.floor(Math.random() * jokes.length)];
+}
+
+export default function NotFound() {
     const [joke, setJoke] = useState("");
     useEffect(() => {
         setJoke(getRandomJoke());
@@ -25,7 +42,6 @@ import { useEffect, useState } from 'react';
                     </span>
                 )}
             </p>
-
             <div className="flex gap-4">
                 <Button asChild size="lg">
                     <Link href="/">
@@ -35,3 +51,4 @@ import { useEffect, useState } from 'react';
             </div>
         </div>
     );
+}
