@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 
 import { getApplications, syncApplicationsWithServer } from "./actions";
 import { ApplicationCard } from "./application-card";
-import { getStoredStatus } from './client-page';
+import { getStoredStatus } from './stored-status';
 import { ApplicationCardSkeleton } from "@/app/(main)/server/applications/application-card-skeleton";
 import { getProcessCardStatus, type ServerProcess } from './status';
 import type { Application } from "./type";

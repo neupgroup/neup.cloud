@@ -1,14 +1,10 @@
+'use server';
+
 // Moved from /app/(main)/processes/actions.ts
 import { getServerForRunner } from '@/services/servers/actions';
 import { runCommandOnServer } from '@/services/ssh';
 
-export type Process = {
-    pid: string;
-    user: string;
-    cpu: string;
-    memory: string;
-    name: string;
-};
+import type { Process } from './types';
 
 function parsePsOutput(output: string): Process[] {
     if (!output) return [];

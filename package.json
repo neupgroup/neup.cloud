@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack -p 25683",
     "genkit:dev": "genkit start -- tsx ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch ai/dev.ts",
+    "postinstall": "patch-package",
     "build": "next build",
     "start": "next start -p 25683",
     "lint": "next lint",
