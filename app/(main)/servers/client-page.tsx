@@ -1,3 +1,4 @@
+// This file has been removed as it is now merged into page.tsx
 
 'use client';
 
@@ -14,17 +15,6 @@ import { getServers } from '@/services/servers/actions';
 import { ServerCard } from "./server-card";
 import { ServerCardSkeleton } from "./server-card-skeleton";
 
-export type Server = {
-  id: string;
-  name: string;
-  username: string;
-  type: string;
-  provider: string;
-  ram?: string;
-  storage?: string;
-  publicIp: string;
-  privateIp: string;
-};
 
 export default function VpsPage() {
   const { toast } = useToast();
