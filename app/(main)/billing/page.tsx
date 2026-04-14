@@ -1,4 +1,3 @@
-import { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -18,6 +17,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Download } from "lucide-react";
+import type { Metadata } from 'next';
 import { getBillingPageData } from '@/services/billing';
 
 export const metadata: Metadata = {
