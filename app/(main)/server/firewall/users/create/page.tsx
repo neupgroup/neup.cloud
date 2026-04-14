@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPlus, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { createUser } from "../actions"; // Import from ../actions since we are in create subfolder
+import { createUser } from "@/services/server/firewall/users/actions";
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from "next/navigation";
 

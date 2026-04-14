@@ -1,99 +1,73 @@
-// Stub for executeSavedCommand to resolve missing export error
-export async function executeSavedCommand() {
-	// TODO: Implement actual logic
-	return {};
-}
+'use server';
 
-let Prisma: any, prisma: any, createId: any;
-if (typeof window === 'undefined') {
-	Prisma = require('@prisma/client').Prisma;
-	prisma = require('@/services/prisma').prisma;
-	createId = require('@/services/shared/create-id').createId;
-}
-type CommandVariable = any;
-type SavedCommand = any;
-
-function toJsonField(value: Prisma.InputJsonValue | null | undefined) {
-	return value === undefined ? undefined : value === null ? Prisma.DbNull : value;
-}
-
-function mapSavedCommand(record: {
-	id: string;
-	name: string;
-	command: string;
-	description: string | null;
-	nextCommands: string[];
-	variables: Prisma.JsonValue;
-}): SavedCommand {
-	return {
-		id: record.id,
-		name: record.name,
-		command: record.command,
-		description: record.description ?? undefined,
-		nextCommands: record.nextCommands,
-		variables: (record.variables as CommandVariable[] | null) ?? undefined,
-	};
-}
+import { revalidatePath } from 'next/cache';
+import {
+  createSavedCommand as createSavedCommandRecord,
+  deleteSavedCommand as deleteSavedCommandRecord,
+  getSavedCommands as getSavedCommandsData,
+  updateSavedCommand as updateSavedCommandRecord,
+} from '@/services/saved-commands/data';
+import {
+  executeCommand as executeCommandLogic,
+  executeQuickCommand as executeQuickCommandLogic,
+  executeSavedCommand as executeSavedCommandLogic,
+} from '@/services/saved-commands/logic';
 
 export async function getSavedCommands() {
-	const records = await prisma.savedCommand.findMany({
-		orderBy: [{ updatedAt: 'desc' }, { name: 'asc' }],
-	});
-	return records.map(mapSavedCommand);
-}
-
-export async function getSavedCommandById(id: string) {
-	const record = await prisma.savedCommand.findUnique({
-		where: { id },
-	});
-	return record ? mapSavedCommand(record) : null;
+  return getSavedCommandsData();
 }
 
 export async function createSavedCommand(data: {
-	name: string;
-	command: string;
-	description?: string;
-	nextCommands?: string[];
-	variables?: CommandVariable[];
+  name: string;
+  command: string;
+  description?: string;
+  nextCommands?: string[];
+  variables?: any[];
 }) {
-	const record = await prisma.savedCommand.create({
-		data: {
-			id: createId(),
-			name: data.name,
-			command: data.command,
-			description: data.description ?? null,
-			nextCommands: data.nextCommands ?? [],
-			variables: toJsonField((data.variables ?? null) as Prisma.InputJsonValue | null),
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		},
-	});
-	return mapSavedCommand(record);
+  await createSavedCommandRecord(data);
+  revalidatePath('/server/commands');
 }
 
 export async function updateSavedCommand(id: string, data: {
-	name: string;
-	command: string;
-	description?: string;
-	nextCommands?: string[];
-	variables?: CommandVariable[];
+  name: string;
+  command: string;
+  description?: string;
+  nextCommands?: string[];
+  variables?: any[];
 }) {
-	const record = await prisma.savedCommand.update({
-		where: { id },
-		data: {
-			name: data.name,
-			command: data.command,
-			description: data.description ?? null,
-			nextCommands: data.nextCommands ?? [],
-			variables: toJsonField((data.variables ?? null) as Prisma.InputJsonValue | null),
-			updatedAt: new Date(),
-		},
-	});
-	return mapSavedCommand(record);
+  await updateSavedCommandRecord(id, data);
+  revalidatePath('/server/commands');
 }
 
 export async function deleteSavedCommand(id: string) {
-	return prisma.savedCommand.delete({
-		where: { id },
-	});
+  await deleteSavedCommandRecord(id);
+  revalidatePath('/server/commands');
+}
+
+export async function executeCommand(serverId: string, command: string, commandName?: string, displayCommand?: string) {
+  const result = await executeCommandLogic(serverId, command, commandName, displayCommand);
+
+  if (serverId) {
+    revalidatePath(`/servers/${serverId}`);
+  }
+
+  return result;
+}
+
+export async function executeQuickCommand(serverId: string, command: string) {
+  return executeQuickCommandLogic(serverId, command);
+}
+
+export async function executeSavedCommand(
+  serverId: string,
+  savedCommandId: string,
+  variables: Record<string, string> = {}
+) {
+  const result = await executeSavedCommandLogic(serverId, savedCommandId, variables);
+
+  if (serverId) {
+    revalidatePath(`/servers/${serverId}`);
+  }
+
+  return result;
 }

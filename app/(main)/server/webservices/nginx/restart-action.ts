@@ -1,6 +1,6 @@
 'use server';
 
-import { executeCommand } from '@/app/(main)/server/commands/actions';
+import { executeCommand } from '@/services/server/commands/actions';
 import { cookies } from 'next/headers';
 
 /**

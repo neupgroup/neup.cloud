@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Coins, KeySquare, ShieldEllipsis } from 'lucide-react';
 
-import { createAccessTokenAction } from '@/app/(main)/intelligence/actions';
+import { createAccessTokenAction } from '@/services/intelligence/actions';
 import { PageTitle } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

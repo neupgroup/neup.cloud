@@ -3,7 +3,7 @@
 import { getServerForRunner } from '@/services/servers/actions';
 import { runCommandOnServer } from '@/services/ssh';
 
-import { executeCommand } from '@/app/(main)/server/commands/actions';
+import { executeCommand } from '@/services/server/commands/actions';
 
 export async function checkRequirementStep(serverId: string, command: string) {
     const server = await getServerForRunner(serverId);

@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { getSystemUpdates, refreshPackageList, getInstalledPackages, type PackageUpdate } from './actions';
+import { getSystemUpdates, refreshPackageList, getInstalledPackages, type PackageUpdate } from '@/services/server/system/updates/actions';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';

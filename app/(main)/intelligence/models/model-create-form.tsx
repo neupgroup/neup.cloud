@@ -5,7 +5,7 @@ import { useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { Bot, Calculator, Flag } from 'lucide-react';
 
-import { createIntelligenceModelAction } from '@/app/(main)/intelligence/actions';
+import { createIntelligenceModelAction } from '@/services/intelligence/actions';
 import { Button } from '@/components/ui/button';
 import {
   Card,

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BatteryCharging, Coins, WalletCards } from 'lucide-react';
 
-import { rechargeIntelligenceBalanceAction } from '@/app/(main)/intelligence/actions';
+import { rechargeIntelligenceBalanceAction } from '@/services/intelligence/actions';
 import { PageTitleBack } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

@@ -37,7 +37,7 @@ import { Button } from '@/components/ui/button';
 import {
   createPipelineLogAction,
   savePipelineFlowAction,
-} from '@/app/(main)/pipeline/actions';
+} from '@/services/pipelines/actions';
 import {
   executeAiAgentNodeAction,
   getAiAgentValidationError,

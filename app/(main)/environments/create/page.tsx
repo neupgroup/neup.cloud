@@ -13,7 +13,7 @@ import { Loader2, Save, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { createEnvironmentVariable } from '../actions';
+import { createEnvironmentVariable } from '@/services/environment-variables/actions';
 
 const AVAILABLE_SERVERS = [
     { id: 's1', name: 'web-server-01' },

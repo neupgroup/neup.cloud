@@ -15,10 +15,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Activity, HeartPulse, Server, Loader2, ChevronLeft, ChevronRight, Cpu, User, Hash, Search, XCircle, Globe, ArrowLeftRight } from "lucide-react";
-import { startStatusTracking, stopStatusTracking, getStatus, type StatusData } from './actions';
+import { startStatusTracking, stopStatusTracking, getStatus, type StatusData } from '@/services/server/status/actions';
 import { getProcesses, killProcess } from '@/services/processes/actions';
 import type { Process } from '@/services/processes/types';
-import { getNetworkConnections, type NetworkConnection } from '@/app/(main)/network/actions';
+import { getNetworkConnections, type NetworkConnection } from '@/services/network/actions';
 import { useToast } from '@/hooks/use-toast';
 import { PageTitleWithComponent } from '@/components/page-header';
 import { Input } from '@/components/ui/input';

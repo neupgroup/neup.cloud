@@ -2,9 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { runCommandOnServer } from '@/services/ssh';
-import { executeCommand, executeQuickCommand } from '@/app/(main)/server/commands/actions';
+import { executeCommand, executeQuickCommand } from '@/services/server/commands/actions';
 import { getServerForRunner } from '@/services/servers/actions';
-import { getServerPublicIp as getServerPublicIpLogic } from '@/app/(main)/server/webservices/actions';
+import { getServerPublicIp as getServerPublicIpLogic } from '@/services/webservices/actions';
 import {
     createWebService,
     getLatestWebService,

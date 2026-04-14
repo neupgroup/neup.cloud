@@ -7,7 +7,7 @@ import {
     Card,
 } from "@/components/ui/card";
 import { ShieldCheck, Network, Trash2, Plus, Info, Activity, ChevronRight } from "lucide-react";
-import { getFirewallStatus, allowPort, deleteRule, toggleFirewall, type FirewallRule } from '../actions';
+import { getFirewallStatus, allowPort, deleteRule, toggleFirewall, type FirewallRule } from '@/services/server/firewall/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from "@/components/ui/button";

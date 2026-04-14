@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Play, RotateCcw, AlertCircle, CheckCircle2, XCircle, Clock, ShieldAlert, Plus } from 'lucide-react';
-import { checkPortConnectivity } from '../../actions';
+import { checkPortConnectivity } from '@/services/server/firewall/actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Save, Trash2, Key } from "lucide-react";
 import { useState, useEffect } from "react";
-import { getUserDetails, updateUserPassword, toggleSudo, deleteUser, SystemUser } from "../actions";
+import { getUserDetails, updateUserPassword, toggleSudo, deleteUser, SystemUser } from "@/services/server/firewall/users/actions";
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from "next/navigation";
 import {

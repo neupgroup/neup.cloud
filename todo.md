@@ -18,10 +18,10 @@ Below is a numbered list of files in the /app directory that contain service/bus
 1. app/actions.ts
 2. app/(main)/servers/actions.ts
 3. app/(main)/servers/[id]/actions.ts
-4. app/(main)/viewer/actions.ts
-5. app/(main)/server/commands/live/actions.ts
-6. app/(main)/server/commands/actions.ts
-7. app/(main)/home/actions.ts
+4. (moved) services/viewer/actions.ts
+5. (moved) services/server/commands/live/actions.ts
+6. (moved) services/server/commands/actions.ts
+7. (moved) services/home/actions.ts
 8. app/(main)/server/applications/status-actions.ts
 9. app/(main)/server/applications/actions.ts
 10. (moved) services/database/actions.ts

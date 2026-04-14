@@ -10,7 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { AlertCircle, Package, ArrowUpCircle, CheckCircle2, Loader2, Play } from 'lucide-react';
-import { getPackageDetails, updatePackage } from '../actions';
+import { getPackageDetails, updatePackage } from '@/services/server/system/updates/actions';
 
 interface PackageDetails {
     raw: string;

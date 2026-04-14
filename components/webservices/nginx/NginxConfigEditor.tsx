@@ -12,9 +12,9 @@ import {
     deleteNginxConfig,
     generateSslCertificate,
     saveNginxConfiguration,
-} from '@/app/(main)/server/webservices/nginx/actions';
-import { getCertificates } from '@/app/(main)/server/webservices/certificates/actions';
-import { getWebOrServerNginxConfig } from '@/app/(main)/server/webservices/actions';
+} from '@/services/webservices/nginx/actions';
+import { getCertificates } from '@/services/webservices/certificates/actions';
+import { getWebOrServerNginxConfig } from '@/services/webservices/actions';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {

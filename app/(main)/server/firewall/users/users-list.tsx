@@ -4,7 +4,7 @@ import {
     Card,
 } from "@/components/ui/card";
 import { User, Shield, Terminal, Plus, ChevronRight, UserCog } from "lucide-react";
-import { SystemUser } from './actions';
+import { SystemUser } from '@/services/server/firewall/users/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import Link from "next/link";

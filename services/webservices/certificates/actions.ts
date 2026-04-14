@@ -1,8 +1,8 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { executeCommand } from '@/app/(main)/server/commands/actions';
-import { executeQuickCommand } from '@/app/(main)/server/commands/actions';
+import { executeCommand } from '@/services/server/commands/actions';
+import { executeQuickCommand } from '@/services/server/commands/actions';
 
 export async function getCertificates() {
     const cookieStore = await cookies();

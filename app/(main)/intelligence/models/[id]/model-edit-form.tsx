@@ -8,7 +8,7 @@ import {
   deleteIntelligenceModelAction,
   updateIntelligenceModelAction,
   type UpdateIntelligenceModelActionState,
-} from '@/app/(main)/intelligence/actions';
+} from '@/services/intelligence/actions';
 import { Button } from '@/components/ui/button';
 import {
   Card,

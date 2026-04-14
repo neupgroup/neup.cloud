@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertCircle, Calendar, CheckCircle2, FileKey, RefreshCw, Shield, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { getCertificates } from './actions';
+import { getCertificates } from '@/services/webservices/certificates/actions';
 import { CreateCertificateDialog } from './create-dialog';
 import Link from 'next/link';
 
