@@ -137,6 +137,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
   ]
 
   const serverLinks = [
+    { href: "/server/home", label: "Home", icon: Home },
     { href: "/server/status", label: "Status", icon: HeartPulse },
     { href: "/server/applications", label: "Applications", icon: Activity },
     { href: "/server/database", label: "Databases", icon: Database },
@@ -178,6 +179,20 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
         ))}
       </div>
 
+      {isServerSelected && (
+        <div className="space-y-2">
+          <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
+            Server
+          </div>
+          {serverLinks.map(({ href, label, icon: Icon }) => (
+            <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </div>
+      )}
+
       <div className="space-y-2">
         <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
           Intelligence
@@ -213,20 +228,6 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
           </NavLink>
         ))}
       </div>
-
-      {isServerSelected && (
-        <div className="space-y-2">
-          <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
-            Server
-          </div>
-          {serverLinks.map(({ href, label, icon: Icon }) => (
-            <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
-              <Icon className="h-4 w-4" />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-        </div>
-      )}
 
       <div className="space-y-2">
         <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
