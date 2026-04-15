@@ -1,7 +1,7 @@
 // Moved from /app/(main)/server/applications/[id]/github-section.tsx
 'use client';
 
-import { performGitOperation } from "@/services/server/applications/applications-service";
+import { performGitOperation } from "@/services/server/applications/service";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from '@/core/hooks/use-toast';

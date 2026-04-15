@@ -8,7 +8,7 @@ import { getApplication as getApplicationRecord, getApplications as getApplicati
 import type { Application, CreateApplicationData, UpdateApplicationData } from './_types';
 import { syncApplicationsWithServer as syncApplicationsWithServerForServer } from './sync';
 import { updateApplication as updateApplicationRecord } from './update';
-import { getSelectedServerId } from './application-session';
+import { getSelectedServerId } from './session';
 
 export async function getApplications(): Promise<Application[]> {
   return getApplicationsData();

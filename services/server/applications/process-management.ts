@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import { executeCommand, executeQuickCommand } from '@/services/saved-commands/saved-commands-service';
 
-import { getSelectedServerId } from './application-session';
+import { getSelectedServerId } from './session';
 import { getRunningProcesses as getRunningProcessesForServer, getSupervisorProcesses as getSupervisorProcessesForServer } from './processes';
 
 export async function getRunningProcesses() {

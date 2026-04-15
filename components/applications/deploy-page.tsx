@@ -24,7 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useServerName } from '@/core/hooks/use-server-name';
 import { useToast } from '@/core/hooks/use-toast';
 
-import { createApplication, generateRepositoryKeys } from '@/services/server/applications/applications-service';
+import { createApplication, generateRepositoryKeys } from '@/services/server/applications/service';
 import { normalizeApplicationNameInput } from '@/services/server/applications/name';
 
 const FRAMEWORKS = [

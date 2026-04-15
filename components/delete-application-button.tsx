@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useToast } from '@/core/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { deleteApplication } from '@/services/server/applications/applications-service';
+import { deleteApplication } from '@/services/server/applications/service';
 
 interface DeleteApplicationButtonProps {
     applicationId: string;

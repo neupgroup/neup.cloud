@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { useServerName } from '@/core/hooks/use-server-name';
 import { useToast } from '@/core/hooks/use-toast';
 
-import { getApplications, syncApplicationsWithServer } from "@/services/server/applications/applications-service";
+import { getApplications, syncApplicationsWithServer } from "@/services/server/applications/service";
 import { ApplicationCard } from "./application-card";
 import { getStoredStatus } from '@/services/server/applications/stored-status';
 import { ApplicationCardSkeleton } from "@/app/(main)/server/applications/application-card-skeleton";

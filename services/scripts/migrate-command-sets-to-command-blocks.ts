@@ -1,8 +1,8 @@
 import 'dotenv/config';
 
 import { prisma } from '@/services/prisma';
-import { serializeCommandSetCommands } from '@/services/server/commands/command-set-serialize';
-import type { CommandSetCommand } from '@/services/server/commands/command-set-types';
+import { serializeCommandSetCommands } from '@/services/server/commands/serialize';
+import type { CommandSetCommand } from '@/services/server/commands/set-types';
 
 async function main() {
   const commandSets = await prisma.commandSet.findMany({

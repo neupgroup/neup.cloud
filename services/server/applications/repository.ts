@@ -7,8 +7,8 @@ import { promisify } from 'util';
 import * as Git from '@/services/core/github';
 import { executeCommand } from '@/services/saved-commands/saved-commands-service';
 
-import { getApplication } from './application-crud';
-import { getSelectedServerId } from './application-session';
+import { getApplication } from './crud';
+import { getSelectedServerId } from './session';
 
 const execAsync = promisify(rawExec);
 

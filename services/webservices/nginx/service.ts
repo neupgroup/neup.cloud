@@ -4,13 +4,13 @@ import { revalidatePath } from 'next/cache';
 import { runCommandOnServer } from '@/services/server/ssh';
 import { executeCommand, executeQuickCommand } from '@/services/server/commands/server-command-service';
 import { getServerForRunner } from '@/services/server/server-service';
-import { getServerPublicIp as getServerPublicIpLogic } from '@/services/webservices/webservices-service';
+import { getServerPublicIp as getServerPublicIpLogic } from '@/services/webservices/service';
 import {
     createWebService,
     getLatestWebService,
     updateWebService,
 } from '@/services/webservices/data';
-import { generateNginxConfigFromContext as generateNginxConfigFromContextLogic } from '@/services/webservices/nginx/nginx-config-generator';
+import { generateNginxConfigFromContext as generateNginxConfigFromContextLogic } from '@/services/webservices/nginx/config-generator';
 
 export interface SubPath {
     id: string;

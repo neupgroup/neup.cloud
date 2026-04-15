@@ -5,9 +5,9 @@ import * as NextJs from '@/services/core/nextjs';
 import * as NodeJs from '@/services/core/nodejs';
 import * as Python from '@/services/core/python';
 
-import { getApplication } from './application-crud';
-import { getProcessDetails, getSupervisorProcesses } from './application-process-management';
-import { getSelectedServerName } from './application-session';
+import { getApplication } from './crud';
+import { getProcessDetails, getSupervisorProcesses } from './process-management';
+import { getSelectedServerName } from './session';
 
 export async function getApplicationDetailPageData(params: Promise<{ id: string }>) {
   const { id } = await params;

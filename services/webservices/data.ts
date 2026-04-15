@@ -1,6 +1,6 @@
 import { prisma } from '@/services/prisma';
 import { createId } from '@/core/create-id';
-import type { WebServiceConfig, WebServiceType } from '@/services/webservices/webservices-service';
+import type { WebServiceConfig, WebServiceType } from '@/services/webservices/service';
 
 function mapWebService(record: {
   id: string;
