@@ -10,7 +10,7 @@ import { useToast } from '@/core/hooks/use-toast';
 import { AlertCircle, Calendar, CheckCircle2, Copy, FileText, Globe, Key, RefreshCw, Shield, ShieldCheck, Trash2, XCircle } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { deleteCertificate, getCertificate, reissueCertificate } from '@/services/webservices/certificate-service';
+import { deleteCertificate, getCertificate, reissueCertificate } from '@/services/webservices/webservices-certificates-service';
 
 interface CertificateDetails {
     fileName: string;

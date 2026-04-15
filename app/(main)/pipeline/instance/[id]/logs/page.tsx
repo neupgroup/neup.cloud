@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ScrollText } from 'lucide-react';
 
-import { clearPipelineLogsAction } from '@/services/pipelines/pipeline-service';
+import { clearPipelineLogsAction } from '@/services/pipelines/pipelines-service';
 import { PageTitle } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

@@ -1,5 +1,5 @@
 import * as Git from '@/services/core/github';
-import { executeCommand } from '@/services/commands/command-service';
+import { executeCommand } from '@/services/commands/commands-service';
 
 export async function performGitOperation({
   serverId,

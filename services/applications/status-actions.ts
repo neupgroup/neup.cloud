@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { getApplication } from './_data';
 import { getSupervisorProcesses } from './processes';
 import { findBestSupervisorProcessForApplication } from './_utils';
-import { executeQuickCommand } from '@/services/saved-commands/command-execution-service';
+import { executeQuickCommand } from '@/services/saved-commands/saved-commands-service';
 
 export type AppStatusResult = {
   processStatus: 'running' | 'stopped' | 'error' | 'not_running' | 'unknown';

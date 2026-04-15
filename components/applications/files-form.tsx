@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import type { Application } from "@/services/applications/_types";
-import { updateApplication } from "@/services/applications/application-service";
+import { updateApplication } from "@/services/applications/applications-service";
 
 export interface FilesFormProps {
     application: Application;

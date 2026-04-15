@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { runCommandOnServer } from '@/services/ssh';
 import { executeCommand, executeQuickCommand } from '@/services/server/commands/server-command-service';
 import { getServerForRunner } from '@/services/server/server-service';
-import { getServerPublicIp as getServerPublicIpLogic } from '@/services/webservices/webservice-service';
+import { getServerPublicIp as getServerPublicIpLogic } from '@/services/webservices/webservices-service';
 import {
     createWebService,
     getLatestWebService,

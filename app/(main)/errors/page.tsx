@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ShieldAlert, AlertTriangle, Info } from "lucide-react";
-import { getErrors } from '@/services/errors/error-service';
+import { getErrors } from '@/services/errors/errors-service';
 import { useToast } from '@/core/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 

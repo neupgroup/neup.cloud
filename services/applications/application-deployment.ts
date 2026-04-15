@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { executeCommand } from '@/services/saved-commands/command-execution-service';
+import { executeCommand } from '@/services/saved-commands/saved-commands-service';
 
 import { getApplication } from './application-crud';
 import { getSelectedServerId } from './application-session';

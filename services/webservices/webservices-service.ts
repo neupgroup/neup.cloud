@@ -16,7 +16,7 @@ import {
   getNginxConfigurationsForServer,
   getServerPublicIp as getServerPublicIpLogic,
   getWebOrServerNginxConfigById,
-} from '@/services/webservices/webservice-runtime';
+} from '@/services/webservices/webservices-runtime';
 
 export type WebServiceType = 'nginx' | 'apache' | 'caddy';
 

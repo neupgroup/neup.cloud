@@ -11,7 +11,7 @@ import {
   executeCommand as executeCommandLogic,
   executeQuickCommand as executeQuickCommandLogic,
   executeSavedCommand as executeSavedCommandLogic,
-} from '@/services/saved-commands/command-execution-service';
+} from '@/services/saved-commands/saved-commands-service';
 
 export async function getSavedCommands() {
   return getSavedCommandsData();

@@ -15,7 +15,7 @@ import {
     ChevronRight,
     Network
 } from 'lucide-react';
-import { getDomains } from '@/services/domains/domain-service';
+import { getDomains } from '@/services/domains/domains-service';
 import type { ManagedDomain } from '@/services/domains/types';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/core/utils';

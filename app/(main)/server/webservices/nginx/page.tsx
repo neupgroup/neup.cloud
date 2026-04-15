@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getNginxConfigurations, type WebServiceConfig } from '@/services/webservices/webservice-service';
+import { getNginxConfigurations, type WebServiceConfig } from '@/services/webservices/webservices-service';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';

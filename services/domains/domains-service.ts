@@ -9,7 +9,7 @@ import {
   getDomains as getDomainsData,
   verifyDomain as verifyDomainRecord,
 } from '@/services/domains/data';
-import { generateVerificationCode } from '@/services/domains/domain-verification';
+import { generateVerificationCode } from '@/services/domains/domains-verification';
 import type { DNSRecord, DomainStatus, ManagedDomain } from '@/services/domains/types';
 
 export async function checkDomain(domain: string): Promise<DomainStatus[]> {

@@ -1,5 +1,5 @@
 import { sanitizeAppName } from '@/services/core/universal';
-import { executeQuickCommand } from '@/services/saved-commands/command-execution-service';
+import { executeQuickCommand } from '@/services/saved-commands/saved-commands-service';
 
 export async function getApplicationLogs(serverId: string, appName: string, lines: number = 50) {
   const sanitizedName = sanitizeAppName(appName);

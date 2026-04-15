@@ -1,6 +1,6 @@
 import { prisma } from '@/services/prisma';
 import { createId } from '@/core/create-id';
-import type { EnvironmentVariable } from '@/services/environment-variables/environment-variable-service';
+import type { EnvironmentVariable } from '@/services/environment-variables/environment-variables-service';
 
 function mapEnvironmentVariable(record: {
   id: string;

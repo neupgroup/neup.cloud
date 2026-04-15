@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getServers } from '@/services/server/server-service';
-import { getDomains } from '@/services/domains/domain-service';
+import { getDomains } from '@/services/domains/domains-service';
 import type { ManagedDomain } from '@/services/domains/types';
 import {
     getServerPublicIp,
@@ -13,8 +13,8 @@ import {
     generateSslCertificate,
     saveNginxConfiguration,
 } from '@/services/webservices/nginx/nginx-service';
-import { getCertificates } from '@/services/webservices/certificate-service';
-import { getWebOrServerNginxConfig } from '@/services/webservices/webservice-service';
+import { getCertificates } from '@/services/webservices/webservices-certificates-service';
+import { getWebOrServerNginxConfig } from '@/services/webservices/webservices-service';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/core/hooks/use-toast';
 import {
