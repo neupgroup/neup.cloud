@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { requirements } from '@/services/requirements/list';
 import * as Icons from 'lucide-react';
-import { useServerName } from '@/hooks/use-server-name';
+import { useServerName } from '@/core/hooks/use-server-name';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 

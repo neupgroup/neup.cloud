@@ -11,8 +11,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { getCurrentIntelligenceAccountId } from '@/lib/intelligence/account';
-import { getIntelligenceLogs } from '@/lib/intelligence/store';
+import { getCurrentIntelligenceAccountId } from '@/core/ai/files/intelligence/account';
+import { getIntelligenceLogs } from '@/core/ai/files/intelligence/store';
 
 export const metadata: Metadata = {
   title: 'Intelligence Billing, Neup.Cloud',

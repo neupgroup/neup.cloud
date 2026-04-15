@@ -2,7 +2,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 import { checkDatabaseConnection } from '@/services/database/actions';
 
 export function CheckConnectionButton({ connectionId }: { connectionId: string }) {

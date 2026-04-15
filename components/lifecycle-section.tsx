@@ -3,7 +3,7 @@
 
 import { executeApplicationCommand } from "@/services/applications/actions";
 import { Card } from "@/components/ui/card";
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 import { cn } from "@/lib/utils";
 import { Check, Hammer, Loader2, Play, PlayCircle, RefreshCw, StopCircle, Terminal, Download } from "lucide-react";
 import { useState } from "react";

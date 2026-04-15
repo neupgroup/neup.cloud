@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { requirements } from '@/services/requirements/list';
 import { PageTitleBack } from '@/components/page-header';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import Cookies from 'universal-cookie';
 import { checkRequirementStep, installRequirementStep, uninstallRequirementStep } from '../runner';
@@ -11,7 +11,7 @@ import * as Icons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Loader2, CheckCircle2, XCircle, Trash2, AlertTriangle } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
-import { useServerName } from '@/hooks/use-server-name';
+import { useServerName } from '@/core/hooks/use-server-name';
 
 const Icon = ({ name, className }: { name: string, className?: string }) => {
     // @ts-ignore

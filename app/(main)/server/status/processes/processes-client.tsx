@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Hash, User, Cpu, XCircle, ArrowLeft, Search, Server } from "lucide-react";
 import { getProcesses, killProcess } from '@/services/processes/actions';
 import type { Process } from '@/services/processes/types';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 import { PageTitleWithComponent } from '@/components/page-header';
 import { Input } from '@/components/ui/input';
 

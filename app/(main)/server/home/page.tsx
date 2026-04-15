@@ -7,7 +7,7 @@ import { Activity, TerminalSquare, FolderOpen, Rocket, Database, Globe, HardDriv
 import { PageTitle } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useServerName } from '@/hooks/use-server-name';
+import { useServerName } from '@/core/hooks/use-server-name';
 import { getServers, selectServer } from "@/services/servers/actions";
 import type { Server } from "@/services/servers/types";
 import Cookies from "universal-cookie";

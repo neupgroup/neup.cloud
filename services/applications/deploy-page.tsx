@@ -21,8 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useServerName } from '@/hooks/use-server-name';
-import { useToast } from '@/hooks/use-toast';
+import { useServerName } from '@/core/hooks/use-server-name';
+import { useToast } from '@/core/hooks/use-toast';
 
 import { createApplication, generateRepositoryKeys } from './actions';
 import { normalizeApplicationNameInput } from './name';

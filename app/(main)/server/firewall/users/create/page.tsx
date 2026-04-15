@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { UserPlus, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { createUser } from "@/services/server/firewall/users/actions";
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 import { useRouter } from "next/navigation";
 
 export default function CreateUserPage() {

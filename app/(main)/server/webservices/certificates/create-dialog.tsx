@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 import { FileCode, Loader2, Plus, RefreshCw, Shield, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { generateSslCertificate } from "@/services/webservices/nginx/actions";

@@ -3,9 +3,9 @@
 import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 
-import { getCurrentIntelligenceAccountId } from '@/lib/intelligence/account';
-import { ensureIntelligenceTables, getIntelligenceDbPool } from '@/lib/intelligence/db';
-import { invokeModel } from '@/lib/intelligence/model-client';
+import { getCurrentIntelligenceAccountId } from '@/core/ai/files/intelligence/account';
+import { ensureIntelligenceTables, getIntelligenceDbPool } from '@/core/ai/files/intelligence/db';
+import { invokeModel } from '@/core/ai/files/intelligence/model-client';
 import {
   createIntelligenceAccessRecord,
   generateAccessIdentifier,
@@ -16,7 +16,7 @@ import {
   hashAccessToken,
   type IntelligenceAccessRecord,
   type StoredModelConfig,
-} from '@/lib/intelligence/store';
+} from '@/core/ai/files/intelligence/store';
 import {
   createPipeline,
   createPipelineLog,

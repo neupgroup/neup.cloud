@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 
-import { ensureIntelligenceTables, getIntelligenceDbPool } from '@/lib/intelligence/db';
+import { ensureIntelligenceTables, getIntelligenceDbPool } from '@/core/ai/files/intelligence/db';
 
 const intlWithSupportedValues = Intl as typeof Intl & {
   supportedValuesOf?: (key: string) => string[];

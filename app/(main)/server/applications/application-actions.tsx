@@ -13,7 +13,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 import { Edit, Trash, Key, UploadCloud, Loader2, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";

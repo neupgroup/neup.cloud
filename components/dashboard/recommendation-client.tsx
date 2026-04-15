@@ -33,7 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { getRecommendations } from "@/services/actions";
 import { Loader2, Zap } from "lucide-react";
-import type { InfrastructureRecommendationsOutput } from "@/ai/flows/infrastructure-recommendations";
+import type { InfrastructureRecommendationsOutput } from "@/core/ai/flows/infrastructure-recommendations";
 import Link from "next/link";
 import { Skeleton } from "../ui/skeleton";
 

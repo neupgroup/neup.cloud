@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { getCurrentIntelligenceAccountId } from '@/lib/intelligence/account';
+import { getCurrentIntelligenceAccountId } from '@/core/ai/files/intelligence/account';
 import {
   createAccessTokenRecord,
   createIntelligenceAccessRecord,
@@ -23,7 +23,7 @@ import {
   rechargeIntelligenceAccessBalance,
   updateIntelligenceModelRecord,
   updateIntelligenceAccessRecord,
-} from '@/lib/intelligence/store';
+} from '@/core/ai/files/intelligence/store';
 
 export async function createAccessTokenAction(formData: FormData) {
   const accountId = await getCurrentIntelligenceAccountId();

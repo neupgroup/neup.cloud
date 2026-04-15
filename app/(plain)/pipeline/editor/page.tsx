@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 
 import PipelineEditor from '@/components/pipeline/editor';
-import { getCurrentIntelligenceAccountId } from '@/lib/intelligence/account';
+import { getCurrentIntelligenceAccountId } from '@/core/ai/files/intelligence/account';
 import {
   getAccessTokens,
   getIntelligenceAccesses,
   getIntelligenceModels,
-} from '@/lib/intelligence/store';
+} from '@/core/ai/files/intelligence/store';
 import { getPipelineById } from '@/services/pipelines/data';
 
 export const metadata: Metadata = {

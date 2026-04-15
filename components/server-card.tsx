@@ -6,7 +6,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 import { deleteServer, selectServer } from '@/services/servers/actions';
 import type { Server } from '@/services/servers/types';
 import { cn } from "@/lib/utils";

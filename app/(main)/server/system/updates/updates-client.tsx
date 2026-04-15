@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { getSystemUpdates, refreshPackageList, getInstalledPackages, type PackageUpdate } from '@/services/server/system/updates/actions';
 import { cn } from '@/lib/utils';

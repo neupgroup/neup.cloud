@@ -10,12 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { getCurrentIntelligenceAccountId } from '@/lib/intelligence/account';
+import { getCurrentIntelligenceAccountId } from '@/core/ai/files/intelligence/account';
 import {
   getAccessTokens,
   getIntelligenceAccessById,
   getIntelligenceModels,
-} from '@/lib/intelligence/store';
+} from '@/core/ai/files/intelligence/store';
 import AccessEditForm from '@/app/(main)/intelligence/access/[id]/access-edit-form';
 
 export const metadata: Metadata = {

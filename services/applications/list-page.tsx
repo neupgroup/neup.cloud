@@ -6,8 +6,8 @@ import React, { useEffect, useState } from "react";
 
 import { PageTitle } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
-import { useServerName } from '@/hooks/use-server-name';
-import { useToast } from '@/hooks/use-toast';
+import { useServerName } from '@/core/hooks/use-server-name';
+import { useToast } from '@/core/hooks/use-toast';
 
 import { getApplications, syncApplicationsWithServer } from "./actions";
 import { ApplicationCard } from "./application-card";

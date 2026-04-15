@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 import { Folder as FolderIcon, File as FileIcon, FileSymlink, Home, UploadCloud, FolderUp, Loader2, Copy, Trash, Move, Edit, Info, ClipboardPaste, X, FolderPlus, FilePlus, LayoutGrid, List, Shield, ShieldOff, Download } from 'lucide-react';
 import { browseDirectory, uploadFile, renameFile, deleteFiles, moveFiles, copyFiles, createDirectory, createEmptyFile, isDirectory } from '@/services/servers/[id]/actions';
 import type { FileOrFolder } from '@/services/servers/[id]/types';

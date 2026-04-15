@@ -37,7 +37,7 @@ import { Label } from '@/components/ui/label';
 import { getServers } from '@/services/servers/actions';
 import { getSavedCommands, deleteSavedCommand, executeSavedCommand } from '@/services/server/commands/actions';
 import type { SavedCommand } from '@/services/saved-commands/types';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 import { PageTitleBack } from '@/components/page-header';
 
 export default function CommandDetailPage({ params }: { params: { id: string } }) {

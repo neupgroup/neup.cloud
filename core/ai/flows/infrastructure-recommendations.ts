@@ -8,7 +8,7 @@
  * - InfrastructureRecommendationsOutput - The return type for the getInfrastructureRecommendations function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '@/core/ai/genkit';
 import {z} from 'genkit';
 
 const InfrastructureRecommendationsInputSchema = z.object({

@@ -5,8 +5,8 @@ import { ChevronLeft, ChevronRight, ScrollText } from 'lucide-react';
 import LogsAccordion from '@/app/(main)/intelligence/logs/logs-accordion';
 import { PageTitle } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { getCurrentIntelligenceAccountId } from '@/lib/intelligence/account';
-import { getPaginatedIntelligenceLogs, parseLogContext } from '@/lib/intelligence/store';
+import { getCurrentIntelligenceAccountId } from '@/core/ai/files/intelligence/account';
+import { getPaginatedIntelligenceLogs, parseLogContext } from '@/core/ai/files/intelligence/store';
 
 export const metadata: Metadata = {
   title: 'Intelligence Logs, Neup.Cloud',

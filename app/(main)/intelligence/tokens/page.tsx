@@ -14,8 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { getCurrentIntelligenceAccountId } from '@/lib/intelligence/account';
-import { getAccessTokens, maskSecret } from '@/lib/intelligence/store';
+import { getCurrentIntelligenceAccountId } from '@/core/ai/files/intelligence/account';
+import { getAccessTokens, maskSecret } from '@/core/ai/files/intelligence/store';
 
 export const metadata: Metadata = {
   title: 'Intelligence Tokens, Neup.Cloud',

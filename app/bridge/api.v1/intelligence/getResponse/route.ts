@@ -1,8 +1,8 @@
 import { after, NextRequest, NextResponse } from 'next/server';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
-import { ensureIntelligenceTables, getIntelligenceDbPool } from '@/lib/intelligence/db';
-import { invokeModel } from '@/lib/intelligence/model-client';
+import { ensureIntelligenceTables, getIntelligenceDbPool } from '@/core/ai/files/intelligence/db';
+import { invokeModel } from '@/core/ai/files/intelligence/model-client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

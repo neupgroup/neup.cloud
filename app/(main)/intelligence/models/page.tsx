@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { getIntelligenceModels } from '@/lib/intelligence/store';
+import { getIntelligenceModels } from '@/core/ai/files/intelligence/store';
 
 export const metadata: Metadata = {
   title: 'Intelligence Models, Neup.Cloud',

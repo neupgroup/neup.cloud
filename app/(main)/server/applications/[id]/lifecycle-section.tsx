@@ -5,7 +5,7 @@ import { Download, Hammer, Loader2, Play, PlayCircle, RefreshCw, StopCircle, Ter
 import { useState } from "react";
 
 import { Card } from "@/components/ui/card";
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 import { cn } from "@/lib/utils";
 import { executeApplicationCommand } from "@/services/applications/actions";
 

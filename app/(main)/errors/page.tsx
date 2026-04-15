@@ -19,7 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ShieldAlert, AlertTriangle, Info } from "lucide-react";
 import { getErrors } from '@/services/errors/actions';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 
 type AppError = {
