@@ -6,7 +6,7 @@ import {
     Card,
 } from "@/components/ui/card";
 import { Search, Package, Trash2, Plus } from "lucide-react";
-import { getStartupServices, toggleService, createService, type StartupService } from '@/services/server/system-startup-service';
+import { getStartupServices, toggleService, createService, type StartupService } from '@/services/server/system-startup';
 import { useToast } from '@/core/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from "@/components/ui/input";
