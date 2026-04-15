@@ -26,7 +26,7 @@ This implementation provides a complete solution for generating and deploying a 
 
 ### 2. Standalone Script
 
-**File:** `/scripts/generate-default-nginx.sh`
+**File:** `/services/webservices/nginx/generate-default-nginx.sh`
 
 **Features:**
 - ✅ Fully automated setup
@@ -39,10 +39,10 @@ This implementation provides a complete solution for generating and deploying a 
 **Usage:**
 ```bash
 # Default configuration
-sudo ./scripts/generate-default-nginx.sh
+sudo ./services/webservices/nginx/generate-default-nginx.sh
 
 # Custom configuration
-sudo ./scripts/generate-default-nginx.sh \
+sudo ./services/webservices/nginx/generate-default-nginx.sh \
     /path/to/cert.crt \
     /path/to/key.key \
     https://redirect-url.com

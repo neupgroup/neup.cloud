@@ -35,7 +35,7 @@
 **Files Modified:**
 - `/src/app/webservices/nginx/default/client.tsx` - Fixed paths, disabled inputs
 - `/src/app/webservices/nginx/default/actions.ts` - Updated default paths
-- `/scripts/generate-default-nginx.sh` - Updated default paths
+- `/services/webservices/nginx/generate-default-nginx.sh` - Updated default paths
 
 ## Technical Details
 

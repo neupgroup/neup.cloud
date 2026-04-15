@@ -106,17 +106,6 @@ model AppError {
   @@map("errors")
 }
 
-model CommandSet {
-  id          String   @id @db.Text
-  userId      String   @map("userId") @db.Text
-  name        String   @db.Text
-  description String?  @db.Text
-  commands    Json
-  createdAt   DateTime @map("createdAt") @db.Timestamp(6)
-
-  @@map("command_sets")
-}
-
 model WebService {
   id         String    @id @db.Text
   name       String?   @db.Text

@@ -28,10 +28,10 @@ Run the script directly on your server:
 
 ```bash
 # Using default values
-sudo ./scripts/generate-default-nginx.sh
+sudo ./services/webservices/nginx/generate-default-nginx.sh
 
 # With custom paths and redirect URL
-sudo ./scripts/generate-default-nginx.sh \
+sudo ./services/webservices/nginx/generate-default-nginx.sh \
     /path/to/cert.crt \
     /path/to/key.key \
     https://your-redirect-url.com

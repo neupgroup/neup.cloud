@@ -37,7 +37,7 @@ SSH into your server and run:
 
 ```bash
 # Download the script
-curl -o generate-default-nginx.sh https://your-domain.com/scripts/generate-default-nginx.sh
+curl -o generate-default-nginx.sh https://your-domain.com/services/webservices/nginx/generate-default-nginx.sh
 
 # Make it executable
 chmod +x generate-default-nginx.sh
@@ -229,7 +229,7 @@ sudo tail -f /var/log/nginx/access.log | grep "301"
 
 - Web Interface: `/src/app/webservices/nginx/default/page.tsx`
 - Server Actions: `/src/app/webservices/nginx/default/actions.ts`
-- Standalone Script: `/scripts/generate-default-nginx.sh`
+- Standalone Script: `/services/webservices/nginx/generate-default-nginx.sh`
 - Documentation: `/scripts/README.md`
 
 ## Support

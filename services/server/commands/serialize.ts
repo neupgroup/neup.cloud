@@ -1,10 +1,17 @@
-import type { CommandSetCommand } from '@/services/server/commands/set-types';
+export interface CommandStep {
+  id: string;
+  title: string;
+  command: string;
+  description: string;
+  isSkippable?: boolean;
+  isRepeatable?: boolean;
+}
 
-export function serializeCommandSetCommands(commands: CommandSetCommand[]) {
+export function serializeCommandSetCommands(commands: CommandStep[]) {
   return commands.map((step, index) => {
     const lines = [`# Step ${index + 1}: ${step.title}`];
 
-    if (step.description.trim()) {
+    if (step.description?.trim()) {
       lines.push(...step.description.split('\n').map((line) => `# ${line}`));
     }
 
