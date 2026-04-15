@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { executeCommand, executeQuickCommand } from '@/services/saved-commands/logic';
+import { executeCommand, executeQuickCommand } from '@/services/saved-commands/command-execution-service';
 
 import { getSelectedServerId } from './application-session';
 import { getRunningProcesses as getRunningProcessesForServer, getSupervisorProcesses as getSupervisorProcessesForServer } from './processes';

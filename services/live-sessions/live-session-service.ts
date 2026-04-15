@@ -1,8 +1,8 @@
 import { cookies } from 'next/headers';
 import { runCommandOnServer } from '@/services/ssh';
-import { appendLiveSessionLog, executeQuickCommand } from '@/services/saved-commands/logic';
+import { appendLiveSessionLog, executeQuickCommand } from '@/services/saved-commands/command-execution-service';
 import { createServerLog, updateServerLog } from '@/services/logs/server';
-import { getServerForRunner } from '@/services/server/logic';
+import { getServerForRunner } from '@/services/server/server-runtime';
 import { createLiveSession, getLiveSessionById, updateLiveSession } from '@/services/live-sessions/data';
 
 export async function initLiveSession(sessionId: string, serverId: string | undefined) {

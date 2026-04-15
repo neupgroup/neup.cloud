@@ -5,7 +5,7 @@ import { readFile, unlink } from 'fs/promises';
 import { promisify } from 'util';
 
 import * as Git from '@/services/core/github';
-import { executeCommand } from '@/services/saved-commands/logic';
+import { executeCommand } from '@/services/saved-commands/command-execution-service';
 
 import { getApplication } from './application-crud';
 import { getSelectedServerId } from './application-session';

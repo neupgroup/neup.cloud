@@ -10,7 +10,7 @@ import {
     getLatestWebService,
     updateWebService,
 } from '@/services/webservices/data';
-import { generateNginxConfigFromContext as generateNginxConfigFromContextLogic } from '@/services/webservices/nginx/logic';
+import { generateNginxConfigFromContext as generateNginxConfigFromContextLogic } from '@/services/webservices/nginx/nginx-config-generator';
 
 export interface SubPath {
     id: string;

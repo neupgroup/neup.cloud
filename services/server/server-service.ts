@@ -19,7 +19,7 @@ import {
   getServerMemory as getServerMemoryLogic,
   getSystemStats as getSystemStatsLogic,
   getSystemUptime as getSystemUptimeLogic,
-} from '@/services/server/logic';
+} from '@/services/server/server-runtime';
 
 export async function getSystemStats(serverId: string) {
   return getSystemStatsLogic(serverId);

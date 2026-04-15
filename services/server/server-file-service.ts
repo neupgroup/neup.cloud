@@ -5,7 +5,7 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { getServerLogsByServerId } from '@/services/logs/server';
-import { runCustomCommandOnServer as runCustomCommandOnServerLogic } from '@/services/server/logic';
+import { runCustomCommandOnServer as runCustomCommandOnServerLogic } from '@/services/server/server-runtime';
 import { runCommandOnServer, uploadFileToServer } from '@/services/ssh';
 import { getServerForRunner } from '@/services/server/server-service';
 import type { FileOrFolder } from '@/services/server/server-file-types';

@@ -6,7 +6,7 @@ import {
   getWebServiceById,
   getWebServicesByType,
 } from '@/services/webservices/data';
-import { getServerForRunner } from '@/services/server/logic';
+import { getServerForRunner } from '@/services/server/server-runtime';
 import type { WebServiceConfig } from '@/services/webservices/webservice-service';
 
 export async function getServerPublicIp(serverId: string) {

@@ -1,4 +1,4 @@
-import { executeQuickCommand } from '@/services/saved-commands/logic';
+import { executeQuickCommand } from '@/services/saved-commands/command-execution-service';
 
 export async function getRunningProcesses(serverId: string) {
   const delimiter = '---NEUP_CLOUD_SPLIT---';
