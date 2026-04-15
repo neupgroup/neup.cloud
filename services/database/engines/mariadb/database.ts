@@ -1,6 +1,6 @@
 'use server';
 
-import { getServerForRunner } from '@/services/servers/server-service';
+import { getServerForRunner } from '@/services/server/server-service';
 import { runCommandOnServer } from '@/services/ssh';
 import type { DatabaseDetails, OperationResult } from '../_types';
 

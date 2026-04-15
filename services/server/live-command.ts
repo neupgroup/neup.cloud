@@ -3,7 +3,7 @@
 import { runCommandOnServer } from '@/services/ssh';
 import { appendLiveSessionLog } from '@/services/saved-commands/logic';
 import { createServerLog, updateServerLog } from '@/services/logs/server';
-import { getServerForRunner } from '@/services/servers/logic';
+import { getServerForRunner } from '@/services/server/logic';
 import { createLiveSession, getLiveSessionById, updateLiveSession } from '@/services/live-sessions/data';
 
 export async function initLiveSession(sessionId: string, serverId: string | undefined) {

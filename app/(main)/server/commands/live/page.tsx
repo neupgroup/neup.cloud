@@ -3,7 +3,7 @@
 import { Clock, Play, Terminal, XCircle } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { getServer } from '@/services/servers/server-service';
+import { getServer } from '@/services/server/server-service';
 import { endLiveSession, executeLiveCommand, initLiveSession } from '@/services/server/live-command';
 
 interface HistoryItem {

@@ -6,4 +6,3 @@ export type FileOrFolder = {
   permissions: string;
   linkTarget?: string;
 };
-

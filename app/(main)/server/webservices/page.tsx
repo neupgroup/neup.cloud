@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'universal-cookie';
-import { getServer } from '@/services/servers/server-service';
+import { getServer } from '@/services/server/server-service';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/core/hooks/use-toast';
 import { Loader2, Globe, Wind, Server, ArrowRight, Settings, FileKey } from 'lucide-react';

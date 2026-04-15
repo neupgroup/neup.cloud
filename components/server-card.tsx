@@ -7,11 +7,11 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { useToast } from '@/core/hooks/use-toast';
-import { deleteServer, selectServer } from '@/services/servers/server-service';
-import type { Server } from '@/services/servers/types';
+import { deleteServer, selectServer } from '@/services/server/server-service';
+import type { Server } from '@/services/server/types';
 import { cn } from "@/core/utils";
 
-export type { Server } from '@/services/servers/types';
+export type { Server } from '@/services/server/types';
 
 type ServerCardProps = {
   server: Server;

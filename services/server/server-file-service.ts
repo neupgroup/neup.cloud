@@ -5,10 +5,10 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { getServerLogsByServerId } from '@/services/logs/server';
-import { runCustomCommandOnServer as runCustomCommandOnServerLogic } from '@/services/servers/logic';
+import { runCustomCommandOnServer as runCustomCommandOnServerLogic } from '@/services/server/logic';
 import { runCommandOnServer, uploadFileToServer } from '@/services/ssh';
-import { getServerForRunner } from '../application-service';
-import type { FileOrFolder } from './_types';
+import { getServerForRunner } from '@/services/server/server-service';
+import type { FileOrFolder } from '@/services/server/server-file-types';
 
 export async function runCustomCommandOnServer(serverId: string, command: string) {
   const result = await runCustomCommandOnServerLogic(serverId, command);

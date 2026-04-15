@@ -15,10 +15,10 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { updateServer, deleteServer } from '@/services/servers/server-service';
+import { updateServer, deleteServer } from '@/services/server/server-service';
 import { Loader2, Trash2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { getServer } from '@/services/servers/server-service';
+import { getServer } from '@/services/server/server-service';
 import {
     AlertDialog,
     AlertDialogAction,

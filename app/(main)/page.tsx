@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getServers, selectServer, getServer, getSystemStats } from '@/services/servers/server-service';
+import { getServers, selectServer, getServer, getSystemStats } from '@/services/server/server-service';
 import { getServerUptime } from "@/services/server/status-service";
 import { getRecentActivity, ActivityLog } from "@/services/home-service";
 import { format } from 'date-fns';

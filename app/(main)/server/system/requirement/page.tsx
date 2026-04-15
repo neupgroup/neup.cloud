@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowRight } from "lucide-react";
 import Link from 'next/link';
 import { cn } from '@/core/utils';
-import { requirements } from '@/services/requirements/list';
+import { requirements } from '@/services/requirement-list';
 import * as Icons from 'lucide-react';
 import { useServerName } from '@/core/hooks/use-server-name';
 import { Button } from '@/components/ui/button';

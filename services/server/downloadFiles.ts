@@ -2,7 +2,7 @@
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
-import { getServerForRunner } from '@/services/servers/server-service';
+import { getServerForRunner } from '@/services/server/server-service';
 import { runCommandOnServer, downloadFileFromServer } from '@/services/ssh';
 
 export async function downloadFiles(

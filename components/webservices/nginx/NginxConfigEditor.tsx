@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getServers } from '@/services/servers/server-service';
+import { getServers } from '@/services/server/server-service';
 import { getDomains } from '@/services/domains/domain-service';
 import type { ManagedDomain } from '@/services/domains/types';
 import {

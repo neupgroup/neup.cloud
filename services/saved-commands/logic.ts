@@ -1,7 +1,7 @@
 import { runCommandOnServer } from '@/services/ssh';
 import { createServerLog, getServerLogById, updateServerLog } from '@/services/logs/server';
 import { getSavedCommandById } from '@/services/saved-commands/data';
-import { getServerForRunner } from '@/services/servers/logic';
+import { getServerForRunner } from '@/services/server/logic';
 
 async function executeSingleCommand(
   serverId: string,

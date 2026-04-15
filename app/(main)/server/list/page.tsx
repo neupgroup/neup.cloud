@@ -8,8 +8,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/core/hooks/use-toast";
-import { getServers, deleteServer, selectServer } from "@/services/servers/server-service";
-import type { Server } from "@/services/servers/types";
+import { getServers, deleteServer, selectServer } from "@/services/server/server-service";
+import type { Server } from "@/services/server/types";
 import { cn } from "@/core/utils";
 
 export const metadata = {

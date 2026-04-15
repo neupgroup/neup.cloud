@@ -12,14 +12,14 @@ import {
   getServers as getServersData,
   toPublicServer,
   updateServer as updateServerRecord,
-} from '@/services/servers/data';
+} from '@/services/server/data';
 import {
   getRamUsage as getRamUsageLogic,
   getServerForRunner as getServerForRunnerLogic,
   getServerMemory as getServerMemoryLogic,
   getSystemStats as getSystemStatsLogic,
   getSystemUptime as getSystemUptimeLogic,
-} from '@/services/servers/logic';
+} from '@/services/server/logic';
 
 export async function getSystemStats(serverId: string) {
   return getSystemStatsLogic(serverId);
