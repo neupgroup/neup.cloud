@@ -8,7 +8,7 @@ import {
   deleteIntelligenceAccessAction,
   updateIntelligenceAccessAction,
   type UpdateIntelligenceAccessActionState,
-} from '@/services/intelligence/actions';
+} from '@/services/intelligence/intelligence-service';
 import { Button } from '@/components/ui/button';
 import {
   Card,

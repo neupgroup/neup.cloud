@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { PageTitleBack } from "@/components/page-header";
 import type { Metadata } from 'next';
 import { Badge } from "@/components/ui/badge";
-import { getDatabaseDetails } from '@/services/database";
+import { getDatabaseDetails } from '@/services/database/database-runtime';
 import { notFound } from "next/navigation";
 import Link from 'next/link';
 

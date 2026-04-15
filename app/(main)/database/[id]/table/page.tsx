@@ -5,7 +5,7 @@ import { ChevronRight, Database, Table as TableIcon, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageTitleBack } from '@/components/page-header';
-import { getDatabaseById } from '@/services/databases/data';
+import { getDatabaseById } from '@/services/database/data';
 import { listConnectionRelations } from '@/services/database/explorer';
 
 export const metadata: Metadata = {

@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/core/hooks/use-toast';
-import { getPackageVersions, installPackage, uninstallPackage, reinstallPackage, type PackageVersionInfo } from '@/services/server/system/packages/actions';
+import { getPackageVersions, installPackage, uninstallPackage, reinstallPackage, type PackageVersionInfo } from '@/services/server/system-packages-service';
 import { cn } from '@/core/utils';
 
 export function PackageDetailsClient({ serverId, serverName, packageName }: { serverId: string, serverName: string, packageName: string }) {

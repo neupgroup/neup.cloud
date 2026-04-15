@@ -7,7 +7,7 @@ import { cn } from "@/core/utils";
 import { FileText, UploadCloud, Key, Loader2 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useState } from "react";
-import { deployConfiguration } from "@/services/applications/actions";
+import { deployConfiguration } from "@/services/applications/application-service";
 
 interface DeploymentActionsCardProps {
     applicationId: string;

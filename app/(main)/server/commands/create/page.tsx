@@ -14,9 +14,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { PageTitleBack } from '@/components/page-header';
 
 import { useToast } from '@/core/hooks/use-toast';
-import { createSavedCommand } from '@/services/server/commands/actions';
+import { createSavedCommand } from '@/services/server/commands/server-command-service';
 import { VARIABLE_REGEX } from '@/services/saved-commands/types';
-import { serializeCommandSetCommands } from '@/services/command-sets/serialize';
+import { serializeCommandSetCommands } from '@/services/commands/command-set-serialize';
 
 type CreateMode = 'command' | 'set';
 

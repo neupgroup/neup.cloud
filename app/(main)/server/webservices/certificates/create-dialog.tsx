@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/core/hooks/use-toast';
 import { FileCode, Loader2, Plus, RefreshCw, Shield, ShieldAlert } from "lucide-react";
 import { useState } from "react";
-import { generateSslCertificate } from "@/services/webservices/nginx/actions";
+import { generateSslCertificate } from "@/services/webservices/nginx/nginx-service";
 import { Textarea } from "@/components/ui/textarea";
 
 interface CreateCertificateDialogProps {

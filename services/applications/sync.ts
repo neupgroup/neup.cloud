@@ -1,8 +1,8 @@
-import { getApplications } from './data';
+import { getApplications } from './_data';
 import { getSupervisorProcesses } from './processes';
-import type { Application } from './types';
+import type { Application } from './_types';
 import { updateApplication } from './update';
-import { findBestSupervisorProcessForApplication } from './utils';
+import { findBestSupervisorProcessForApplication } from './_utils';
 
 function getSyncPayload(application: Application, matchedProcess: any) {
   if (!matchedProcess) {

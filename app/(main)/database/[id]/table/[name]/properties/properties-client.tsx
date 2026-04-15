@@ -9,7 +9,7 @@ import { addTablePrimaryKeyAction,
   deleteTableAction,
   dropTableColumnAction,
   dropTableIndexAction,
-} from '@/services/database/actions';
+} from '@/services/database/management';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

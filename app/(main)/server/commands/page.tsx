@@ -20,10 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getServers } from '@/services/servers/actions';
-import { getSavedCommands, executeSavedCommand } from '@/services/server/commands/actions';
-import { getServerLogs } from '@/services/servers/[id]/actions';
-import { runCustomCommandOnServer } from '@/services/servers/[id]/actions';
+import { getServers } from '@/services/servers/server-service';
+import { getSavedCommands, executeSavedCommand } from '@/services/server/commands/server-command-service';
+import { getServerLogs } from '@/services/servers/server-details/server-file-service';
+import { runCustomCommandOnServer } from '@/services/servers/server-details/server-file-service';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/core/hooks/use-toast';

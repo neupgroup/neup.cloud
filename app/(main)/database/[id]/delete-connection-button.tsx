@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/core/hooks/use-toast';
-import { deleteDatabaseConnection } from '@/services/database/actions';
+import { deleteDatabaseConnection } from '@/services/database/management';
 import { useRouter } from 'next/navigation';
 
 export function DeleteConnectionButton({ connectionId }: { connectionId: string }) {

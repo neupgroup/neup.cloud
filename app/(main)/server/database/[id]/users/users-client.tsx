@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/core/hooks/use-toast';
 import { UserCreateForm } from "./user-create-form";
-import { deleteDatabaseUser, type DatabaseUser } from '@/services/database";
+import { deleteDatabaseUser, type DatabaseUser } from '@/services/database/database-runtime';
 import Link from 'next/link';
 
 interface UsersClientPageProps {

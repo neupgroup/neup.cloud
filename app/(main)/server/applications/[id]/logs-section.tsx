@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getApplicationLogs } from "@/services/applications/log-actions";
+import { getApplicationLogs } from "@/services/logs/application-actions";
 
 interface LogsSectionProps {
   application: any;

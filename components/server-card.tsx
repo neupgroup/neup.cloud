@@ -7,7 +7,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { useToast } from '@/core/hooks/use-toast';
-import { deleteServer, selectServer } from '@/services/servers/actions';
+import { deleteServer, selectServer } from '@/services/servers/server-service';
 import type { Server } from '@/services/servers/types';
 import { cn } from "@/core/utils";
 

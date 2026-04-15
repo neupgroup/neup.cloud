@@ -1,5 +1,5 @@
 import { getProcessCardStatus, ServerProcess } from './status';
-import type { Application } from './types';
+import type { Application } from './_types';
 
 export function getStoredStatus(application: Application) {
   const syncInfo = application.information?.serverSync;

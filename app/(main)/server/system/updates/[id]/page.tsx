@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Server } from 'lucide-react';
-import { UpdateDetailsClient } from './update-details-client';
+import { UpdateDetailsClient } from './_update-details-client';
 
 export const metadata: Metadata = {
     title: 'Update Details, Neup.Cloud',

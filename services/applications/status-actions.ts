@@ -2,9 +2,9 @@
 
 import { cookies } from 'next/headers';
 
-import { getApplication } from './data';
+import { getApplication } from './_data';
 import { getSupervisorProcesses } from './processes';
-import { findBestSupervisorProcessForApplication } from './utils';
+import { findBestSupervisorProcessForApplication } from './_utils';
 import { executeQuickCommand } from '@/services/saved-commands/logic';
 
 export type AppStatusResult = {

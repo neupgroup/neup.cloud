@@ -1,6 +1,6 @@
 'use server';
 
-import { getServerForRunner } from '@/services/servers/actions';
+import { getServerForRunner } from '@/services/servers/server-service';
 import { runCommandOnServer } from '@/services/ssh';
 import type { DatabaseInstallation, EngineStatus, DatabaseInstance } from './engine-types';
 

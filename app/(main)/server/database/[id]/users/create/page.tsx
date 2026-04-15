@@ -1,7 +1,7 @@
 
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { getDatabaseDetails } from '@/services/database";
+import { getDatabaseDetails } from '@/services/database/database-runtime';
 import { UserCreateForm } from "../user-create-form";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, UserPlus } from "lucide-react";

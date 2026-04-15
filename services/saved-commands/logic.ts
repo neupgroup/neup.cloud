@@ -1,5 +1,5 @@
 import { runCommandOnServer } from '@/services/ssh';
-import { createServerLog, getServerLogById, updateServerLog } from '@/services/server-logs/data';
+import { createServerLog, getServerLogById, updateServerLog } from '@/services/logs/server';
 import { getSavedCommandById } from '@/services/saved-commands/data';
 import { getServerForRunner } from '@/services/servers/logic';
 

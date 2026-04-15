@@ -1,8 +1,8 @@
 'use server';
 
-import { getServerForRunner } from '@/services/servers/actions';
+import { getServerForRunner } from '@/services/servers/server-service';
 import { runCommandOnServer } from '@/services/ssh';
-import type { DatabaseDetails, OperationResult } from '../types';
+import type { DatabaseDetails, OperationResult } from '../_types';
 
 /**
  * Get detailed information about a PostgreSQL database

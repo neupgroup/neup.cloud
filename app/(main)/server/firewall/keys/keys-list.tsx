@@ -5,7 +5,7 @@ import {
     Card,
 } from "@/components/ui/card";
 import { Key, FolderOpen, Hash } from "lucide-react";
-import { getAuthorizedKeys, type SshKey } from '@/services/server/firewall/keys/actions';
+import { getAuthorizedKeys, type SshKey } from '@/services/server/firewall-keys-service';
 import { useToast } from '@/core/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/core/utils';

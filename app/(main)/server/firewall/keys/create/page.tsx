@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Download, KeyRound, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { generateSSHKeyPair, addAuthorizedKey } from "@/services/server/firewall/keys/actions";
+import { generateSSHKeyPair, addAuthorizedKey } from "@/services/server/firewall-keys-service";
 import { useToast } from '@/core/hooks/use-toast';
 import { useRouter } from "next/navigation";
 import { Separator } from "@/components/ui/separator";

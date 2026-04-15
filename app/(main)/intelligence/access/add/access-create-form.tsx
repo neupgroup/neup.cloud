@@ -7,7 +7,7 @@ import { Copy, KeyRound } from 'lucide-react';
 import {
   createIntelligenceAccessAction,
   type CreateIntelligenceAccessActionState,
-} from '@/services/intelligence/actions';
+} from '@/services/intelligence/intelligence-service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

@@ -14,10 +14,10 @@ import { DeploymentActionsCard } from './deployment-actions-card';
 import EditApplicationForm from './edit-form';
 import { EnvironmentsForm } from './environments-form';
 import { FilesForm } from './files-form';
-import { GitHubSection } from './github-section';
+import { GitHubSection } from './_github-section';
 import { LifecycleSection } from './lifecycle-section';
 import { LogsSection } from './logs-section';
-import { StatusDashboard } from './status-dashboard';
+import { StatusDashboard } from './_status-dashboard';
 import { SystemSection } from './system-section';
 
 type ViewMode = 'details' | 'edit' | 'environments' | 'files';

@@ -6,7 +6,7 @@ import { PageTitleBack } from '@/components/page-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { getDatabaseById } from '@/services/databases/data';
+import { getDatabaseById } from '@/services/database/data';
 import { getConnectionTableProperties } from '@/services/database/explorer';
 import { TablePropertiesClient } from './properties-client';
 

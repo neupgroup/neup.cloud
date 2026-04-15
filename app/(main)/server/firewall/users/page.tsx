@@ -2,7 +2,7 @@ import { PageTitle } from "@/components/page-header";
 import { Users } from "lucide-react";
 import { Metadata } from "next";
 import { cookies } from 'next/headers';
-import { getSystemUsers } from "@/services/server/firewall/users/actions";
+import { getSystemUsers } from "@/services/server/firewall-users-service";
 import UsersList from "./users-list";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";

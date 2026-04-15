@@ -5,7 +5,7 @@
 import { Card } from "@/components/ui/card";
 import { cn } from "@/core/utils";
 import { Loader2, Terminal, Zap } from "lucide-react";
-import { useActionsSection, ActionsSectionProps } from "@/services/applications/actions-section";
+import { useActionsSection, ActionsSectionProps } from "@/services/applications/application-service-section";
 
 export function ActionsSection({ application }: ActionsSectionProps) {
     const { customCommands, executing, handleExecute } = useActionsSection(application);

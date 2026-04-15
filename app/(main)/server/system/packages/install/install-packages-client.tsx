@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { searchAvailablePackages } from '@/services/server/system/packages/actions';
+import { searchAvailablePackages } from '@/services/server/system-packages-service';
 import { cn } from '@/core/utils';
 import { useToast } from '@/core/hooks/use-toast';
 import { useDebounce } from 'use-debounce';

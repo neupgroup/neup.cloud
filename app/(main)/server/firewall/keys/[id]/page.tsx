@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Trash2, ChevronLeft } from "lucide-react";
 import Link from 'next/link';
-import { getAuthorizedKeys } from "@/services/server/firewall/keys/actions";
+import { getAuthorizedKeys } from "@/services/server/firewall-keys-service";
 import { cookies } from 'next/headers';
 import { notFound } from "next/navigation";
 

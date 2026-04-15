@@ -6,7 +6,7 @@ import { cn } from "@/core/utils";
 import { FileText, Loader2, RefreshCw, Terminal } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getApplicationLogs } from "@/services/applications/log-actions";
+import { getApplicationLogs } from "@/services/logs/application-actions";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface LogsSectionProps {

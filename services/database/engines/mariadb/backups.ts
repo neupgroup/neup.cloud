@@ -1,8 +1,8 @@
 'use server';
 
-import { getServerForRunner } from '@/services/servers/actions';
+import { getServerForRunner } from '@/services/servers/server-service';
 import { runCommandOnServer } from '@/services/ssh';
-import type { BackupResult } from '../types';
+import type { BackupResult } from '../_types';
 
 /**
  * Generate a backup of a MariaDB database

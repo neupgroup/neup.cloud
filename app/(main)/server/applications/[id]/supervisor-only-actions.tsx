@@ -17,7 +17,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { deleteSupervisorOnlyProcess, stopSupervisorOnlyProcess } from '@/services/applications/actions';
+import { deleteSupervisorOnlyProcess, stopSupervisorOnlyProcess } from '@/services/applications/application-service';
 import { useToast } from '@/core/hooks/use-toast';
 
 interface SupervisorOnlyActionsProps {

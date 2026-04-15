@@ -1,7 +1,7 @@
 import { prisma } from '@/services/prisma';
 
-import type { Application, UpdateApplicationData } from './types';
-import { checkName, mapApplication, toJsonField } from './utils';
+import type { Application, UpdateApplicationData } from './_types';
+import { checkName, mapApplication, toJsonField } from './_utils';
 
 export async function updateApplication(id: string, data: UpdateApplicationData): Promise<Application> {
   if (data.name && !checkName(data.name)) throw new Error('Invalid application name');

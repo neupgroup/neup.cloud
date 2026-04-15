@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { getServer } from '@/services/servers/actions';
+import { getServer } from '@/services/servers/server-service';
 import DefaultNginxConfigClient from './client';
 
 export default async function DefaultNginxConfigPage() {

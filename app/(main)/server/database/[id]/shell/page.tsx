@@ -1,7 +1,7 @@
 
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { getDatabaseDetails } from '@/services/database";
+import { getDatabaseDetails } from '@/services/database/database-runtime';
 import type { Metadata } from 'next';
 import { ShellClient } from "./shell-client";
 

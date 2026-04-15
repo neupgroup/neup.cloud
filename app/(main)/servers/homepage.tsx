@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getServers, selectServer } from "@/services/servers/actions";
+import { getServers, selectServer } from "@/services/servers/server-service";
 import type { Server } from "@/services/servers/types";
 import { Loader2, ServerIcon, ArrowRight } from "lucide-react";
 

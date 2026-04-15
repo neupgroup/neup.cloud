@@ -16,7 +16,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Plus, Trash2 } from "lucide-react"
-import { updateApplication } from "@/services/applications/actions"
+import { updateApplication } from "@/services/applications/application-service"
 import type { Application } from "@/services/applications/type"
 
 const envSchema = z.object({

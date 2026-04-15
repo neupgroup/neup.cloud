@@ -1,6 +1,6 @@
 'use server';
 
-import { executeCommand } from '@/services/server/commands/actions';
+import { executeCommand } from '@/services/server/commands/server-command-service';
 import { cookies } from 'next/headers';
 
 export async function testNginxConfiguration() {

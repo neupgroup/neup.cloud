@@ -20,7 +20,7 @@ import { useToast } from '@/core/hooks/use-toast';
 import { Copy, ExternalLink, Key, Plus, Trash, X, Upload, AppWindow } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, { useRef, useState } from 'react';
-import { generateRepositoryKeys, updateApplication } from '@/services/applications/actions';
+import { generateRepositoryKeys, updateApplication } from '@/services/applications/application-service';
 import { normalizeApplicationNameInput } from '@/services/applications/name';
 
 const FRAMEWORKS = [

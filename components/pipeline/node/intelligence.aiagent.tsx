@@ -1,6 +1,6 @@
 'use client';
 
-import { executePipelineAiAgentAction, type PipelineAiAgentExecutionInput } from '@/services/pipelines/actions';
+import { executePipelineAiAgentAction, type PipelineAiAgentExecutionInput } from '@/services/pipelines/pipeline-service';
 import {
   buildPipelineIntelligenceModelLabel,
   type PipelineIntelligenceContext,

@@ -1,5 +1,5 @@
 import { runCommandOnServer } from '@/services/ssh';
-import { createServerLog } from '@/services/server-logs/data';
+import { createServerLog } from '@/services/logs/server';
 import { getServerById } from '@/services/servers/data';
 
 export async function getServerForRunner(id: string) {

@@ -1,4 +1,4 @@
-import type { Application } from '@/services/applications/types';
+import type { Application } from '@/services/applications/_types';
 import { ApplicationCardStatus, getLanguageDisplay, getStatusDotClass } from '@/services/applications/status';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/core/utils';

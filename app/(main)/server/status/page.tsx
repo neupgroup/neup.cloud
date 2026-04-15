@@ -2,7 +2,7 @@
 import React from 'react';
 import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
-import StatusClient from './status-client';
+import StatusClient from './_status-client';
 
 export const metadata: Metadata = {
     title: 'Server Status, Neup.Cloud',

@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { runCommandOnServer } from '@/services/ssh';
 import { appendLiveSessionLog, executeQuickCommand } from '@/services/saved-commands/logic';
-import { createServerLog, updateServerLog } from '@/services/server-logs/data';
+import { createServerLog, updateServerLog } from '@/services/logs/server';
 import { getServerForRunner } from '@/services/servers/logic';
 import { createLiveSession, getLiveSessionById, updateLiveSession } from '@/services/live-sessions/data';
 

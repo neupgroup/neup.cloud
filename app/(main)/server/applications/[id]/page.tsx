@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { PageTitleBack } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getApplicationDetailPageData } from '@/services/applications/actions';
+import { getApplicationDetailPageData } from '@/services/applications/application-service';
 
 import { SupervisorOnlyActions } from './supervisor-only-actions';
 import { ApplicationDetailPanel } from './application-detail-panel';

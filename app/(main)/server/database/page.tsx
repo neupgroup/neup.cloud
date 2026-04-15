@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { PageTitle } from "@/components/page-header";
 import type { Metadata } from 'next';
 import { Badge } from "@/components/ui/badge";
-import { checkDatabaseInstallation, listAllDatabases, type DatabaseInstallation, type DatabaseInstance } from '@/services/database";
+import { checkDatabaseInstallation, listAllDatabases, type DatabaseInstallation, type DatabaseInstance } from '@/services/database/database-runtime';
 
 export const metadata: Metadata = {
     title: 'Databases | Neup.Cloud',

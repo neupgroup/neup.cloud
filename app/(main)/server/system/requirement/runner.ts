@@ -1,9 +1,9 @@
 'use server';
 
-import { getServerForRunner } from '@/services/servers/actions';
+import { getServerForRunner } from '@/services/servers/server-service';
 import { runCommandOnServer } from '@/services/ssh';
 
-import { executeCommand } from '@/services/server/commands/actions';
+import { executeCommand } from '@/services/server/commands/server-command-service';
 
 export async function checkRequirementStep(serverId: string, command: string) {
     const server = await getServerForRunner(serverId);

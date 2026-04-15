@@ -1,4 +1,4 @@
-import { findBestSupervisorProcessForApplication } from './utils';
+import { findBestSupervisorProcessForApplication } from './_utils';
 
 export type ServerProcess = {
   name: string;

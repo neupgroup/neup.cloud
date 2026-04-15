@@ -10,7 +10,7 @@ import { useToast } from '@/core/hooks/use-toast';
 import { Loader2, Database, ShieldCheck, Key, User, AlertTriangle, CheckCircle, ArrowRight, Server } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { type DatabaseInstallation, installDatabaseEngine, checkDatabaseInstallation, createDatabaseInstance } from '@/services/database';
+import { type DatabaseInstallation, installDatabaseEngine, checkDatabaseInstallation, createDatabaseInstance } from '@/services/database/database-runtime';
 
 interface DatabaseCreateFormProps {
     serverId?: string;

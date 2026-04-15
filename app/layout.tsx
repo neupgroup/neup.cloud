@@ -58,7 +58,7 @@ import './globals.css';
 import { ProgressBar } from '@/components/progress-bar';
 import NProgress from 'nprogress';
 import Cookies from 'universal-cookie';
-import { getServer } from '@/services/servers/actions';
+import { getServer } from '@/services/servers/server-service';
 
 import { findLongestMatch } from '@/services/layout/findLongestMatch';
 

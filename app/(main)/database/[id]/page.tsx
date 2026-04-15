@@ -13,7 +13,7 @@ import {
   checkDatabaseConnection,
   deleteDatabaseConnection,
   getDatabaseConnectionMeta,
-} from '@/services/database/actions';
+} from '@/services/database/management';
 
 type ConnectionMeta = NonNullable<Awaited<ReturnType<typeof getDatabaseConnectionMeta>>>;
 
