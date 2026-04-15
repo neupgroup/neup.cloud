@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/core/hooks/use-toast';
 import { Loader2, UserPlus, ShieldCheck, Key, User, Database } from 'lucide-react';
-import { createDatabaseUser } from '@/services/actions/database';
+import { createDatabaseUser } from '@/services/database';
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface UserCreateFormProps {

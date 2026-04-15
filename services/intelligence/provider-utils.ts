@@ -1,4 +1,4 @@
-import type { SupportedProvider } from '@/services/actions/intelligence/types';
+import type { SupportedProvider } from '@/services/intelligence/types';
 
 export function ensureApiKey(value: string | undefined, provider: SupportedProvider): string {
   if (!value) {

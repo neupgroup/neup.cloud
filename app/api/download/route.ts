@@ -1,4 +1,4 @@
-import { handleDownloadPost } from '@/services/api/download';
+import { handleDownloadPost } from '@/services/server/download-route';
 import { NextRequest } from 'next/server';
 
 export async function POST(request: NextRequest) {

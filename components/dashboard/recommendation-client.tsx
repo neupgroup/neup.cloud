@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { getRecommendations } from "@/services/actions";
+import { getInfrastructureRecommendations } from "@/core/ai/flows/infrastructure-recommendations";
 import { Loader2, Zap } from "lucide-react";
 import type { InfrastructureRecommendationsOutput } from "@/core/ai/flows/infrastructure-recommendations";
 import Link from "next/link";
@@ -123,7 +123,7 @@ export default function RecommendationClient() {
     setIsLoading(true);
     setRecommendations(null);
     try {
-      const result = await getRecommendations(values);
+      const result = await getInfrastructureRecommendations(values);
       setRecommendations(result);
     } catch (error) {
       console.error("Failed to get recommendations:", error);

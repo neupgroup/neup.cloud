@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { PageTitle } from "@/components/page-header";
 import { Users } from "lucide-react";
 import DatabaseUsersClient from "./database-users-client";
-import { listDatabaseUsers } from '@/services/actions/database";
+import { listDatabaseUsers } from '@/services/database";
 
 export default async function DatabaseUsersPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;

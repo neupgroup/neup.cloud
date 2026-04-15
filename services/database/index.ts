@@ -16,14 +16,14 @@ import type {
     BackupResult,
     QueryResult,
     DatabaseSettings
-} from './types';
+} from './engine-types';
 
 // Import common operations
 import {
     checkDatabaseInstallation as _checkDatabaseInstallation,
     installDatabaseEngine as _installDatabaseEngine,
     listAllDatabases as _listAllDatabases
-} from './common';
+} from './engine-common';
 
 // MariaDB operations
 import {
@@ -67,7 +67,7 @@ export type {
     QueryResult,
     DatabaseSettings,
     EngineStatus
-} from './types';
+} from './engine-types';
 
 /**
  * Common operations - wrapped to comply with 'use server' requirements

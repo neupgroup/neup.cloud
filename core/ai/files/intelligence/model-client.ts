@@ -1,7 +1,7 @@
-import { invokeAnthropicModel } from '@/services/actions/intelligence/anthropic';
-import { invokeGeminiModel } from '@/services/actions/intelligence/gemini';
-import { invokeOpenAIModel } from '@/services/actions/intelligence/openai';
-import type { ModelInvocationResult, SupportedProvider } from '@/services/actions/intelligence/types';
+import { invokeAnthropicModel } from '@/services/intelligence/anthropic';
+import { invokeGeminiModel } from '@/services/intelligence/gemini';
+import { invokeOpenAIModel } from '@/services/intelligence/openai';
+import type { ModelInvocationResult, SupportedProvider } from '@/services/intelligence/types';
 
 export interface ModelInvocationInput {
   provider?: string | null;

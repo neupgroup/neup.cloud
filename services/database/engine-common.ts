@@ -2,7 +2,7 @@
 
 import { getServerForRunner } from '@/services/servers/actions';
 import { runCommandOnServer } from '@/services/ssh';
-import type { DatabaseInstallation, EngineStatus, DatabaseInstance } from './types';
+import type { DatabaseInstallation, EngineStatus, DatabaseInstance } from './engine-types';
 
 /**
  * Check which database engines are installed on the server

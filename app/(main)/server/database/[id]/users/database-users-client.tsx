@@ -5,7 +5,7 @@ import { User, Plus, Shield, ShieldCheck, ChevronRight } from "lucide-react";
 import Link from 'next/link';
 import { cn } from '@/core/utils';
 import { Badge } from "@/components/ui/badge";
-import type { DatabaseUser } from '@/services/actions/database";
+import type { DatabaseUser } from '@/services/database";
 
 export default function DatabaseUsersClient({ users, dbId }: { users: DatabaseUser[], dbId: string }) {
 

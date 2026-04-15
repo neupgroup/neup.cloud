@@ -1,5 +1,5 @@
-import type { ModelInvocationResult } from '@/services/actions/intelligence/types';
-import { ensureApiKey, extractText, readErrorMessage } from '@/services/actions/intelligence/utils';
+import type { ModelInvocationResult } from '@/services/intelligence/types';
+import { ensureApiKey, extractText, readErrorMessage } from '@/services/intelligence/provider-utils';
 
 export async function invokeGeminiModel(input: {
   model: string;

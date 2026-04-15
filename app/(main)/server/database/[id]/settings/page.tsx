@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { PageTitleBack } from "@/components/page-header";
 import type { Metadata } from 'next';
 import { Badge } from "@/components/ui/badge";
-import { getDatabaseDetails, getDatabaseSettings } from '@/services/actions/database";
+import { getDatabaseDetails, getDatabaseSettings } from '@/services/database";
 import { notFound } from "next/navigation";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";

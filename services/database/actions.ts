@@ -8,7 +8,7 @@ import {
   updateDatabaseConnectionStatus,
   getDatabases as getDatabasesData,
 } from '@/services/databases/data';
-import type { CreateDatabaseConnectionInput, DatabaseShellQueryResult, ExternalDatabase } from './types';
+import type { CreateDatabaseConnectionInput, DatabaseShellQueryResult, ExternalDatabase } from './engine-types';
 import {
   buildCredentialsSummary,
   normalizeDatabaseConnectionInput,

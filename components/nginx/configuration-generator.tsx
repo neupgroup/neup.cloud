@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { generateNginxConfig, NginxLocation } from '../../core/nginx';
+import { generateNginxConfig, NginxLocation } from '@/services/core/nginx';
 import { Plus, Trash, Copy, Check, FileCode } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
@@ -16,7 +16,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { useToast } from '../../hooks/use-toast';
+import { useToast } from '@/core/hooks/use-toast';
 
 interface NginxConfigGeneratorProps {
     defaultDomain?: string;
