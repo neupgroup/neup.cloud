@@ -10,7 +10,7 @@ import type {
   SqliteAuthConfig,
 } from '@/services/database/types';
 import { testPostgresConnection } from '@/services/database/postgres/filesforconnectingandworkingonpostgres';
-import { testFirestoreConnection } from '@/services/database/firestore/filesforconnectingandworkingonfirestore';
+import { testFirestoreConnection } from '@/services/database/firestore/firestore-auth';
 
 function requireField(authConfig: Record<string, string>, field: string) {
   const value = authConfig[field]?.trim();

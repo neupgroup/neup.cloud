@@ -1,7 +1,7 @@
 import { prisma } from '@/services/prisma';
 import { createId } from '@/services/shared/create-id';
 
-import type { Application, CreateApplicationData } from './type';
+import type { Application, CreateApplicationData } from './types';
 import { checkName, mapApplication, toJsonField } from './utils';
 
 const SUPERVISOR_SERVICE_SEPARATOR = '_serving_';

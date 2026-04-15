@@ -16,7 +16,7 @@ import { cookies } from 'next/headers';
 import { buildSupervisorServiceName, createApplication as createApplicationRecord, generateSupervisorServiceToken } from './create';
 import { deleteApplication as deleteApplicationRecord } from './delete';
 import { getApplication as getApplicationRecord, getApplications as getApplicationsData } from './data';
-import type { Application, CreateApplicationData, UpdateApplicationData } from './type';
+import type { Application, CreateApplicationData, UpdateApplicationData } from './types';
 import { getRunningProcesses as getRunningProcessesForServer, getSupervisorProcesses as getSupervisorProcessesForServer } from './processes';
 import { syncApplicationsWithServer as syncApplicationsWithServerForServer } from './sync';
 import { updateApplication as updateApplicationRecord } from './update';

@@ -1,4 +1,4 @@
-import type { Application } from './type';
+import type { Application } from './types';
 
 export type SupervisorProcessLike = {
   name: string;

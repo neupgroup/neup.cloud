@@ -1,6 +1,6 @@
 import { prisma } from '@/services/prisma';
 
-import type { Application } from './type';
+import type { Application } from './types';
 import { mapApplication } from './utils';
 
 export async function getApplications(): Promise<Application[]> {

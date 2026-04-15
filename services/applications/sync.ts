@@ -1,6 +1,6 @@
 import { getApplications } from './data';
 import { getSupervisorProcesses } from './processes';
-import type { Application } from './type';
+import type { Application } from './types';
 import { updateApplication } from './update';
 import { findBestSupervisorProcessForApplication } from './utils';
 

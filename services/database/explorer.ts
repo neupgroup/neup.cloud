@@ -15,7 +15,7 @@ import { createPostgresPool } from '@/services/database/postgres/filesforconnect
 import {
   listFirestoreCollections,
   listFirestoreCollectionDocuments,
-} from '@/services/database/firestore/filesforconnectingandworkingonfirestore';
+} from '@/services/database/firestore/firestore-auth';
 
 function assertIdentifierPart(value: string, label = 'identifier') {
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) {

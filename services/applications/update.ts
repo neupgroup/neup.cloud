@@ -1,6 +1,6 @@
 import { prisma } from '@/services/prisma';
 
-import type { Application, UpdateApplicationData } from './type';
+import type { Application, UpdateApplicationData } from './types';
 import { checkName, mapApplication, toJsonField } from './utils';
 
 export async function updateApplication(id: string, data: UpdateApplicationData): Promise<Application> {
