@@ -9,7 +9,7 @@ import type {
   PostgresAuthConfig,
   SqliteAuthConfig,
 } from '@/services/database/types';
-import { testPostgresConnection } from '@/services/database/postgres/filesforconnectingandworkingonpostgres';
+import { testPostgresConnection } from '@/services/database/postgres/connection';
 import { testFirestoreConnection } from '@/services/database/firestore/firestore-auth';
 
 function requireField(authConfig: Record<string, string>, field: string) {
