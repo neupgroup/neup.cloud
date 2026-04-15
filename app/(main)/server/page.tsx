@@ -1,5 +1,82 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { getServers, selectServer } from "@/services/servers/actions";
+import type { Server } from "@/services/servers/types";
+import { Loader2, ServerIcon, ArrowRight } from "lucide-react";
+
+function SidebarServers() {
+    const router = useRouter();
+    const [servers, setServers] = useState<Server[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [switchingId, setSwitchingId] = useState<string | null>(null);
+
+    useEffect(() => {
+        (async () => {
+            setIsLoading(true);
+            try {
+                const data = await getServers();
+                setServers(data);
+            } finally {
+                setIsLoading(false);
+            }
+        })();
+    }, []);
+
+    const handleSwitch = async (id: string, name: string) => {
+        setSwitchingId(id);
+        await selectServer(id, name);
+        setSwitchingId(null);
+        router.push("/server");
+    };
+
+    return (
+        <aside className="w-72 p-4 border-r min-h-screen">
+            <h2 className="font-semibold mb-4">Servers</h2>
+            {isLoading ? (
+                <Loader2 className="animate-spin" />
+            ) : servers.length === 0 ? (
+                <div className="text-muted-foreground">No servers found.</div>
+            ) : (
+                <div className="flex flex-col gap-2">
+                    {servers.map(server => (
+                        <Button
+                            key={server.id}
+                            variant="ghost"
+                            className="justify-between"
+                            disabled={!!switchingId}
+                            onClick={() => handleSwitch(server.id, server.name)}
+                        >
+                            <span className="flex items-center gap-2 cursor-pointer" onClick={e => { e.stopPropagation(); router.push("/server"); }}>
+                                <ServerIcon className="h-4 w-4" />
+                                {server.name}
+                            </span>
+                            {switchingId === server.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                        </Button>
+                    ))}
+                </div>
+            )}
+        </aside>
+    );
+}
+
+export default function ServerPage() {
+    return (
+        <div className="flex">
+            <SidebarServers />
+            <main className="flex-1 p-8">
+                {/* Main server content goes here */}
+                <h1 className="text-2xl font-bold mb-4">Server Main Page</h1>
+                <p>Select a server from the sidebar to manage or switch.</p>
+            </main>
+        </div>
+    );
+}
+"use client";
+
 import Link from 'next/link';
 import { Activity, TerminalSquare, FolderOpen, Rocket, Database, Globe, HardDrive, Shield } from 'lucide-react';
 import { PageTitle } from '@/components/page-header';
