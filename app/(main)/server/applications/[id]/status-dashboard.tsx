@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/core/utils";
-import { AppStatusResult, checkApplicationStatus } from "@/services/applications/status-actions";
+import { AppStatusResult, checkApplicationStatus } from "@/services/server/applications/status-actions";
 
 interface StatusDashboardProps {
   applicationId: string;

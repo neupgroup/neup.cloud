@@ -2,7 +2,7 @@
 
 // Moved from /app/(main)/processes/actions.ts
 import { getServerForRunner } from '@/services/server/server-service';
-import { runCommandOnServer } from '@/services/ssh';
+import { runCommandOnServer } from '@/services/server/ssh';
 
 import type { Process } from './types';
 

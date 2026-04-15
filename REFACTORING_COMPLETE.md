@@ -18,7 +18,7 @@ Fixed all major unconventional patterns identified in the services folder. See `
   - deploy-page.tsx
   - list-page.tsx
 
-**Imports Updated:** All component imports now reference `@/services/applications/` for business logic dependencies
+**Imports Updated:** All component imports now reference `@/services/server/applications/` for business logic dependencies
 
 **Status:** ✅ COMPLETE
 

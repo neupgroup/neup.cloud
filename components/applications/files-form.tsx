@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import type { Application } from "@/services/applications/_types";
-import { updateApplication } from "@/services/applications/applications-service";
+import type { Application } from "@/services/server/applications/_types";
+import { updateApplication } from "@/services/server/applications/applications-service";
 
 export interface FilesFormProps {
     application: Application;

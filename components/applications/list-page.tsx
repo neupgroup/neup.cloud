@@ -9,12 +9,12 @@ import { Card } from "@/components/ui/card";
 import { useServerName } from '@/core/hooks/use-server-name';
 import { useToast } from '@/core/hooks/use-toast';
 
-import { getApplications, syncApplicationsWithServer } from "@/services/applications/applications-service";
+import { getApplications, syncApplicationsWithServer } from "@/services/server/applications/applications-service";
 import { ApplicationCard } from "./application-card";
-import { getStoredStatus } from '@/services/applications/stored-status';
+import { getStoredStatus } from '@/services/server/applications/stored-status';
 import { ApplicationCardSkeleton } from "@/app/(main)/server/applications/application-card-skeleton";
-import { getProcessCardStatus, type ServerProcess } from '@/services/applications/status';
-import type { Application } from "@/services/applications/_types";
+import { getProcessCardStatus, type ServerProcess } from '@/services/server/applications/status';
+import type { Application } from "@/services/server/applications/_types";
 
 export function ApplicationsPage() {
   const { toast } = useToast();

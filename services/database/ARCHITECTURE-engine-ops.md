@@ -46,7 +46,7 @@
                                  ▼
                     ┌──────────────────────────┐
                     │   SSH Command Layer      │
-                    │  @/services/ssh          │
+                    │  @/services/server/ssh          │
                     │                          │
                     │  • runCommandOnServer()  │
                     └────────────┬─────────────┘

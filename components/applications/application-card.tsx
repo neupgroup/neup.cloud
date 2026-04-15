@@ -1,5 +1,5 @@
-import type { Application } from '@/services/applications/_types';
-import { ApplicationCardStatus, getLanguageDisplay, getStatusDotClass } from '@/services/applications/status';
+import type { Application } from '@/services/server/applications/_types';
+import { ApplicationCardStatus, getLanguageDisplay, getStatusDotClass } from '@/services/server/applications/status';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/core/utils';
 import { AppWindow, Code, ChevronRight } from 'lucide-react';

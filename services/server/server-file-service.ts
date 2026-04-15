@@ -6,7 +6,7 @@ import os from 'os';
 import path from 'path';
 import { getServerLogsByServerId } from '@/services/logs/server';
 import { runCustomCommandOnServer as runCustomCommandOnServerLogic } from '@/services/server/server-runtime';
-import { runCommandOnServer, uploadFileToServer } from '@/services/ssh';
+import { runCommandOnServer, uploadFileToServer } from '@/services/server/ssh';
 import { getServerForRunner } from '@/services/server/server-service';
 import type { FileOrFolder } from '@/services/server/server-file-types';
 

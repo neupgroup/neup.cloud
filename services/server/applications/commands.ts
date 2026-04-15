@@ -1,4 +1,4 @@
-import { executeCommand, executeQuickCommand } from '@/services/commands/commands-service';
+import { executeCommand, executeQuickCommand } from '@/services/server/commands/commands-service';
 
 export async function runApplicationCommand(serverId: string, command: string, description: string) {
   return executeCommand(serverId, command, description, command);

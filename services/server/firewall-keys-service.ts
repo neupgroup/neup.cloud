@@ -1,7 +1,7 @@
 'use server';
 
 import { getServerForRunner } from '@/services/server/server-service';
-import { runCommandOnServer } from '@/services/ssh';
+import { runCommandOnServer } from '@/services/server/ssh';
 import { generateKeyPair } from 'crypto';
 import { promisify } from 'util';
 

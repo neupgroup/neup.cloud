@@ -1,7 +1,7 @@
 'use server';
 
 import { getServerForRunner } from '@/services/server/server-service';
-import { runCommandOnServer } from '@/services/ssh';
+import { runCommandOnServer } from '@/services/server/ssh';
 import { revalidatePath } from 'next/cache';
 
 export async function getFileContent(serverId: string, path: string, isBinary: boolean = false, rootMode: boolean = false) {

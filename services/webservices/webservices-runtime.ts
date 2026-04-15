@@ -1,4 +1,4 @@
-import { runCommandOnServer } from '@/services/ssh';
+import { runCommandOnServer } from '@/services/server/ssh';
 import { getDomains } from '@/services/domains/data';
 import {
   getAllWebServices,

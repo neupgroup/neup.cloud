@@ -1,6 +1,6 @@
 'use server';
 
-import { runCommandOnServer } from '@/services/ssh';
+import { runCommandOnServer } from '@/services/server/ssh';
 import { appendLiveSessionLog } from '@/services/saved-commands/saved-commands-service';
 import { createServerLog, updateServerLog } from '@/services/logs/server';
 import { getServerForRunner } from '@/services/server/server-runtime';

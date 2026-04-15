@@ -17,7 +17,7 @@ import { useToast } from '@/core/hooks/use-toast';
 import { Edit, Trash, Key, UploadCloud, Loader2, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { deleteApplication, deployConfiguration } from "@/services/applications/applications-service";
+import { deleteApplication, deployConfiguration } from "@/services/server/applications/applications-service";
 
 interface ApplicationActionsProps {
     applicationId: string;

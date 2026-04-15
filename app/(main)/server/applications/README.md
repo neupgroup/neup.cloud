@@ -52,7 +52,7 @@ Applications are stored in Firestore under the `applications` collection with th
 ### Creating an Application
 
 ```typescript
-import { createApplication } from '@/services/applications/actions';
+import { createApplication } from '@/services/server/applications/actions';
 
 const appId = await createApplication({
   name: 'My App',
@@ -74,7 +74,7 @@ const appId = await createApplication({
 ### Getting Applications
 
 ```typescript
-import { getApplications, getApplication } from '@/services/applications/actions';
+import { getApplications, getApplication } from '@/services/server/applications/actions';
 
 // Get all applications
 const apps = await getApplications();
@@ -86,7 +86,7 @@ const app = await getApplication('app-id');
 ### Updating an Application
 
 ```typescript
-import { updateApplication } from '@/services/applications/actions';
+import { updateApplication } from '@/services/server/applications/actions';
 
 await updateApplication('app-id', {
   networkAccess: ['3000', '8080'],
@@ -100,7 +100,7 @@ await updateApplication('app-id', {
 ### Deleting an Application
 
 ```typescript
-import { deleteApplication } from '@/services/applications/actions';
+import { deleteApplication } from '@/services/server/applications/actions';
 
 await deleteApplication('app-id');
 ```

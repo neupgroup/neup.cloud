@@ -18,7 +18,7 @@ import { Activity, HeartPulse, Server, Loader2, ChevronLeft, ChevronRight, Cpu, 
 import { startStatusTracking, stopStatusTracking, getStatus, type StatusData } from '@/services/server/status-service';
 import { getProcesses, killProcess } from '@/services/processes/processes-service';
 import type { Process } from '@/services/processes/types';
-import { getNetworkConnections, type NetworkConnection } from '@/services/network-service';
+import { getNetworkConnections, type NetworkConnection } from '@/services/server/network-service';
 import { useToast } from '@/core/hooks/use-toast';
 import { PageTitleWithComponent } from '@/components/page-header';
 import { Input } from '@/components/ui/input';

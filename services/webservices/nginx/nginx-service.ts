@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { runCommandOnServer } from '@/services/ssh';
+import { runCommandOnServer } from '@/services/server/ssh';
 import { executeCommand, executeQuickCommand } from '@/services/server/commands/server-command-service';
 import { getServerForRunner } from '@/services/server/server-service';
 import { getServerPublicIp as getServerPublicIpLogic } from '@/services/webservices/webservices-service';
