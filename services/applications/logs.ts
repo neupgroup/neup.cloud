@@ -1,4 +1,4 @@
-import { sanitizeAppName } from '@/core/universal';
+import { sanitizeAppName } from '@/services/core/universal';
 import { executeQuickCommand } from '@/services/saved-commands/logic';
 
 export async function getApplicationLogs(serverId: string, appName: string, lines: number = 50) {

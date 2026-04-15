@@ -2,7 +2,7 @@
 'use server';
 
 import { NodeSSH } from 'node-ssh';
-import { UniversalLinux } from '@/core/universal';
+import { UniversalLinux } from '@/services/core/universal';
 import { prisma } from '@/services/prisma';
 
 const DEFAULT_SWAP_SIZE_MB = 2048;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { requirements } from '@/requirements/list';
+import { requirements } from '@/services/requirements/list';
 import { PageTitleBack } from '@/components/page-header';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';

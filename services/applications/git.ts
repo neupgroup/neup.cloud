@@ -1,4 +1,4 @@
-import * as Git from '@/core/github';
+import * as Git from '@/services/core/github';
 import { executeCommand } from '@/services/commands/actions';
 
 export async function performGitOperation({

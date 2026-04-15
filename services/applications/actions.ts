@@ -4,11 +4,11 @@ import { exec as rawExec } from 'child_process';
 import { readFile, unlink } from 'fs/promises';
 import { promisify } from 'util';
 
-import * as Git from '@/core/github';
-import * as Go from '@/core/go';
-import * as NextJs from '@/core/nextjs';
-import * as NodeJs from '@/core/nodejs';
-import * as Python from '@/core/python';
+import * as Git from '@/services/core/github';
+import * as Go from '@/services/core/go';
+import * as NextJs from '@/services/core/nextjs';
+import * as NodeJs from '@/services/core/nodejs';
+import * as Python from '@/services/core/python';
 import { executeCommand, executeQuickCommand } from '@/services/saved-commands/logic';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';

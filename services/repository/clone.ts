@@ -1,4 +1,4 @@
-import * as Git from '@/core/github';
+import * as Git from '@/services/core/github';
 
 export function getCloneCommand(location: string, repoUrl: string, isPrivate: boolean, privateKey?: string) {
   if (isPrivate && privateKey) {
