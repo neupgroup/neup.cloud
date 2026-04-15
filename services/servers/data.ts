@@ -1,5 +1,5 @@
 import { prisma } from '@/services/prisma';
-import { createId } from '@/services/shared/create-id';
+import { createId } from '@/core/create-id';
 
 export function toPublicServer(server: Awaited<ReturnType<typeof prisma.server.findUnique>> extends infer T ? Exclude<T, null> : never) {
   const { privateKey, ...publicServer } = server;

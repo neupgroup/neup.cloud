@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getServers, selectServer, getServer, getSystemStats } from '@/services/servers/server-service';
 import { getServerUptime } from "@/services/server/status-service";
-import { getRecentActivity, ActivityLog } from "@/services/home/index";
+import { getRecentActivity, ActivityLog } from "@/services/home-service";
 import { format } from 'date-fns';
 import { cn } from '@/core/utils';
 import { SystemHealthCard } from "@/components/system-health-card";

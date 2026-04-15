@@ -1,5 +1,5 @@
 import { prisma } from '@/services/prisma';
-import { createId } from '@/services/shared/create-id';
+import { createId } from '@/core/create-id';
 
 import type { Application, CreateApplicationData } from './_types';
 import { checkName, mapApplication, toJsonField } from './_utils';

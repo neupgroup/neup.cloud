@@ -1,5 +1,5 @@
 import { prisma } from '@/services/prisma';
-import { createId } from '@/services/shared/create-id';
+import { createId } from '@/core/create-id';
 import type { WebServiceConfig, WebServiceType } from '@/services/webservices/webservice-service';
 
 function mapWebService(record: {
