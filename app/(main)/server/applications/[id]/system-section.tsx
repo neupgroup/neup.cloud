@@ -5,7 +5,7 @@ import { Calendar, FolderOpen, Network, User } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { cn } from "@/core/utils";
-import { useSystemSection, SystemSectionProps } from '@/services/applications/system-section';
+import { useSystemSection, SystemSectionProps } from '@/components/applications/system-section';
 
 export function SystemSection({ application }: SystemSectionProps) {
   const { portsDescription, createdDate, updatedDate } = useSystemSection(application);

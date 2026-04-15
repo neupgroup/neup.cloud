@@ -60,7 +60,7 @@ import NProgress from 'nprogress';
 import Cookies from 'universal-cookie';
 import { getServer } from '@/services/server/server-service';
 
-import { findLongestMatch } from '@/services/layout/findLongestMatch';
+import { findLongestMatch } from '@/services/core/findLongestMatch';
 
 function NavLink({
   href,

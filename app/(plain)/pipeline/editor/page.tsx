@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: 'Edit automations in the Neup.Cloud pipeline studio.',
 };
 
-import { findMatchingModelId } from '@/services/pipeline/findMatchingModelId';
+import { findMatchingModelId } from '@/services/core/findMatchingModelId';
 
 export default async function PipelineEditorPage({
   searchParams,

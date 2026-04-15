@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 
-import { ApplicationsPage } from "@/services/applications/list-page";
+import { ApplicationsPage } from "@/components/applications/list-page";
 
 export const metadata: Metadata = {
     title: "Applications, Neup.Cloud",

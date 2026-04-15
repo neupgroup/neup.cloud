@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Server } from 'lucide-react';
 import { PageTitle } from '@/components/page-header';
-import { UpdatesClient } from './_updates-client';
+import { UpdatesClient } from './updates-client';
 
 export const metadata: Metadata = {
     title: 'Updates, Neup.Cloud',

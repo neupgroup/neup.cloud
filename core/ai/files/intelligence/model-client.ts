@@ -1,6 +1,6 @@
-import { invokeAnthropicModel } from '@/services/intelligence/anthropic';
-import { invokeGeminiModel } from '@/services/intelligence/gemini';
-import { invokeOpenAIModel } from '@/services/intelligence/openai';
+import { invokeAnthropicModel } from '@/services/intelligence/providers/anthropic';
+import { invokeGeminiModel } from '@/services/intelligence/providers/gemini';
+import { invokeOpenAIModel } from '@/services/intelligence/providers/openai';
 import type { ModelInvocationResult, SupportedProvider } from '@/services/intelligence/types';
 
 export interface ModelInvocationInput {

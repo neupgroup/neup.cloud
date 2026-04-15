@@ -12,10 +12,6 @@ import { getServers, deleteServer, selectServer } from "@/services/server/server
 import type { Server } from "@/services/server/types";
 import { cn } from "@/core/utils";
 
-export const metadata = {
-  title: 'Servers, Neup.Cloud',
-};
-
 function ServerCardSkeleton() {
   return (
     <div className="flex flex-col gap-2 p-4">

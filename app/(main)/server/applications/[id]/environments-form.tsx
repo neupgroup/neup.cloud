@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Plus, Trash2 } from "lucide-react"
 import { updateApplication } from "@/services/applications/applications-service"
-import type { Application } from "@/services/applications/type"
+import type { Application } from "@/services/applications/_types"
 
 const envSchema = z.object({
     envs: z.array(z.object({

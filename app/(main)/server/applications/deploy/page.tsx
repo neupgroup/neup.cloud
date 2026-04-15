@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 
-import { DeployApplicationPage } from "@/services/applications/deploy-page";
+import { DeployApplicationPage } from "@/components/applications/deploy-page";
 
 export const metadata: Metadata = {
     title: "Deploy Application, Neup.Cloud",

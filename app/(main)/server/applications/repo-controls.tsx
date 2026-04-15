@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Download, GitPullRequest, RefreshCw, RotateCcw } from "lucide-react";
 
-import { useRepoControls } from '@/services/applications/repo-controls';
+import { useRepoControls } from '@/components/applications/repo-controls';
 
 interface RepoControlsProps {
   applicationId: string;

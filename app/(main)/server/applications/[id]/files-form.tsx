@@ -26,8 +26,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
-import type { Application } from "@/services/applications/type";
-import { useFilesForm } from '@/services/applications/files-form';
+import type { Application } from "@/services/applications/_types";
+import { useFilesForm } from '@/components/applications/files-form';
 
 export function FilesForm({ application }: { application: Application }) {
   const {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, PlusCircle, Trash2, Variable } from 'lucide-react';
@@ -45,7 +45,7 @@ function extractVariablesFromText(text: string) {
   return Array.from(matches, (match) => match[1]);
 }
 
-export default function CreateCommandPage() {
+function CreateCommandPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -473,5 +473,29 @@ export default function CreateCommandPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+export default function CreateCommandPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="grid gap-6">
+          <PageTitleBack
+            title="Create Command"
+            description="Fill in the fields below to continue."
+            backHref="/server/commands"
+          />
+          <Card className="p-6">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading form...
+            </div>
+          </Card>
+        </div>
+      }
+    >
+      <CreateCommandPageContent />
+    </Suspense>
   );
 }

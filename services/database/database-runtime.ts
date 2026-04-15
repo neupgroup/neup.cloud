@@ -36,7 +36,7 @@ import {
     updateMariaDBUserPassword,
     generateMariaDBBackup,
     executeMariaDBQuery
-} from './mariadb/operations';
+} from './engines/mariadb/operations';
 
 // PostgreSQL operations
 import {
@@ -49,11 +49,11 @@ import {
     updatePostgresUserPassword,
     generatePostgresBackup,
     executePostgresQuery
-} from './postgresql/operations';
+} from './engines/postgresql/operations';
 
 // Settings operations
-import { saveMariaDBSettings, getMariaDBSettings } from './mariadb/settings';
-import { savePostgresSettings, getPostgresSettings } from './postgresql/settings';
+import { saveMariaDBSettings, getMariaDBSettings } from './engines/mariadb/settings';
+import { savePostgresSettings, getPostgresSettings } from './engines/postgresql/settings';
 
 // Re-export types
 export type {

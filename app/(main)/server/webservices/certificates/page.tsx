@@ -9,7 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { AlertCircle, Calendar, CheckCircle2, FileKey, RefreshCw, Shield, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getCertificates } from '@/services/webservices/webservices-certificates-service';
-import { CreateCertificateDialog } from './_create-dialog';
+import { CreateCertificateDialog } from './create-dialog';
 import Link from 'next/link';
 
 interface Certificate {
