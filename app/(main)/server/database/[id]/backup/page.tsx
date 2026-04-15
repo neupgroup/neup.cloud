@@ -2,7 +2,7 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { BackupClientPage } from "./backup-client";
-import { getDatabaseDetails } from "@/actions/database";
+import { getDatabaseDetails } from '@/services/actions/database";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

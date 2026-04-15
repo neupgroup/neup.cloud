@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { PageTitleBack } from "@/components/page-header";
 import type { Metadata } from 'next';
 import { Badge } from "@/components/ui/badge";
-import { getDatabaseDetails } from "@/actions/database";
+import { getDatabaseDetails } from '@/services/actions/database";
 import { notFound } from "next/navigation";
 
 export const metadata: Metadata = {

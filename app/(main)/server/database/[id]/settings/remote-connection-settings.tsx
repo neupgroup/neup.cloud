@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { saveDatabaseSettings, type DatabaseSettings } from "@/actions/database";
+import { saveDatabaseSettings, type DatabaseSettings } from '@/services/actions/database";
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 

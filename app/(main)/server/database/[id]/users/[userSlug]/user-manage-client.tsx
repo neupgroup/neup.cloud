@@ -8,7 +8,7 @@ import { User, ShieldCheck, Trash2, Key, ChevronLeft, Loader2, Save, Lock } from
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
-import { updateDatabaseUserPermissions, deleteDatabaseUser, updateDatabaseUserPassword } from "@/actions/database";
+import { updateDatabaseUserPermissions, deleteDatabaseUser, updateDatabaseUserPassword } from '@/services/actions/database";
 import Link from 'next/link';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

@@ -7,7 +7,7 @@ import { Database, Download, FileJson, FileCode, ShieldCheck, CheckCircle2, Load
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from '@/hooks/use-toast';
-import { generateDatabaseBackup } from "@/actions/database";
+import { generateDatabaseBackup } from '@/services/actions/database";
 import Link from 'next/link';
 
 interface BackupClientPageProps {

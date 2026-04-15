@@ -1,5 +1,5 @@
-import type { ModelInvocationResult } from '@/actions/intelligence/types';
-import { ensureApiKey, extractText, readErrorMessage } from '@/actions/intelligence/utils';
+import type { ModelInvocationResult } from '@/services/actions/intelligence/types';
+import { ensureApiKey, extractText, readErrorMessage } from '@/services/actions/intelligence/utils';
 
 export async function invokeOpenAIModel(input: {
   model: string;
