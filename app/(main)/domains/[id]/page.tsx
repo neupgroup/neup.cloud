@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { Trash2, Copy, Check } from "lucide-react";
 import { useParams } from 'next/navigation';
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils";
 import { getDomain, getDomainDNSRecords, getDomainNameservers, verifyDomain, deleteDomain } from '@/services/domains/actions';
 import type { ManagedDomain, DNSRecord } from '@/services/domains/types';
 import { useEffect, useState } from "react";

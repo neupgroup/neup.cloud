@@ -4,7 +4,7 @@ import { PageTitle } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight } from "lucide-react";
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { requirements } from '@/services/requirements/list';
 import * as Icons from 'lucide-react';
 import { useServerName } from '@/core/hooks/use-server-name';

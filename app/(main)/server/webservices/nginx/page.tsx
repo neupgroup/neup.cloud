@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, FileCode, Calendar, User, Server, Hash, RefreshCw, Shield, CheckCircle } from 'lucide-react';
 import { PageTitleBack } from '@/components/page-header';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { restartNginxService } from './restart-action';
 import { testNginxConfiguration } from './test-action';
 import { useToast } from '@/core/hooks/use-toast';

@@ -3,7 +3,7 @@
 'use client';
 
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils";
 import { Loader2, Terminal, Zap } from "lucide-react";
 import { useActionsSection, ActionsSectionProps } from "@/services/applications/actions-section";
 

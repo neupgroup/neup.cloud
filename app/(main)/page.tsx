@@ -24,7 +24,7 @@ import { getServers, selectServer, getServer, getSystemStats } from '@/services/
 import { getServerUptime } from "@/services/server/status/actions";
 import { getRecentActivity, ActivityLog } from "@/services/home/actions";
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { SystemHealthCard } from "@/components/system-health-card";
 import { ServerNameLink } from "@/components/server-name-link";
 import { RunningProcessesCard } from "@/components/running-processes-card";

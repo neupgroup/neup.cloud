@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { User, Plus, Shield, ShieldCheck, ChevronRight } from "lucide-react";
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { Badge } from "@/components/ui/badge";
 import type { DatabaseUser } from '@/services/actions/database";
 

@@ -16,7 +16,7 @@ import {
   type PipelineNodeRecord,
   type PipelineNodeType,
 } from '@/components/pipeline/node/interface';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 
 type SidebarTemplate = {
   kind: PipelineNodeKind;

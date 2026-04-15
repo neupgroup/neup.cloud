@@ -6,7 +6,7 @@ import { getSupervisorProcesses } from "@/services/applications/actions";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils";
 
 interface RunningProcessesCardProps {
     serverId: string;

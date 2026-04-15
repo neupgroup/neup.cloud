@@ -7,7 +7,7 @@ import { Handle, Position } from 'reactflow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { type PipelineIntelligenceContext } from '@/components/pipeline/node/intelligence.shared';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 
 export type PipelineNodeKind =
   | 'manualStart'

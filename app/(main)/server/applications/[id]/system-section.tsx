@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Calendar, FolderOpen, Network, User } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils";
 import { useSystemSection, SystemSectionProps } from '@/services/applications/system-section';
 
 export function SystemSection({ application }: SystemSectionProps) {

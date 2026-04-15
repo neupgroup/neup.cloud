@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/core/hooks/use-toast';
 import { getPackageVersions, installPackage, type PackageVersionInfo } from '@/services/server/system/packages/actions';
-import { cn } from '@/lib/utils'; // Correct import path assuming this file is deep
+import { cn } from '@/core/utils'; // Correct import path assuming this file is deep
 
 export function InstallPackageDetailsClient({ serverId, serverName, packageName }: { serverId: string, serverName: string, packageName: string }) {
     const { toast } = useToast();

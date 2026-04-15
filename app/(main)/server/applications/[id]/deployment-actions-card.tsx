@@ -3,7 +3,7 @@
 
 import { Card } from "@/components/ui/card";
 import { useToast } from '@/core/hooks/use-toast';
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils";
 import { FileText, UploadCloud, Key, Loader2 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useState } from "react";

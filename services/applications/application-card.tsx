@@ -1,7 +1,7 @@
 import type { Application } from './type';
 import { ApplicationCardStatus, getLanguageDisplay, getStatusDotClass } from './status';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { AppWindow, Code, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';

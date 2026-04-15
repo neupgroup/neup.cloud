@@ -3,7 +3,7 @@
 import { Play, Plus, Workflow } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 
 type PipelineContextMenuItem = {
   id: string;

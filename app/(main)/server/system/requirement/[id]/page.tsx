@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react';
 import Cookies from 'universal-cookie';
 import { checkRequirementStep, installRequirementStep, uninstallRequirementStep } from '../runner';
 import * as Icons from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { Loader2, CheckCircle2, XCircle, Trash2, AlertTriangle } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useServerName } from '@/core/hooks/use-server-name';

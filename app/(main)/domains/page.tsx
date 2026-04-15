@@ -18,7 +18,7 @@ import {
 import { getDomains } from '@/services/domains/actions';
 import type { ManagedDomain } from '@/services/domains/types';
 import { formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';

@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { searchAvailablePackages } from '@/services/server/system/packages/actions';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { useToast } from '@/core/hooks/use-toast';
 import { useDebounce } from 'use-debounce';
 

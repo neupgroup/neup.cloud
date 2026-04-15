@@ -12,7 +12,7 @@ import { checkDomain } from '@/services/domains/actions';
 import type { DomainStatus } from '@/services/domains/types';
 import Link from 'next/link';
 import { PageTitleBack } from '@/components/page-header';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { Badge } from '@/components/ui/badge';
 
 function DomainListResult({ results, isLoading, query }: { results: DomainStatus[], isLoading: boolean, query: string }) {

@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/core/hooks/use-toast";
 import { getServers, deleteServer, selectServer } from "@/services/servers/actions";
 import type { Server } from "@/services/servers/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils";
 
 export const metadata = {
   title: 'Servers, Neup.Cloud',

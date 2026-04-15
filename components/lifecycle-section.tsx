@@ -4,7 +4,7 @@
 import { executeApplicationCommand } from "@/services/applications/actions";
 import { Card } from "@/components/ui/card";
 import { useToast } from '@/core/hooks/use-toast';
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils";
 import { Check, Hammer, Loader2, Play, PlayCircle, RefreshCw, StopCircle, Terminal, Download } from "lucide-react";
 import { useState } from "react";
 import * as LucideIcons from "lucide-react";

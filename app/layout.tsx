@@ -40,7 +40,7 @@ import {
   Workflow
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect, Suspense } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';

@@ -30,7 +30,7 @@ export default function CreateKeyPage() {
         // Actually, since this is client side, I can just use the dictionary I created or a simple list if import fails.
         // But I made a file, let's try to import it.
         // Wait, standard import is top level.
-        // For now, I'll assume I can just import getRandomWord from '@/lib/dictionary' at top level.
+        // For now, I'll assume I can just import getRandomWord from '@/core/dictionary' at top level.
         return `generated-key-${Math.floor(Math.random() * 10000)}`;
     };
 
@@ -40,7 +40,7 @@ export default function CreateKeyPage() {
             // Auto generate name if empty
             let nameToUse = keyName;
             if (!nameToUse) {
-                const { getRandomWord } = await import('@/lib/dictionary');
+                const { getRandomWord } = await import('@/core/dictionary');
                 const word = getRandomWord();
                 const number = Math.floor(1000 + Math.random() * 9000); // 4 digit number
                 nameToUse = `${word}.${number}.key`;

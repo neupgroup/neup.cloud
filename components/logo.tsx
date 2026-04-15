@@ -1,7 +1,7 @@
 'use client';
 
 import { Cloud } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils";
 import Link from "next/link";
 import NProgress from 'nprogress';
 import { usePathname } from 'next/navigation';

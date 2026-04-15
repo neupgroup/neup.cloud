@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { Card } from "@/components/ui/card";
 import { useToast } from '@/core/hooks/use-toast';
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils";
 import { executeApplicationCommand } from "@/services/applications/actions";
 
 interface LifecycleSectionProps {

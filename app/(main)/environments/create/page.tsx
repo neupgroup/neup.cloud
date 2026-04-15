@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/core/hooks/use-toast';
 import { Loader2, Save, Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { createEnvironmentVariable } from '@/services/environment-variables/actions';

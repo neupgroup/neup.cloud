@@ -11,7 +11,7 @@ import { getFirewallStatus, allowPort, deleteRule, toggleFirewall, type Firewall
 import { useToast } from '@/core/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from "@/components/ui/button";
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import {
     Dialog,
     DialogContent,

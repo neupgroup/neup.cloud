@@ -5,7 +5,7 @@ import { performGitOperation } from "@/services/applications/actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from '@/core/hooks/use-toast';
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils";
 import { Download, ExternalLink, GitBranch, GitPullRequest, Loader2, RefreshCw, RotateCcw } from "lucide-react";
 import Link from 'next/link';
 import { useState } from "react";

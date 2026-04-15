@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/core/utils";
 import { FolderOpen, Network, User, Calendar } from "lucide-react";
 import Link from 'next/link';
 import React from 'react';

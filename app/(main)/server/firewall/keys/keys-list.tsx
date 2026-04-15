@@ -8,7 +8,7 @@ import { Key, FolderOpen, Hash } from "lucide-react";
 import { getAuthorizedKeys, type SshKey } from '@/services/server/firewall/keys/actions';
 import { useToast } from '@/core/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { Button } from '@/components/ui/button';
 
 import { Plus, ChevronRight } from "lucide-react";

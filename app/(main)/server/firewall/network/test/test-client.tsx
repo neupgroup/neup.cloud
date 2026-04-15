@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Play, RotateCcw, AlertCircle, CheckCircle2, XCircle, Clock, ShieldAlert, Plus } from 'lucide-react';
 import { checkPortConnectivity } from '@/services/server/firewall/actions';
 import { useToast } from '@/core/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 
 const COMMON_PORTS = [
     { port: 22, name: 'SSH', description: 'Secure Shell' },

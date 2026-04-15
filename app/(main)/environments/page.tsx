@@ -8,7 +8,7 @@ import { DeleteButton } from '@/components/delete-button';
 import { Input } from '@/components/ui/input';
 import { Trash, Search, Globe, Server, Lock, ChevronRight, PlusCircle, ShieldAlert, EyeOff } from 'lucide-react';
 import { useToast } from '@/core/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { getEnvironmentVariables, deleteEnvironmentVariable, type EnvironmentVariable } from '@/services/environment-variables/actions';
 import { Badge } from '@/components/ui/badge';
 

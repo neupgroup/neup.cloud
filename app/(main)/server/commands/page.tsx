@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { type SavedCommand } from '@/services/saved-commands/types';
-import { cn } from '@/lib/utils';
+import { cn } from '@/core/utils';
 import { differenceInDays, differenceInHours, format, formatDistanceToNow } from 'date-fns';
 
 type ServerType = {
