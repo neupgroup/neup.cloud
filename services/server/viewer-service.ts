@@ -52,7 +52,7 @@ export async function saveFileContent(serverId: string, path: string, content: s
             return { error: result.stderr || 'Failed to save file.' };
         }
 
-        revalidatePath('/viewer'); // In case anyone is looking
+        revalidatePath('/server/viewer'); // In case anyone is looking
         return { success: true };
     } catch (e: any) {
         return { error: e.message };

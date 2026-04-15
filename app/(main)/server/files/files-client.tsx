@@ -218,7 +218,7 @@ function ServerFilesBrowser({ serverId }: { serverId: string }) {
       else if (videoExts.includes(ext)) type = 'video';
       else if (codeExts.includes(ext)) type = 'code';
 
-      router.push(`/viewer?path=${encodeURIComponent(fullPath)}&type=${type}${rootMode ? '&rootMode=true' : ''}`);
+      router.push(`/server/viewer?path=${encodeURIComponent(fullPath)}&type=${type}${rootMode ? '&rootMode=true' : ''}`);
     };
 
     if (item.type === 'directory') {
