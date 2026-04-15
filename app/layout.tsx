@@ -128,6 +128,11 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     { href: "/domains/add", label: "Add Domain", icon: Plus },
   ];
 
+  const securityLinks = [
+    { href: "/security", label: "Home", icon: Shield },
+    { href: "/security/ddos", label: "DDoS", icon: ShieldAlert },
+  ];
+
   const accountLinks = [
     { href: "/servers", label: "Servers", icon: Server },
     { href: "/environments", label: "Environments", icon: Layers },
@@ -161,6 +166,7 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
     ...intelligenceLinks.map(l => l.href),
     ...pipelineLinks.map(l => l.href),
     ...domainLinks.map(l => l.href),
+    ...securityLinks.map(l => l.href),
     ...accountLinks.map(l => l.href),
     ...(isServerSelected ? serverLinks.map(l => l.href) : []),
     // maintenanceLinks removed
@@ -222,6 +228,18 @@ function MainNavContent({ currentPath, onLinkClick, isServerSelected, serverData
           Domains
         </div>
         {domainLinks.map(({ href, label, icon: Icon }) => (
+          <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
+            <Icon className="h-4 w-4" />
+            <span>{label}</span>
+          </NavLink>
+        ))}
+      </div>
+
+      <div className="space-y-2">
+        <div className="px-3 text-xs font-semibold uppercase text-muted-foreground pt-4">
+          Security
+        </div>
+        {securityLinks.map(({ href, label, icon: Icon }) => (
           <NavLink key={label} href={href} currentPath={currentPath} allPaths={allPaths} onClick={onLinkClick}>
             <Icon className="h-4 w-4" />
             <span>{label}</span>
