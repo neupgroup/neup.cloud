@@ -234,5 +234,20 @@ model Database {
 model Account {
   id String @id @db.Text
 
+  permits Permit[]
+
   @@map("accounts")
+}
+
+model Permit {
+  id          String  @id @db.Text
+  accountId   String  @map("account_id") @db.Text
+  portfolioId String? @map("portfolio_id") @db.Text
+  assetType   String  @map("asset_type") @db.Text
+  assetId     String  @map("asset_id") @db.Text
+  role        String  @db.Text
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@map("permit")
 }

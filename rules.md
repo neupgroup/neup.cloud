@@ -14,6 +14,7 @@
 
 
 # Rules
+- Every push is live and not shadow database.
 ## File Naming
 
 - All files must have a short, self-explanatory name that clearly describes their purpose or contents.
