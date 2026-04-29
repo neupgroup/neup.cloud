@@ -48,6 +48,8 @@ export default function Home() {
     memory: { total: number; used: number; percentage: number };
   } | null>(null);
 
+  useEffect(() => { document.title = 'Homepage, Neup.Cloud'; }, []);
+
   useEffect(() => {
     const cookies = new Cookies(null, { path: '/' });
     const id = cookies.get('selected_server');

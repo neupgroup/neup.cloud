@@ -1,5 +1,6 @@
 import { AppWindow } from 'lucide-react';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { PageTitleBack } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +16,12 @@ function getSupervisorBadgeClasses(state: string) {
   if (normalizedState === 'FATAL' || normalizedState === 'BACKOFF') return 'border-orange-500/20 bg-orange-500/10 text-orange-700';
   if (normalizedState === 'STOPPED' || normalizedState === 'EXITED') return 'border-red-500/20 bg-red-500/10 text-red-700';
   return 'border-slate-500/20 bg-slate-500/10 text-slate-700';
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const pageData = await getApplicationDetailPageData(params);
+  const name = 'notFound' in pageData ? null : pageData.supervisor ? pageData.processName : pageData.application?.name;
+  return { title: name ? `${name}, Neup.Cloud` : 'Neup.Cloud' };
 }
 
 export default async function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {

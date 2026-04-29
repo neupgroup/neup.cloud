@@ -45,10 +45,12 @@ export default function ServerHomePage() {
         router.push("/server/home");
     };
 
+    useEffect(() => { document.title = 'Server Management, Neup.Cloud'; }, []);
+
     return (
         <div className="space-y-8">
             <PageTitle
-                title="Server"
+                title="Server Management"
                 description="Open and manage each server area from one dashboard."
                 serverName={serverName}
             />
