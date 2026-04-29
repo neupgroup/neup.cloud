@@ -34,6 +34,11 @@ export default function ViewerPage() {
     }, []);
 
     useEffect(() => {
+        const filename = path?.split('/').pop() || 'File';
+        document.title = `File: ${filename}, Neup.Cloud`;
+    }, [path]);
+
+    useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
             textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';

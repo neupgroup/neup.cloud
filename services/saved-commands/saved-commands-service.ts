@@ -56,9 +56,9 @@ async function executeSingleCommand(
 
     if (result.code === 0) {
       finalStatus = 'Success';
-      finalOutput = result.stdout;
+      if (!finalOutput) finalOutput = result.stdout;
     } else {
-      finalOutput = result.stderr || `Command exited with code ${result.code}`;
+      if (!finalOutput) finalOutput = result.stderr || `Command exited with code ${result.code}`;
     }
 
     await updateServerLog(log.id, { status: finalStatus, output: finalOutput });
