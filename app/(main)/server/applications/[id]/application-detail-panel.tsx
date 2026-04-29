@@ -179,7 +179,7 @@ export function ApplicationDetailPanel({ application, appLanguage, serverName }:
         <Button
           type="button"
           variant="ghost"
-          className="pl-0 hover:bg-transparent text-muted-foreground hover:text-foreground hover:underline"
+          className="-ml-3 pl-0 hover:bg-transparent text-muted-foreground hover:text-foreground hover:underline self-start"
           onClick={() => {
             router.push('/server/applications');
           }}
