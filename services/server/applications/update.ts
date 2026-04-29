@@ -4,8 +4,6 @@ import type { Application, UpdateApplicationData } from './_types';
 import { checkName, mapApplication, toJsonField } from './_utils';
 
 export async function updateApplication(id: string, data: UpdateApplicationData): Promise<Application> {
-  if (data.name && !checkName(data.name)) throw new Error('Invalid application name');
-
   const existing = await prisma.application.findUnique({ where: { id } });
   if (!existing) throw new Error('Application not found');
 

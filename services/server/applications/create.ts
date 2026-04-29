@@ -20,8 +20,6 @@ export function generateSupervisorServiceToken(length: number = SUPERVISOR_SERVI
 }
 
 export async function createApplication(data: CreateApplicationData): Promise<Application> {
-  if (!checkName(data.name)) throw new Error('Invalid application name');
-
   const applicationId = createId();
   const information = {
     ...(data.information ?? {}),
