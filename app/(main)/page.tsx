@@ -27,7 +27,7 @@ import { format } from 'date-fns';
 import { cn } from '@/core/utils';
 import { SystemHealthCard } from "@/components/system-health-card";
 import { ServerNameLink } from "@/components/server-name-link";
-import { RunningProcessesCard } from "@/components/running-processes-card";
+import { ApplicationSection } from '@/components/specifics/application/section';
 
 export default function Home() {
   const router = useRouter();
@@ -345,9 +345,14 @@ export default function Home() {
 
 
 
-      {/* Running Processes Section */}
       {serverId && (
-        <RunningProcessesCard serverId={serverId} />
+        <ApplicationSection
+          source="all"
+          statusFilter={['running', 'crashed']}
+          title="Applications"
+          description="Currently running applications."
+          hideWhenEmpty
+        />
       )}
 
       {serverId && (logsLoading || activityLogs.length > 0) && (
