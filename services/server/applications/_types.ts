@@ -23,6 +23,7 @@ export interface ApplicationInformation extends Record<string, any> {
     value: string;
   }>;
   entryFile?: string;
+  errorfile?: string;
   networkInfo?: {
     required?: boolean;
     preferredPort?: number[];

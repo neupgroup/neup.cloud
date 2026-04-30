@@ -1,14 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { Calendar, FolderOpen, Network, User } from "lucide-react";
+import { FolderOpen, Network, ScrollText, AlertCircle } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { cn } from "@/core/utils";
 import { useSystemSection, SystemSectionProps } from '@/components/applications/system-section';
 
 export function SystemSection({ application }: SystemSectionProps) {
-  const { portsDescription, createdDate, updatedDate } = useSystemSection(application);
+  const { portsDescription, outputLogPath, errorLogPath } = useSystemSection(application);
 
   const InfoRow = ({
     icon: Icon,
@@ -88,27 +88,25 @@ export function SystemSection({ application }: SystemSectionProps) {
         />
 
         <InfoRow
+          icon={ScrollText}
+          title="Terminal Output"
+          description={outputLogPath}
+          href={`/server/viewer?path=${encodeURIComponent(outputLogPath)}&type=text`}
+          openInNewTab
+        />
+
+        <InfoRow
+          icon={AlertCircle}
+          title="Error Log"
+          description={errorLogPath}
+          href={`/server/viewer?path=${encodeURIComponent(errorLogPath)}&type=text`}
+          openInNewTab
+        />
+
+        <InfoRow
           icon={Network}
           title="Network Access"
           description={portsDescription}
-        />
-
-        <InfoRow
-          icon={User}
-          title="Owner"
-          description={application.owner || "System"}
-        />
-
-        <InfoRow
-          icon={Calendar}
-          title="Timestamps"
-          description={
-            <span className="flex flex-col sm:flex-row sm:gap-4">
-              <span>Created: {createdDate}</span>
-              <span className="hidden sm:inline text-muted-foreground/50">|</span>
-              <span>Updated: {updatedDate}</span>
-            </span>
-          }
           isLast
         />
       </Card>

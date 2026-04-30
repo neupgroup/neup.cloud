@@ -70,6 +70,7 @@ export default function EditApplicationForm({ application, onCancel, onSaved }: 
     const [appName, setAppName] = useState(application.name || '');
     const [appIcon, setAppIcon] = useState(application.appIcon || '');
     const [appLocation, setAppLocation] = useState(application.location || '');
+    const [errorfile, setErrorfile] = useState(application.information?.errorfile || '');
     const appIconInputRef = useRef<HTMLInputElement | null>(null);
 
     // Repository Info
@@ -264,6 +265,7 @@ export default function EditApplicationForm({ application, onCancel, onSaved }: 
                 repoInfo: updatedRepoInfo,
                 networkInfo,
                 commandsList: formattedCommands,
+                errorfile: errorfile.trim() || undefined,
             },
             updatedAt: new Date().toISOString(),
         };
@@ -331,6 +333,11 @@ export default function EditApplicationForm({ application, onCancel, onSaved }: 
                         <div className="grid gap-2">
                             <Label htmlFor="appLocation">Location in Server</Label>
                             <Input id="appLocation" placeholder="/var/www/my-app" value={appLocation} onChange={e => setAppLocation(e.target.value)} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="errorfile">Error / Log File <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+                            <Input id="errorfile" placeholder="terminal.error.log or /absolute/path/to/error.log" value={errorfile} onChange={e => setErrorfile(e.target.value)} />
+                            <p className="text-xs text-muted-foreground">Absolute path or relative to application location. Defaults to <code className="font-mono">terminal.error.log</code>.</p>
                         </div>
                     </CardContent>
                 </Card>
