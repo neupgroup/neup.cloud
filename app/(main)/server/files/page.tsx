@@ -1132,6 +1132,10 @@ export default function FilesPage() {
   const [serverReady, setServerReady] = useState(false);
 
   useEffect(() => {
+    document.title = 'File Manager, Neup.Cloud';
+  }, []);
+
+  useEffect(() => {
     const cookies = new Cookies(null, { path: '/' });
     const selectedServer = cookies.get('selected_server');
     const selectedServerName = cookies.get('selected_server_name');

@@ -19,10 +19,22 @@ import { Loader2, Plus, Trash2 } from "lucide-react"
 import { updateApplication } from "@/services/server/applications/service"
 import type { Application } from "@/services/server/applications/_types"
 
+function validateEnvValue(value: string): string | null {
+    const hasSingle = value.includes("'");
+    const hasDouble = value.includes('"');
+    if (hasSingle && hasDouble) {
+        return "Value cannot contain both single and double quotes.";
+    }
+    return null;
+}
+
 const envSchema = z.object({
     envs: z.array(z.object({
         key: z.string().min(1, "Key is required"),
-        value: z.string()
+        value: z.string().refine(
+            (v) => validateEnvValue(v) === null,
+            (v) => ({ message: validateEnvValue(v) ?? '' })
+        )
     }))
 })
 

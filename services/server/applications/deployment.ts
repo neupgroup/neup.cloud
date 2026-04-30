@@ -20,7 +20,16 @@ export async function deployConfiguration(applicationId: string) {
   let envContent = '';
   if (app.environments) {
     envContent = Object.entries(app.environments)
-      .map(([key, value]) => `${key}=${value}`)
+      .map(([key, value]) => {
+        const hasSingle = value.includes("'");
+        const hasDouble = value.includes('"');
+        if (hasSingle && hasDouble) throw new Error(`Environment variable ${key} contains both single and double quotes, which is not allowed.`);
+        if (hasSingle) return `${key}="${value}"`;
+        if (hasDouble) return `${key}='${value}'`;
+        const needsQuoting = /[\s\$\`\\&#|;<>(){}!?*\[\]~]/.test(value);
+        if (needsQuoting) return `${key}="${value}"`;
+        return `${key}=${value}`;
+      })
       .join('\n');
   }
 
