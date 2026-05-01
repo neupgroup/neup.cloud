@@ -27,7 +27,7 @@ export function ApplicationCommandLogs({ applicationId }: { applicationId: strin
   return (
     <div className="space-y-3">
       <h3 className="text-lg font-semibold">Command History</h3>
-      <CommandLogList logs={logs} />
+      <CommandLogList logs={logs} showSourceLink={false} />
     </div>
   );
 }

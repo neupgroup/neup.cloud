@@ -137,7 +137,7 @@ export function CommandLogCard({ log }: { log: CommandLogItem }) {
   );
 }
 
-export function CommandLogList({ logs }: { logs: CommandLogItem[] }) {
+export function CommandLogList({ logs, showSourceLink = true }: { logs: CommandLogItem[]; showSourceLink?: boolean }) {
   const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -157,7 +157,7 @@ export function CommandLogList({ logs }: { logs: CommandLogItem[] }) {
                   <div className="flex flex-col gap-1 min-w-0">
                     <div className="font-semibold text-base text-foreground tracking-tight flex items-center gap-1.5">
                       {getDisplayName(log.command, log.commandName)}
-                      {sourceInfo && (
+                      {showSourceLink && sourceInfo && (
                         <Link
                           href={sourceInfo.href}
                           onClick={(e) => e.stopPropagation()}
