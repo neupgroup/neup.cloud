@@ -71,6 +71,7 @@ export async function getApplicationDetailPageData(params: Promise<{ id: string 
     if (cmdDef.command.postCommand) parts.push(cmdDef.command.postCommand);
 
     application.commands[name] = parts.join('\n');
+    cmdDef._mainCommand = cmdDef.command.mainCommand;
   });
 
   application.commandDefinitions = commandsArray;

@@ -1,3 +1,17 @@
+const MAIN_START_MARKER = '-->>-->>main.starts<<--<<--';
+const MAIN_END_MARKER = '-->>-->>main.ends<<--<<--';
+
+export function stripToMainOutput(output: string): string {
+  const start = output.indexOf(MAIN_START_MARKER);
+  const end = output.indexOf(MAIN_END_MARKER);
+  if (start === -1 || end === -1) return output;
+  return output.slice(start + MAIN_START_MARKER.length, end).trim();
+}
+
+export function hasMainMarkers(output: string): boolean {
+  return output.includes(MAIN_START_MARKER) && output.includes(MAIN_END_MARKER);
+}
+
 import { runCommandOnServer } from '@/services/server/ssh';
 import { createServerLog, getServerLogById, updateServerLog } from '@/services/logs/server';
 import { getSavedCommandById } from '@/services/saved-commands/data';

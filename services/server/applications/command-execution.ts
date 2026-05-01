@@ -16,7 +16,8 @@ function sanitizeStageName(value: string) {
 export async function executeApplicationCommand(
   applicationId: string,
   command: string,
-  commandName?: string
+  commandName?: string,
+  displayCommand?: string
 ) {
   const app = await getApplication(applicationId);
   if (!app) throw new Error('Application not found');
@@ -72,8 +73,10 @@ else
 fi
 
 echo "-->>-->>${stageName}.starts<<--<<--"
+echo "-->>-->>main.starts<<--<<--"
 ${command}
 COMMAND_EXIT_CODE=$?
+echo "-->>-->>main.ends<<--<<--"
 echo "-->>-->>${stageName}.ends<<--<<--"
 
 if [ $COMMAND_EXIT_CODE -eq 0 ]; then
@@ -90,5 +93,5 @@ fi
 exit $COMMAND_EXIT_CODE
 `;
 
-  return executeCommand(serverId, updateStatusCommand, formattedCommandName, command, `application:${applicationId}`);
+  return executeCommand(serverId, updateStatusCommand, formattedCommandName, displayCommand || command, `application:${applicationId}`);
 }

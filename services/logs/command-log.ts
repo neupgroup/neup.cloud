@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/services/prisma';
+import { stripToMainOutput, hasMainMarkers } from '@/services/saved-commands/saved-commands-service';
 
 export type CommandLogFilter = {
   serverId?: string | null;
@@ -47,15 +48,19 @@ export async function getCommandLog(filter: CommandLogFilter): Promise<CommandLo
     ...(filter.offset ? { skip: filter.offset } : {}),
   });
 
-  return logs.map((log: any) => ({
-    id: log.id,
-    serverId: log.serverId,
-    command: log.command,
-    commandName: log.commandName ?? undefined,
-    output: log.output ?? undefined,
-    status: log.status as 'Success' | 'Error' | 'pending',
-    runAt: log.runAt.toISOString(),
-    source: log.source ?? null,
-    accountId: log.accountId ?? null,
-  }));
+  return logs.map((log: any) => {
+    const rawOutput = log.output ?? undefined;
+    const output = rawOutput && hasMainMarkers(rawOutput) ? stripToMainOutput(rawOutput) : rawOutput;
+    return {
+      id: log.id,
+      serverId: log.serverId,
+      command: log.command,
+      commandName: log.commandName ?? undefined,
+      output,
+      status: log.status as 'Success' | 'Error' | 'pending',
+      runAt: log.runAt.toISOString(),
+      source: log.source ?? null,
+      accountId: log.accountId ?? null,
+    };
+  });
 }

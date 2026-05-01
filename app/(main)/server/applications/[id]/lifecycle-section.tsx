@@ -67,10 +67,10 @@ export function LifecycleSection({ application }: LifecycleSectionProps) {
     return 'Execute lifecycle command';
   };
 
-  const handleExecute = async (name: string, command: string) => {
+  const handleExecute = async (name: string, command: string, displayCommand: string) => {
     setExecuting(name);
     try {
-      await executeApplicationCommand(application.id, command, name);
+      await executeApplicationCommand(application.id, command, name, displayCommand);
       toast({
         title: "Command Started",
         description: `Executing ${name}...`,
@@ -99,6 +99,7 @@ export function LifecycleSection({ application }: LifecycleSectionProps) {
           const isDefinition = typeof commandOrDef === 'object';
           const definition = isDefinition ? commandOrDef : null;
           const command = isDefinition ? application.commands[name] : commandOrDef;
+          const displayCommand = isDefinition ? (definition._mainCommand || definition?.command?.mainCommand || command) : command;
 
           const displayName = definition?.title || name.replace('lifecycle.', '');
           const description = definition?.description || getDescription(name);
@@ -115,7 +116,7 @@ export function LifecycleSection({ application }: LifecycleSectionProps) {
                 index !== availableCommands.length - 1 && "border-b border-border",
                 isLoading && "opacity-50 pointer-events-none"
               )}
-              onClick={() => !isLoading && handleExecute(name, command)}
+              onClick={() => !isLoading && handleExecute(name, command, displayCommand)}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between mb-0 h-8">
