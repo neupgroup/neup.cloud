@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import { getServerLogsByServerId } from '@/services/logs/server';
+import { getCommandLog } from '@/services/logs/command-log';
 import { runCustomCommandOnServer as runCustomCommandOnServerLogic } from '@/services/server/server-runtime';
 import { runCommandOnServer, uploadFileToServer } from '@/services/server/ssh';
 import { getServerForRunner } from '@/services/server/server-service';
@@ -21,14 +21,7 @@ export async function rebootServer(serverId: string) {
 }
 
 export async function getServerLogs(serverId: string) {
-  const logs = await getServerLogsByServerId(serverId);
-
-  return logs.map((log) => ({
-    ...log,
-    commandName: log.commandName ?? undefined,
-    output: log.output ?? undefined,
-    runAt: log.runAt.toISOString(),
-  }));
+  return getCommandLog({ serverId });
 }
 
 function parseLsOutput(output: string): FileOrFolder[] {
