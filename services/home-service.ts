@@ -6,6 +6,7 @@ export type ActivityLog = {
   id: string;
   command: string;
   commandName?: string;
+  source?: string | null;
   status: 'Success' | 'Error' | 'pending';
   runAt: number;
   serverId: string;
@@ -27,6 +28,7 @@ export async function getRecentActivity(serverId?: string): Promise<ActivityLog[
       id: log.id,
       command: log.command,
       commandName: log.commandName ?? undefined,
+      source: log.source ?? null,
       status: log.status as ActivityLog['status'],
       runAt: log.runAt.getTime(),
       serverId: log.serverId,

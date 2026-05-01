@@ -39,6 +39,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { type SavedCommand } from '@/services/saved-commands/types';
 import { cn } from '@/core/utils';
+import { CommandLogCard } from './command-log-card';
 import { differenceInDays, differenceInHours, format, formatDistanceToNow } from 'date-fns';
 
 type ServerType = {
@@ -51,6 +52,7 @@ type CommandHistoryItem = {
   id: string;
   command: string;
   commandName?: string;
+  source?: string | null;
   output?: string;
   status: 'Success' | 'Error' | 'pending';
   runAt: string;
@@ -653,50 +655,7 @@ export function CommandsContent({ mode = 'dashboard' }: { mode?: CommandsPageMod
               ) : (
                 <Accordion type="single" collapsible className="w-full space-y-4">
                   {visibleHistory.map((log) => (
-                    <AccordionItem key={log.id} value={log.id} className="border-0">
-                      <Card
-                        className={cn(
-                          'overflow-hidden bg-card text-card-foreground shadow-sm transition-all duration-200 border border-border group',
-                          log.status === 'Success' && 'hover:border-green-500/50 hover:bg-green-50/5 dark:hover:bg-green-950/20',
-                          log.status === 'Error' && 'hover:border-red-500/50 hover:bg-red-50/5 dark:hover:bg-red-950/20',
-                          log.status === 'pending' && 'hover:border-blue-500/50 hover:bg-blue-50/5 dark:hover:bg-blue-950/20'
-                        )}
-                      >
-                        <AccordionTrigger className="px-4 py-3 hover:no-underline w-full [&[data-state=open]>div>div>svg]:rotate-90">
-                          <div className="flex items-start justify-between w-full gap-4">
-                            <div className="flex flex-col items-start gap-1 w-full">
-                              <div className="font-semibold text-base text-foreground tracking-tight">
-                                {getCommandDisplayName(log.command, log.commandName)}
-                              </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                <LogStatusBadge status={log.status} />
-                                <span className="text-xs text-muted-foreground">{formatHistoryDate(log.runAt)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6 pt-0 border-t border-border/50 bg-muted/5">
-                          <div className="space-y-6 pt-6 animate-in slide-in-from-top-2 duration-200">
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Command</h4>
-                              </div>
-                              <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm border text-foreground whitespace-pre-wrap break-all shadow-sm">
-                                {log.command}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Output</h4>
-                              </div>
-                              <div className="bg-zinc-950 text-zinc-50 p-4 rounded-lg font-mono text-sm border border-zinc-800/50 whitespace-pre-wrap break-all overflow-wrap-anywhere shadow-inner">
-                                {log.output || <span className="text-zinc-500 italic">No output recorded.</span>}
-                              </div>
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </Card>
-                    </AccordionItem>
+                    <CommandLogCard key={log.id} log={log} />
                   ))}
                 </Accordion>
               )}

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Cookies from 'universal-cookie';
 import {
@@ -173,6 +174,18 @@ export default function Home() {
 
 
   // --- SERVER SELECTED DASHBOARD VIEW ---
+  function getSourceInfo(log: ActivityLog): { label: string; href: string } | null {
+    const src = log.source;
+    if (!src) return null;
+    if (src.startsWith('application:')) {
+      const id = src.replace('application:', '');
+      return { label: log.commandName || id, href: `/server/applications/${id}` };
+    }
+    if (src === 'commands:custom') return { label: 'Commands', href: '/server/commands' };
+    if (src.startsWith('webservices')) return { label: 'Webservices', href: '/server/webservices' };
+    if (src.startsWith('requirement:')) return { label: 'System', href: '/server/system' };
+    return null;
+  }
   // List of servers to display for switching
   const serversToDisplay = showAllServers ? filteredServers : allServers.slice(0, 8);
 
@@ -403,6 +416,9 @@ export default function Home() {
                       <div className="font-bold text-sm sm:text-base tracking-tight group-hover:text-primary transition-colors break-words">
                         {log.commandName || log.command}
                       </div>
+                      {(() => { const src = getSourceInfo(log); return src ? (
+                        <div className="text-xs text-muted-foreground mt-0.5">from{' '}<Link href={src.href} className="font-medium text-foreground hover:text-primary hover:underline transition-colors">{src.label}</Link></div>
+                      ) : null; })()}
                       <div className="text-[10px] sm:text-xs text-muted-foreground font-mono break-all mt-0.5 line-clamp-2">
                         {log.command}
                       </div>
