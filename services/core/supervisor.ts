@@ -2,6 +2,29 @@ function escapeShellSingleQuoted(value: string) {
     return value.replace(/'/g, `'\\''`);
 }
 
+export function getPortCheckScript(portsStr: string) {
+    if (!portsStr) return '';
+    return `
+find_port() {
+    local PORTS="${portsStr}"
+    for port in $PORTS; do
+        if ! (echo >/dev/tcp/127.0.0.1/$port) >/dev/null 2>&1; then
+            echo $port
+            return 0
+        fi
+    done
+    echo ""
+    return 1
+}
+CHOSEN_PORT=$(find_port)
+if [ -z "$CHOSEN_PORT" ]; then
+    echo "ERROR: None of the configured ports (${portsStr}) are available. Stop the process using those ports and try again."
+    exit 1
+fi
+echo "Selected Port: $CHOSEN_PORT"
+`.trim();
+}
+
 export function getStopMatchingSupervisorServicesScript(applicationId?: string) {
     if (!applicationId) {
         return 'true';

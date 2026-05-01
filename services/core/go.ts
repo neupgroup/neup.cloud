@@ -4,7 +4,7 @@
  */
 
 import { sanitizeAppName } from './universal';
-import { getStartOrRestartSupervisorServiceScript, getStopMatchingSupervisorServicesScript } from './supervisor';
+import { getStartOrRestartSupervisorServiceScript, getStopMatchingSupervisorServicesScript, getPortCheckScript } from './supervisor';
 import type { CommandContext, CommandDefinition } from './command-types';
 export type { CommandContext, CommandDefinition } from './command-types';
 
@@ -25,27 +25,8 @@ export const getCommands = (context: CommandContext): CommandDefinition[] => {
     // UPDATE: User requested to use the exact same name for consistency with supervisor service
     const binaryName = sanitizedAppName;
 
-    const portFinderScript = portsStr ? `
-find_port() {
-    local PORTS="${portsStr}"
-    for port in $PORTS; do
-        if ! (echo >/dev/tcp/127.0.0.1/$port) >/dev/null 2>&1; then
-            echo $port
-            return 0
-        fi
-    done
-    # Fallback to random port
-    while true; do
-        local rand=$(( ( RANDOM % 10000 ) + 3000 ))
-        if ! (echo >/dev/tcp/127.0.0.1/$rand) >/dev/null 2>&1; then
-            echo $rand
-            return 0
-        fi
-    done
-}
-CHOSEN_PORT=$(find_port "${portsStr}")
-echo "Selected Port: $CHOSEN_PORT"
-` : '';
+    const portCheckScript = getPortCheckScript(portsStr);
+    const preStartScript = `${stopMatchingServicesScript}\n\n${portCheckScript}`.trim();
 
     return [
         // Build Command
@@ -71,11 +52,8 @@ echo "Selected Port: $CHOSEN_PORT"
             status: 'published',
             type: 'success',
             command: {
-                preCommand: portFinderScript,
-                mainCommand: `
-${stopMatchingServicesScript}
-
-CONF_FILE="/etc/supervisor/conf.d/${supervisorServiceName}.conf"
+                preCommand: preStartScript,
+                mainCommand: `CONF_FILE="/etc/supervisor/conf.d/${supervisorServiceName}.conf"
 LOG_OUT="${context.appLocation}/terminal.output.log"
 LOG_ERR="${context.appLocation}/terminal.error.log"
 USER_NAME=$(whoami)
