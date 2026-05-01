@@ -9,6 +9,8 @@ export type CommandLogFilter = {
   status?: string | null;
   from?: Date | null;
   to?: Date | null;
+  limit?: number | null;
+  offset?: number | null;
 };
 
 export type CommandLog = {
@@ -41,6 +43,8 @@ export async function getCommandLog(filter: CommandLogFilter): Promise<CommandLo
   const logs = await prisma.serverLog.findMany({
     where,
     orderBy: { runAt: 'desc' },
+    ...(filter.limit ? { take: filter.limit } : {}),
+    ...(filter.offset ? { skip: filter.offset } : {}),
   });
 
   return logs.map((log: any) => ({
