@@ -155,7 +155,7 @@ export function CommandLogList({ logs }: { logs: CommandLogItem[] }) {
           return (
             <AccordionItem key={log.id} value={log.id} className="border-0">
               <AccordionTrigger className={cn(
-                'px-4 py-4 hover:no-underline hover:bg-muted/40 transition-colors w-full [&>svg]:hidden',
+                'px-4 py-4 hover:no-underline hover:bg-muted/40 transition-colors w-full [&>svg]:hidden [&[data-state=open]]:bg-muted/50 [&[data-state=open]]:border-b-0',
                 !isLast && 'border-b border-border'
               )}>
                 <div className="flex items-center justify-between w-full gap-4">
