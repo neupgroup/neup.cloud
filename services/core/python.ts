@@ -51,10 +51,10 @@ echo "Selected Port: $CHOSEN_PORT"
             status: 'published',
             type: 'normal',
             command: {
-                preCommand: portFinderScript,
+                preCommand: null,
                 mainCommand: `cd ${context.appLocation} && 
                 if [ -f requirements.txt ]; then 
-                    PORT=$CHOSEN_PORT pip3 install -r requirements.txt; 
+                    pip3 install -r requirements.txt; 
                 fi`
             }
         },

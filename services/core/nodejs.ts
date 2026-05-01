@@ -51,10 +51,9 @@ echo "Selected Port: $CHOSEN_PORT"
             status: 'published',
             type: 'normal',
             command: {
-                preCommand: portFinderScript,
-                mainCommand: `cd ${context.appLocation} && 
-                PORT=$CHOSEN_PORT npm install && 
-                if grep -q "\\"build\\":" "package.json"; then PORT=$CHOSEN_PORT npm run build; fi`
+                preCommand: `cd ${context.appLocation}`,
+                mainCommand: `npm install && 
+                if grep -q '"build":' "package.json"; then npm run build; fi`
             }
         },
 
@@ -68,15 +67,6 @@ echo "Selected Port: $CHOSEN_PORT"
             command: {
                 preCommand: portFinderScript,
                 mainCommand: `
-# Ensure Supervisor is installed
-if ! command -v supervisorctl &> /dev/null; then
-    echo "Supervisor not found. Installing..."
-    sudo DEBIAN_FRONTEND=noninteractive apt-get update
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y supervisor
-    sudo systemctl enable supervisor
-sudo systemctl start supervisor
-fi
-
 ${stopMatchingServicesScript}
 
 sudo mkdir -p /etc/supervisor/conf.d/
