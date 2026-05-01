@@ -12,6 +12,8 @@ export async function createServerLog(data: {
   output?: string | null;
   status: string;
   runAt?: Date;
+  source?: string | null;
+  accountId?: string | null;
 }) {
   return prisma.serverLog.create({
     data: {
@@ -22,6 +24,8 @@ export async function createServerLog(data: {
       output: data.output ?? null,
       status: data.status,
       runAt: data.runAt ?? new Date(),
+      source: data.source ?? null,
+      accountId: data.accountId ?? null,
     },
   });
 }

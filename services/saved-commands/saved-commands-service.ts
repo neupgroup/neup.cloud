@@ -8,7 +8,8 @@ async function executeSingleCommand(
   command: string,
   originalCommandTemplate: string,
   commandName?: string,
-  variables: Record<string, any> = {}
+  variables: Record<string, any> = {},
+  source?: string | null
 ): Promise<{ logId: string; status: 'Success' | 'Error'; output: string }> {
   const server = await getServerForRunner(serverId);
   if (!server) {
@@ -24,6 +25,7 @@ async function executeSingleCommand(
     commandName: commandName ?? null,
     output: 'Executing command...',
     status: 'pending',
+    source: source ?? null,
   });
 
   let finalOutput = '';
@@ -74,14 +76,15 @@ export async function executeCommand(
   serverId: string,
   command: string,
   commandName?: string,
-  displayCommand?: string
+  displayCommand?: string,
+  source?: string | null
 ) {
   if (!serverId) {
     return { error: 'Server not selected' };
   }
 
   try {
-    const result = await executeSingleCommand(serverId, command, displayCommand || command, commandName);
+    const result = await executeSingleCommand(serverId, command, displayCommand || command, commandName, {}, source);
     return { output: result.output, error: result.status === 'Error' ? result.output : undefined };
   } catch (error: any) {
     return { error: error.message };
@@ -133,7 +136,8 @@ export async function appendLiveSessionLog(logId: string, command: string, outpu
 export async function executeSavedCommand(
   serverId: string,
   savedCommandId: string,
-  variables: Record<string, string> = {}
+  variables: Record<string, string> = {},
+  source?: string | null
 ) {
   const savedCommand = await getSavedCommandById(savedCommandId);
   if (!savedCommand) {
@@ -171,7 +175,7 @@ export async function executeSavedCommand(
   }
 
   const combinedVariables = { ...variables, ...universalVars };
-  const mainResult = await executeSingleCommand(serverId, processedCommand, commandTemplate, undefined, combinedVariables);
+  const mainResult = await executeSingleCommand(serverId, processedCommand, commandTemplate, undefined, combinedVariables, source ?? null);
 
   for (const nextCommandId of savedCommand.nextCommands ?? []) {
     if (mainResult.status !== 'Success') {

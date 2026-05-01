@@ -90,5 +90,5 @@ fi
 exit $COMMAND_EXIT_CODE
 `;
 
-  return executeCommand(serverId, updateStatusCommand, formattedCommandName, command);
+  return executeCommand(serverId, updateStatusCommand, formattedCommandName, command, `application:${applicationId}`);
 }

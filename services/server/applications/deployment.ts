@@ -36,7 +36,7 @@ ${envContent}
 EOF
 `;
 
-  await executeCommand(serverId, envCommand, `Deploying .env for ${app.name}`, envCommand);
+  await executeCommand(serverId, envCommand, `Deploying .env for ${app.name}`, envCommand, `application:${applicationId}`);
 
   if (app.files && Object.keys(app.files).length > 0) {
     let fileOpsScript = 'echo "Starting Custom File Deployment..."\\n';
@@ -58,7 +58,8 @@ echo "Deployed ${filePath}"
       serverId,
       fileOpsScript,
       `Deploying ${Object.keys(app.files).length} custom files for ${app.name}`,
-      fileOpsScript
+      fileOpsScript,
+      `application:${applicationId}`
     );
   }
 

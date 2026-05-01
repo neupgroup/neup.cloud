@@ -258,7 +258,8 @@ export async function reissueCertificate(fileName: string, domain: string) {
             serverId,
             command,
             `Reissue Certificate: ${cleanDomain}${daysRemaining !== null ? ` (${daysRemaining} days left)` : ''}`,
-            certbotCommand
+            certbotCommand,
+            `webservices:cert:reinstall`
         );
 
         if (result.error) {

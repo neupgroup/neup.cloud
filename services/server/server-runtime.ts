@@ -181,6 +181,7 @@ export async function runCustomCommandOnServer(serverId: string, command: string
       command,
       output,
       status,
+      source: 'commands:custom',
     });
 
     return { output: output || `Command executed with status code ${result.code}.` };
@@ -190,6 +191,7 @@ export async function runCustomCommandOnServer(serverId: string, command: string
       command,
       output: error.message,
       status: 'Error',
+      source: 'commands:custom',
     });
 
     return { error: `Failed to execute command: ${error.message}` };

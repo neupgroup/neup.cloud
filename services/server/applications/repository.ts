@@ -129,5 +129,5 @@ ${cmdGenerator('"$KEY_PATH"')}
 
   if (!command) throw new Error('Could not generate command');
 
-  return executeCommand(serverId, command, `${app.name}: ${description}`, command);
+  return executeCommand(serverId, command, `${app.name}: ${description}`, command, `application:${applicationId}`);
 }

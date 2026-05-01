@@ -44,8 +44,8 @@ export async function deleteSavedCommand(id: string) {
   revalidatePath('/server/commands');
 }
 
-export async function executeCommand(serverId: string, command: string, commandName?: string, displayCommand?: string) {
-  const result = await executeCommandLogic(serverId, command, commandName, displayCommand);
+export async function executeCommand(serverId: string, command: string, commandName?: string, displayCommand?: string, source?: string | null) {
+  const result = await executeCommandLogic(serverId, command, commandName, displayCommand, source);
 
   if (serverId) {
     revalidatePath(`/servers/${serverId}`);
@@ -63,7 +63,7 @@ export async function executeSavedCommand(
   savedCommandId: string,
   variables: Record<string, string> = {}
 ) {
-  const result = await executeSavedCommandLogic(serverId, savedCommandId, variables);
+  const result = await executeSavedCommandLogic(serverId, savedCommandId, variables, `commands:${savedCommandId}`);
 
   if (serverId) {
     revalidatePath(`/servers/${serverId}`);

@@ -446,7 +446,8 @@ export async function generateSslCertificate(
                 serverId,
                 command,
                 `SSL Generation (Standalone): ${configName}`,
-                command
+                command,
+                `webservices:cert:generate`
             );
 
             if (result.error) {
@@ -528,7 +529,8 @@ chmod +x ${hookScriptPath}
                 serverId,
                 startCertbotCmd,
                 `Init SSL Wildcard: ${configName}`,
-                startCertbotCmd
+                startCertbotCmd,
+                `webservices:cert:generate`
             );
 
             // Poll for Challenge File (up to 30 seconds)
@@ -609,11 +611,12 @@ chmod +x ${hookScriptPath}
                 serverId,
                 copyAndCheckCmd,
                 `Finalize SSL Wildcard: ${configName}`,
-                copyAndCheckCmd
+                copyAndCheckCmd,
+                `webservices:cert:generate`
             );
 
             // Archive the Certbot log to history for debugging/audit
-            await executeCommand(serverId, `cat ${logFilePath}`, `SSL Log: ${configName}`);
+            await executeCommand(serverId, `cat ${logFilePath}`, `SSL Log: ${configName}`, undefined, `webservices:cert:generate`);
 
             if (finalResult.output && finalResult.output.includes('SUCCESS')) {
                 return {

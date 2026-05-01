@@ -120,7 +120,7 @@ export default function RequirementDetailPage() {
             }
 
             // Not completed, proceed to install
-            const installRes = await installRequirementStep(serverId, config.steps[i].installCommand);
+            const installRes = await installRequirementStep(serverId, config.steps[i].installCommand, id);
             if (installRes.error) {
                 toast({ variant: 'destructive', title: `Step ${i + 1} Failed`, description: installRes.error });
                 setStepStatus(prev => ({ ...prev, [i]: 'failed' }));
@@ -161,7 +161,7 @@ export default function RequirementDetailPage() {
 
             setStepStatus(prev => ({ ...prev, [i]: 'checking' }));
 
-            const uninstallRes = await uninstallRequirementStep(serverId, step.uninstallCommand);
+            const uninstallRes = await uninstallRequirementStep(serverId, step.uninstallCommand, id);
             if (uninstallRes.error) {
                 // We warn but continue, as partial uninstalls are common/messy
                 toast({ variant: 'destructive', title: `Uninstall Step ${i + 1} Warning`, description: uninstallRes.error });
@@ -198,7 +198,7 @@ export default function RequirementDetailPage() {
 
             setStepStatus(prev => ({ ...prev, [i]: 'checking' }));
 
-            const uninstallRes = await uninstallRequirementStep(serverId, step.uninstallCommand);
+            const uninstallRes = await uninstallRequirementStep(serverId, step.uninstallCommand, id);
             if (uninstallRes.error) {
                 toast({
                     variant: 'destructive',
@@ -218,7 +218,7 @@ export default function RequirementDetailPage() {
         // 2) Re-install and verify each step in order.
         for (let i = 0; i < config.steps.length; i++) {
             setStepStatus(prev => ({ ...prev, [i]: 'checking' }));
-            const installRes = await installRequirementStep(serverId, config.steps[i].installCommand);
+            const installRes = await installRequirementStep(serverId, config.steps[i].installCommand, id);
 
             if (installRes.error) {
                 toast({

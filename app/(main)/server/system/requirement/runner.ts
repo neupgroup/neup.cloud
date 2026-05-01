@@ -20,9 +20,9 @@ export async function checkRequirementStep(serverId: string, command: string) {
     }
 }
 
-export async function installRequirementStep(serverId: string, command: string) {
+export async function installRequirementStep(serverId: string, command: string, requirementId?: string) {
     try {
-        const result = await executeCommand(serverId, command, 'System Requirement Install', command);
+        const result = await executeCommand(serverId, command, 'System Requirement Install', command, requirementId ? `requirement:${requirementId}:install` : null);
         if (result.error) {
             return { error: result.error };
         }
@@ -32,9 +32,9 @@ export async function installRequirementStep(serverId: string, command: string) 
     }
 }
 
-export async function uninstallRequirementStep(serverId: string, command: string) {
+export async function uninstallRequirementStep(serverId: string, command: string, requirementId?: string) {
     try {
-        const result = await executeCommand(serverId, command, 'System Requirement Uninstall', command);
+        const result = await executeCommand(serverId, command, 'System Requirement Uninstall', command, requirementId ? `requirement:${requirementId}:uninstall` : null);
         if (result.error) {
             return { error: result.error };
         }

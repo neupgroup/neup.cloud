@@ -35,6 +35,8 @@ model ServerLog {
   output      String?  @db.Text
   status      String   @db.Text
   runAt       DateTime @map("runAt") @db.Timestamp(6)
+  source      String?  @db.Text
+  accountId   String?  @map("accountId") @db.Text
 
   @@map("server_logs")
 }
