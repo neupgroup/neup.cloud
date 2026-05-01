@@ -50,12 +50,11 @@ echo "Selected Port: $CHOSEN_PORT"
             status: 'published',
             type: 'normal',
             command: {
-                preCommand: `${portFinderScript}
-                cd ${context.appLocation} && 
+                preCommand: `cd ${context.appLocation} && 
                 rm -rf .next`,
                 mainCommand: `cd ${context.appLocation} &&
                 npm install &&
-                PORT=$CHOSEN_PORT NEXT_PRIVATE_MAX_WORKERS=1 NODE_OPTIONS="--max-old-space-size=2000" npm run build`
+                NEXT_PRIVATE_MAX_WORKERS=1 NODE_OPTIONS="--max-old-space-size=2000" npm run build`
             }
         },
 
@@ -69,15 +68,6 @@ echo "Selected Port: $CHOSEN_PORT"
             command: {
                 preCommand: portFinderScript,
                 mainCommand: `
-# Ensure Supervisor is installed
-if ! command -v supervisorctl &> /dev/null; then
-    echo "Supervisor not found. Installing..."
-    sudo DEBIAN_FRONTEND=noninteractive apt-get update
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y supervisor
-    sudo systemctl enable supervisor
-sudo systemctl start supervisor
-fi
-
 ${stopMatchingServicesScript}
 
 sudo mkdir -p /etc/supervisor/conf.d/
@@ -116,15 +106,6 @@ ${refreshSupervisorServiceScript}
             command: {
                 preCommand: portFinderScript,
                 mainCommand: `
-# Ensure Supervisor is installed
-if ! command -v supervisorctl &> /dev/null; then
-    echo "Supervisor not found. Installing..."
-    sudo DEBIAN_FRONTEND=noninteractive apt-get update
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y supervisor
-    sudo systemctl enable supervisor
-sudo systemctl start supervisor
-fi
-
 ${stopMatchingServicesScript}
 
 sudo mkdir -p /etc/supervisor/conf.d/
