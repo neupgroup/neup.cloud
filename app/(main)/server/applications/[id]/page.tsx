@@ -5,8 +5,6 @@ import { PageTitleBack } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getApplicationDetailPageData } from '@/services/server/applications/service';
-import { getCommandLog } from '@/services/logs/command-log';
-import { CommandLogList } from '@/app/(main)/server/commands/command-log-card';
 
 import { SupervisorOnlyActions } from './supervisor-only-actions';
 import { StatusDashboard } from './status-dashboard';
@@ -15,6 +13,7 @@ import { GitHubSection } from './github-section';
 import { SystemSection } from './system-section';
 import { DeploymentActionsCard } from './deployment-actions-card';
 import { ApplicationActions } from './application-actions';
+import { ApplicationCommandLogs } from './application-command-logs';
 
 function getSupervisorBadgeClasses(state: string) {
   const normalizedState = state.toUpperCase();
@@ -94,7 +93,6 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
   }
 
   const { application, appLanguage, serverName, serverId } = pageData;
-  const logs = serverId ? await getCommandLog({ serverId, source: `application:${application.id}`, limit: 3, offset: 0 }) : [];
 
   return (
     <div className="flex flex-col gap-8 max-w-5xl animate-in fade-in duration-500">
@@ -122,12 +120,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
       <StatusDashboard applicationId={application.id} />
       <LifecycleSection application={application} />
       {application.repository ? <GitHubSection application={application} /> : null}
-      {logs.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-lg font-semibold">Command History</h3>
-          <CommandLogList logs={logs} />
-        </div>
-      )}
+      <ApplicationCommandLogs applicationId={application.id} />
       <SystemSection application={application} />
       <DeploymentActionsCard
         applicationId={application.id}
