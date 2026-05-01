@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CheckCircle2, XCircle, Clock, ChevronRight } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, ChevronRight, ArrowUpRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/core/utils';
@@ -95,19 +95,17 @@ export function CommandLogCard({ log }: { log: CommandLogItem }) {
         <AccordionTrigger className="px-4 py-3 hover:no-underline w-full [&[data-state=open]>div>div>svg]:rotate-90">
           <div className="flex items-start justify-between w-full gap-4">
             <div className="flex flex-col items-start gap-1 w-full">
-              <div className="font-semibold text-base text-foreground tracking-tight">
+              <div className="font-semibold text-base text-foreground tracking-tight flex items-center gap-1.5">
                 {getDisplayName(log.command, log.commandName)}
                 {sourceInfo && (
-                  <span className="font-normal text-sm text-muted-foreground ml-2">
-                    from{' '}
-                    <Link
-                      href={sourceInfo.href}
-                      onClick={(e) => e.stopPropagation()}
-                      className="font-medium text-foreground hover:text-primary hover:underline transition-colors"
-                    >
-                      {sourceInfo.label}
-                    </Link>
-                  </span>
+                  <Link
+                    href={sourceInfo.href}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                    title={sourceInfo.label}
+                  >
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  </Link>
                 )}
               </div>
               <div className="flex items-center gap-2 mt-1">
@@ -157,19 +155,17 @@ export function CommandLogList({ logs }: { logs: CommandLogItem[] }) {
               <AccordionTrigger className="px-4 py-4 hover:no-underline hover:bg-muted/40 transition-colors w-full [&>svg]:hidden [&[data-state=open]]:bg-muted/50 [&[data-state=open]]:border-b-0">
                 <div className="flex items-center justify-between w-full gap-4 text-left">
                   <div className="flex flex-col gap-1 min-w-0">
-                    <div className="font-semibold text-base text-foreground tracking-tight">
+                    <div className="font-semibold text-base text-foreground tracking-tight flex items-center gap-1.5">
                       {getDisplayName(log.command, log.commandName)}
                       {sourceInfo && (
-                        <span className="font-normal text-sm text-muted-foreground ml-2">
-                          from{' '}
-                          <Link
-                            href={sourceInfo.href}
-                            onClick={(e) => e.stopPropagation()}
-                            className="font-medium text-foreground hover:text-primary hover:underline transition-colors"
-                          >
-                            {sourceInfo.label}
-                          </Link>
-                        </span>
+                        <Link
+                          href={sourceInfo.href}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-muted-foreground hover:text-primary transition-colors"
+                          title={sourceInfo.label}
+                        >
+                          <ArrowUpRight className="h-3.5 w-3.5" />
+                        </Link>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
