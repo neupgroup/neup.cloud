@@ -6,6 +6,8 @@ import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/core/utils';
 import { differenceInDays, differenceInHours, format, formatDistanceToNow } from 'date-fns';
+import { useEffect, useState } from 'react';
+import { getAccountName } from '@/services/account';
 
 export type CommandLogItem = {
   id: string;
@@ -55,8 +57,9 @@ function getSourceInfo(log: CommandLogItem): { label: string; href: string } | n
   if (!src) return null;
   if (src.startsWith('application:')) {
     const id = src.replace('application:', '');
-    // commandName is stored as "AppName commandName", extract just the app name
-    const appName = log.commandName ? log.commandName.split(' ').slice(0, -1).join(' ') || log.commandName : id;
+    // commandName is "AppName cmdName" — strip the last word to get just the app name
+    const parts = log.commandName?.trim().split(' ') ?? [];
+    const appName = parts.length > 1 ? parts.slice(0, -1).join(' ') : (log.commandName || id);
     return { label: appName, href: `/server/applications/${id}` };
   }
   if (src === 'commands:custom') return { label: 'Commands', href: '/server/commands' };
@@ -73,6 +76,11 @@ function getDisplayName(command: string, commandName?: string) {
 
 export function CommandLogCard({ log }: { log: CommandLogItem }) {
   const sourceInfo = getSourceInfo(log);
+  const [userName, setUserName] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAccountName().then(setUserName);
+  }, []);
 
   return (
     <AccordionItem key={log.id} value={log.id} className="border-0">
@@ -104,7 +112,10 @@ export function CommandLogCard({ log }: { log: CommandLogItem }) {
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <LogStatusBadge status={log.status} />
-                <span className="text-xs text-muted-foreground">{formatDate(log.runAt)}</span>
+                <span className="text-xs text-muted-foreground">
+                  {formatDate(log.runAt)}
+                  {' '}by <span className="font-medium text-foreground">{userName ?? 'Unknown User'}</span>
+                </span>
               </div>
             </div>
           </div>
