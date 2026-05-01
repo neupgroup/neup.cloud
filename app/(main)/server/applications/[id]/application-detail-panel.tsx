@@ -1,6 +1,6 @@
 'use client';
 
-import { AppWindow, ChevronLeft, Edit, KeyRound, FileText } from 'lucide-react';
+import { AppWindow, ChevronLeft, Edit } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -185,14 +185,6 @@ export function ApplicationDetailPanel({ application, appLanguage, serverName }:
         <Button variant="outline" className="gap-2" onClick={() => setView('edit')}>
           <Edit className="h-4 w-4" />
           Edit
-        </Button>
-        <Button variant="outline" className="gap-2" onClick={() => router.push(`/server/applications/${application.id}/environment`)}>
-          <KeyRound className="h-4 w-4" />
-          Environments
-        </Button>
-        <Button variant="outline" className="gap-2" onClick={() => router.push(`/server/applications/${application.id}/files`)}>
-          <FileText className="h-4 w-4" />
-          Files
         </Button>
 
         <DeleteApplicationButton applicationId={application.id} />
