@@ -123,13 +123,11 @@ export function CommandLogCard({ log }: { log: CommandLogItem }) {
         <AccordionContent className="px-6 pb-6 pt-0 border-t border-border/50 bg-muted/5">
           <div className="space-y-6 pt-6 animate-in slide-in-from-top-2 duration-200">
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Command</h4>
               <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm border text-foreground whitespace-pre-wrap break-all shadow-sm">
                 {log.command}
               </div>
             </div>
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Output</h4>
               <div className="bg-zinc-950 text-zinc-50 p-4 rounded-lg font-mono text-sm border border-zinc-800/50 whitespace-pre-wrap break-all overflow-wrap-anywhere shadow-inner">
                 {log.output || <span className="text-zinc-500 italic">No output recorded.</span>}
               </div>
