@@ -7,11 +7,14 @@ import * as Python from '@/services/core/python';
 
 import { getApplication } from './crud';
 import { getProcessDetails, getSupervisorProcesses } from './process-management';
-import { getSelectedServerName } from './session';
+import { getSelectedServerId, getSelectedServerName } from './session';
 
 export async function getApplicationDetailPageData(params: Promise<{ id: string }>) {
   const { id } = await params;
-  const serverName = await getSelectedServerName();
+  const [serverName, serverId] = await Promise.all([
+    getSelectedServerName(),
+    getSelectedServerId(),
+  ]);
 
   if (id.startsWith('supervisor_')) {
     const processName = id.slice('supervisor_'.length);
@@ -23,7 +26,7 @@ export async function getApplicationDetailPageData(params: Promise<{ id: string 
       ? supervisorProcesses.find((process: any) => process.name === processName)
       : null;
 
-    return { supervisor: true as const, processName, processDetails, summary, serverName };
+    return { supervisor: true as const, processName, processDetails, summary, serverName, serverId };
   }
 
   const application = await getApplication(id) as any;
@@ -72,7 +75,7 @@ export async function getApplicationDetailPageData(params: Promise<{ id: string 
 
   application.commandDefinitions = commandsArray;
 
-  return { supervisor: false as const, application, appLanguage, serverName };
+  return { supervisor: false as const, application, appLanguage, serverName, serverId };
 }
 
 export async function getApplicationFilesPageData(params: Promise<{ id: string }>) {

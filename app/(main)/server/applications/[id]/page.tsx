@@ -5,6 +5,7 @@ import { PageTitleBack } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getApplicationDetailPageData } from '@/services/server/applications/service';
+import { getCommandLog } from '@/services/logs/command-log';
 
 import { SupervisorOnlyActions } from './supervisor-only-actions';
 import { ApplicationDetailPanel } from './application-detail-panel';
@@ -103,11 +104,18 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
     );
   }
 
-  const { application, appLanguage, serverName } = pageData;
+  const { application, appLanguage, serverName, serverId } = pageData;
+
+  const applicationLogs = serverId ? await getCommandLog({
+    serverId,
+    source: `application:${application.id}`,
+    limit: 3,
+    offset: 0,
+  }) : [];
 
   return (
     <div className="flex flex-col gap-8 max-w-5xl animate-in fade-in duration-500">
-      <ApplicationDetailPanel application={application} appLanguage={appLanguage} serverName={serverName} />
+      <ApplicationDetailPanel application={application} appLanguage={appLanguage} serverName={serverName} applicationLogs={applicationLogs} />
     </div>
   );
 }

@@ -16,9 +16,10 @@ import { EnvironmentsForm } from './environments-form';
 import { FilesForm } from './files-form';
 import { GitHubSection } from './github-section';
 import { LifecycleSection } from './lifecycle-section';
-import { LogsSection } from './logs-section';
 import { StatusDashboard } from './status-dashboard';
 import { SystemSection } from './system-section';
+import { CommandLogList } from '@/app/(main)/server/commands/command-log-card';
+import type { CommandLog } from '@/services/logs/command-log';
 
 type ViewMode = 'details' | 'edit' | 'environments' | 'files';
 
@@ -88,9 +89,10 @@ interface ApplicationDetailPanelProps {
   application: any;
   appLanguage: string;
   serverName?: string | null;
+  applicationLogs: CommandLog[];
 }
 
-export function ApplicationDetailPanel({ application, appLanguage, serverName }: ApplicationDetailPanelProps) {
+export function ApplicationDetailPanel({ application, appLanguage, serverName, applicationLogs }: ApplicationDetailPanelProps) {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>('details');
 
@@ -228,7 +230,12 @@ export function ApplicationDetailPanel({ application, appLanguage, serverName }:
         <GitHubSection application={application} />
       ) : null}
 
-      <LogsSection application={application} />
+      {applicationLogs.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-lg font-medium">Recent Command History</h3>
+          <CommandLogList logs={applicationLogs} />
+        </div>
+      )}
 
       <SystemSection application={application} />
 
