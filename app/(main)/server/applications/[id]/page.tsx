@@ -9,6 +9,7 @@ import { getCommandLog } from '@/services/logs/command-log';
 
 import { SupervisorOnlyActions } from './supervisor-only-actions';
 import { ApplicationDetailPanel } from './application-detail-panel';
+import { CommandLogList } from '@/app/(main)/server/commands/command-log-card';
 
 function getSupervisorBadgeClasses(state: string) {
   const normalizedState = state.toUpperCase();
@@ -105,17 +106,12 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
   }
 
   const { application, appLanguage, serverName, serverId } = pageData;
-
-  const applicationLogs = serverId ? await getCommandLog({
-    serverId,
-    source: `application:${application.id}`,
-    limit: 3,
-    offset: 0,
-  }) : [];
+  const logs = serverId ? await getCommandLog({ serverId, source: `application:${application.id}`, limit: 3, offset: 0 }) : [];
 
   return (
     <div className="flex flex-col gap-8 max-w-5xl animate-in fade-in duration-500">
-      <ApplicationDetailPanel application={application} appLanguage={appLanguage} serverName={serverName} applicationLogs={applicationLogs} />
+      <ApplicationDetailPanel application={application} appLanguage={appLanguage} serverName={serverName} />
+      {logs.length > 0 && <CommandLogList logs={logs} />}
     </div>
   );
 }

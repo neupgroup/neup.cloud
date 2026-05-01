@@ -1,6 +1,6 @@
 'use client';
 
-import { AppWindow, ChevronLeft, Edit, FileText, KeyRound } from 'lucide-react';
+import { AppWindow, ChevronLeft, Edit, KeyRound, FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -12,16 +12,13 @@ import { ServerNameLink } from '@/components/server-name-link';
 
 import { DeploymentActionsCard } from './deployment-actions-card';
 import EditApplicationForm from './edit-form';
-import { EnvironmentsForm } from './environments-form';
-import { FilesForm } from './files-form';
 import { GitHubSection } from './github-section';
 import { LifecycleSection } from './lifecycle-section';
 import { StatusDashboard } from './status-dashboard';
 import { SystemSection } from './system-section';
 import { CommandLogList } from '@/app/(main)/server/commands/command-log-card';
-import type { CommandLog } from '@/services/logs/command-log';
 
-type ViewMode = 'details' | 'edit' | 'environments' | 'files';
+type ViewMode = 'details' | 'edit';
 
 const VIEW_INTENT_STORAGE_PREFIX = 'neup:applications:view-intent:';
 const LEGACY_EDIT_INTENT_STORAGE_PREFIX = 'neup:applications:edit-intent:';
@@ -32,7 +29,7 @@ function consumeViewIntent(applicationId: string): ViewMode | null {
     const value = sessionStorage.getItem(key);
     if (value) {
       sessionStorage.removeItem(key);
-      if (value === 'edit' || value === 'environments' || value === 'files') return value;
+      if (value === 'edit') return value;
     }
   } catch {
     // ignore (storage disabled)
@@ -89,10 +86,9 @@ interface ApplicationDetailPanelProps {
   application: any;
   appLanguage: string;
   serverName?: string | null;
-  applicationLogs: CommandLog[];
 }
 
-export function ApplicationDetailPanel({ application, appLanguage, serverName, applicationLogs }: ApplicationDetailPanelProps) {
+export function ApplicationDetailPanel({ application, appLanguage, serverName }: ApplicationDetailPanelProps) {
   const router = useRouter();
   const [view, setView] = useState<ViewMode>('details');
 
@@ -117,60 +113,6 @@ export function ApplicationDetailPanel({ application, appLanguage, serverName, a
             onSaved={() => setView('details')}
           />
         </div>
-      </div>
-    );
-  }
-
-  if (view === 'environments') {
-    return (
-      <div className="flex flex-col gap-8 max-w-5xl animate-in fade-in duration-300">
-        <InlineHeader
-          title="Environments"
-          description={`Manage environment variables for ${application.name}`}
-          badge={application.language}
-          onBack={() => setView('details')}
-        />
-
-        <Alert>
-          <KeyRound className="h-4 w-4" />
-          <AlertTitle>Security Note</AlertTitle>
-          <AlertDescription>
-            Environment variables are stored securely in the database and written to the server only when you deploy.
-            Ensure you do not commit sensitive keys to your repository.
-          </AlertDescription>
-        </Alert>
-
-        <EnvironmentsForm application={application} />
-
-        <Alert className="bg-muted/50">
-          <AlertTitle>Deployment Required</AlertTitle>
-          <AlertDescription>
-            After saving variables, use the "Deploy Configuration" action on the application dashboard to apply them to your running instance.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  if (view === 'files') {
-    return (
-      <div className="flex flex-col gap-8 max-w-5xl animate-in fade-in duration-300">
-        <InlineHeader
-          title="File Management"
-          description={`Manage custom file overrides for ${application.name}`}
-          badge={application.language}
-          onBack={() => setView('details')}
-        />
-
-        <Alert className="bg-muted/50">
-          <FileText className="h-4 w-4" />
-          <AlertTitle>Override Warning</AlertTitle>
-          <AlertDescription>
-            Files added here will overwrite existing files in your application directory upon the next deployment or configuration update. Use with caution.
-          </AlertDescription>
-        </Alert>
-
-        <FilesForm application={application} />
       </div>
     );
   }
@@ -230,19 +172,13 @@ export function ApplicationDetailPanel({ application, appLanguage, serverName, a
         <GitHubSection application={application} />
       ) : null}
 
-      {applicationLogs.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-lg font-medium">Recent Command History</h3>
-          <CommandLogList logs={applicationLogs} />
-        </div>
-      )}
 
       <SystemSection application={application} />
 
       <DeploymentActionsCard
         applicationId={application.id}
-        onOpenEnvironments={() => setView('environments')}
-        onOpenFiles={() => setView('files')}
+        onOpenEnvironments={() => router.push(`/server/applications/${application.id}/environment`)}
+        onOpenFiles={() => router.push(`/server/applications/${application.id}/files`)}
       />
 
       <div className="flex items-center flex-wrap gap-3 pt-4">
@@ -250,11 +186,11 @@ export function ApplicationDetailPanel({ application, appLanguage, serverName, a
           <Edit className="h-4 w-4" />
           Edit
         </Button>
-        <Button variant="outline" className="gap-2" onClick={() => setView('environments')}>
+        <Button variant="outline" className="gap-2" onClick={() => router.push(`/server/applications/${application.id}/environment`)}>
           <KeyRound className="h-4 w-4" />
           Environments
         </Button>
-        <Button variant="outline" className="gap-2" onClick={() => setView('files')}>
+        <Button variant="outline" className="gap-2" onClick={() => router.push(`/server/applications/${application.id}/files`)}>
           <FileText className="h-4 w-4" />
           Files
         </Button>
