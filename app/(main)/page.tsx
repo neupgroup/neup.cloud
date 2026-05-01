@@ -9,25 +9,22 @@ import {
   Activity,
   Cpu,
   Globe,
-  ShieldAlert,
   Plus,
   Search,
-  Clock,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getServers, selectServer, getServer, getSystemStats } from '@/services/server/server-service';
 import { getServerUptime } from "@/services/server/status";
-import { getRecentActivity, ActivityLog } from "@/services/home-service";
-import { format } from 'date-fns';
+import { getCommandLog, type CommandLog } from '@/services/logs/command-log';
 import { cn } from '@/core/utils';
 import { SystemHealthCard } from "@/components/system-health-card";
 import { ServerNameLink } from "@/components/server-name-link";
+import { CommandLogList } from '@/app/(main)/server/commands/command-log-card';
 import { ApplicationSection } from '@/components/specifics/application/section';
 
 export default function Home() {
@@ -43,7 +40,7 @@ export default function Home() {
   // Selected Server Data
   const [serverInfo, setServerInfo] = useState<any>(null);
   const [uptime, setUptime] = useState<string | null>(null);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [activityLogs, setActivityLogs] = useState<CommandLog[]>([]);
   const [systemStats, setSystemStats] = useState<{
     cpuUsage: number;
     memory: { total: number; used: number; percentage: number };
@@ -88,7 +85,7 @@ export default function Home() {
     try {
       const [info, activity] = await Promise.all([
         getServer(id),
-        getRecentActivity(id)
+        getCommandLog({ serverId: id, limit: 5, offset: 0 })
       ]);
 
       if (info) setServerInfo(info);
@@ -174,18 +171,6 @@ export default function Home() {
 
 
   // --- SERVER SELECTED DASHBOARD VIEW ---
-  function getSourceInfo(log: ActivityLog): { label: string; href: string } | null {
-    const src = log.source;
-    if (!src) return null;
-    if (src.startsWith('application:')) {
-      const id = src.replace('application:', '');
-      return { label: log.commandName || id, href: `/server/applications/${id}` };
-    }
-    if (src === 'commands:custom') return { label: 'Commands', href: '/server/commands' };
-    if (src.startsWith('webservices')) return { label: 'Webservices', href: '/server/webservices' };
-    if (src.startsWith('requirement:')) return { label: 'System', href: '/server/system' };
-    return null;
-  }
   // List of servers to display for switching
   const serversToDisplay = showAllServers ? filteredServers : allServers.slice(0, 8);
 
@@ -370,96 +355,19 @@ export default function Home() {
 
       {serverId && (logsLoading || activityLogs.length > 0) && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h2 className="text-xl font-bold tracking-tight">Recent Activity</h2>
-              <p className="text-sm text-muted-foreground">Recent commands and server events.</p>
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold tracking-tight">Recent Activity</h2>
+            <p className="text-sm text-muted-foreground">Recent commands and server events.</p>
+          </div>
+          {logsLoading || loading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
+              ))}
             </div>
-          </div>
-
-          <div className="border border-border/60 rounded-[2rem] bg-white overflow-hidden divide-y divide-border/40 shadow-sm">
-            {logsLoading || loading ? (
-              // Skeleton Loader
-              Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <Skeleton className="h-10 w-10 shrink-0 rounded-2xl" />
-                    <div className="space-y-2 min-w-0 flex-1">
-                      <Skeleton className="h-4 w-3/4 max-w-[200px]" />
-                      <Skeleton className="h-3 w-full max-w-[300px]" />
-                    </div>
-                  </div>
-                  <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-2 shrink-0 ml-14 sm:ml-0">
-                    <Skeleton className="h-5 w-16 rounded-md" />
-                    <Skeleton className="h-3 w-20" />
-                  </div>
-                </div>
-              ))
-            ) : activityLogs.length > 0 ? (
-              activityLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="p-3 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 hover:bg-muted/10 transition-all duration-300 group cursor-default"
-                >
-                  <div className="flex items-start sm:items-center gap-3 sm:gap-4 w-full min-w-0">
-                    <div className={cn(
-                      "flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl border transition-all duration-300 group-hover:scale-110 mt-1 sm:mt-0",
-                      log.status === 'Success' ? "bg-green-50 text-green-600 border-green-100" :
-                        log.status === 'Error' ? "bg-red-50 text-red-600 border-red-100" :
-                          "bg-muted/50 text-muted-foreground"
-                    )}>
-                      {log.status === 'Success' ? <Activity className="h-4 w-4 sm:h-5 sm:w-5" /> :
-                        log.status === 'Error' ? <ShieldAlert className="h-4 w-4 sm:h-5 sm:w-5" /> :
-                          <Clock className="h-4 w-4 sm:h-5 sm:w-5" />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-bold text-sm sm:text-base tracking-tight group-hover:text-primary transition-colors break-words">
-                        {log.commandName || log.command}
-                      </div>
-                      {(() => { const src = getSourceInfo(log); return src ? (
-                        <div className="text-xs text-muted-foreground mt-0.5">from{' '}<Link href={src.href} className="font-medium text-foreground hover:text-primary hover:underline transition-colors">{src.label}</Link></div>
-                      ) : null; })()}
-                      <div className="text-[10px] sm:text-xs text-muted-foreground font-mono break-all mt-0.5 line-clamp-2">
-                        {log.command}
-                      </div>
-
-                      {/* Mobile-only status/date row */}
-                      <div className="flex sm:hidden items-center gap-3 mt-2">
-                        <Badge
-                          variant={log.status === 'Success' ? 'outline' : log.status === 'Error' ? 'destructive' : 'secondary'}
-                          className={cn(
-                            "text-[9px] uppercase tracking-widest font-black px-2 py-0.5 rounded-md",
-                            log.status === 'Success' && "text-green-600 border-green-200 bg-green-50"
-                          )}
-                        >
-                          {log.status}
-                        </Badge>
-                        <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">
-                          {format(new Date(log.runAt), 'MMM d, HH:mm')}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Desktop-only status/date column */}
-                  <div className="hidden sm:flex flex-col items-end gap-1 sm:gap-2 shrink-0">
-                    <Badge
-                      variant={log.status === 'Success' ? 'outline' : log.status === 'Error' ? 'destructive' : 'secondary'}
-                      className={cn(
-                        "text-[9px] uppercase tracking-widest font-black px-2 py-0.5 rounded-md transition-all duration-300 group-hover:scale-105",
-                        log.status === 'Success' && "text-green-600 border-green-200 bg-green-50"
-                      )}
-                    >
-                      {log.status}
-                    </Badge>
-                    <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">
-                      {format(new Date(log.runAt), 'MMM d, HH:mm')}
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : null}
-          </div>
+          ) : (
+            <CommandLogList logs={activityLogs} />
+          )}
         </div>
       )}
     </div>
