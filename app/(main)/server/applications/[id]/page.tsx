@@ -4,7 +4,6 @@ import type { Metadata } from 'next';
 import { PageTitleBack } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ServerNameLink } from '@/components/server-name-link';
 import { getApplicationDetailPageData } from '@/services/server/applications/service';
 import { getCommandLog } from '@/services/logs/command-log';
 import { CommandLogList } from '@/app/(main)/server/commands/command-log-card';

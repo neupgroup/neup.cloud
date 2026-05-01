@@ -19,7 +19,7 @@ export type CommandLog = {
   command: string;
   commandName?: string;
   output?: string;
-  status: string;
+  status: 'Success' | 'Error' | 'pending';
   runAt: string;
   source?: string | null;
   accountId?: string | null;
@@ -53,7 +53,7 @@ export async function getCommandLog(filter: CommandLogFilter): Promise<CommandLo
     command: log.command,
     commandName: log.commandName ?? undefined,
     output: log.output ?? undefined,
-    status: log.status,
+    status: log.status as 'Success' | 'Error' | 'pending',
     runAt: log.runAt.toISOString(),
     source: log.source ?? null,
     accountId: log.accountId ?? null,
