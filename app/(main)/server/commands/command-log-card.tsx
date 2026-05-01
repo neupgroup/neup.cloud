@@ -153,11 +153,8 @@ export function CommandLogList({ logs }: { logs: CommandLogItem[] }) {
           const sourceInfo = getSourceInfo(log);
           const isLast = i === logs.length - 1;
           return (
-            <AccordionItem key={log.id} value={log.id} className="border-0">
-              <AccordionTrigger className={cn(
-                'px-4 py-4 hover:no-underline hover:bg-muted/40 transition-colors w-full [&>svg]:hidden [&[data-state=open]]:bg-muted/50 [&[data-state=open]]:border-b-0',
-                !isLast && 'border-b border-border'
-              )}>
+            <AccordionItem key={log.id} value={log.id} className={cn('border-0', !isLast && 'border-b border-border')}>
+              <AccordionTrigger className="px-4 py-4 hover:no-underline hover:bg-muted/40 transition-colors w-full [&>svg]:hidden [&[data-state=open]]:bg-muted/50">
                 <div className="flex items-center justify-between w-full gap-4">
                   <div className="flex flex-col gap-1 min-w-0">
                     <div className="font-semibold text-base text-foreground tracking-tight">
@@ -186,7 +183,7 @@ export function CommandLogList({ logs }: { logs: CommandLogItem[] }) {
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-90" />
                 </div>
               </AccordionTrigger>
-              <AccordionContent className={cn('px-6 pb-6', !isLast && 'border-b border-border')}>
+              <AccordionContent className="px-6 pb-6">
                 <div className="space-y-4 pt-4">
                   <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm border text-foreground whitespace-pre-wrap break-all shadow-sm">
                     {log.command}
