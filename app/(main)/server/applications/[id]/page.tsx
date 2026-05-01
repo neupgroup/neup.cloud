@@ -123,13 +123,18 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
       <StatusDashboard applicationId={application.id} />
       <LifecycleSection application={application} />
       {application.repository ? <GitHubSection application={application} /> : null}
+      {logs.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold">Command History</h3>
+          <CommandLogList logs={logs} />
+        </div>
+      )}
       <SystemSection application={application} />
       <DeploymentActionsCard
         applicationId={application.id}
         onOpenEnvironments={undefined}
         onOpenFiles={undefined}
       />
-      {logs.length > 0 && <CommandLogList logs={logs} />}
       <ApplicationActions applicationId={application.id} />
     </div>
   );
