@@ -39,7 +39,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { type SavedCommand } from '@/services/saved-commands/types';
 import { cn } from '@/core/utils';
-import { CommandLogCard } from './command-log-card';
+import { CommandLogCard, CommandLogList } from './command-log-card';
 import { differenceInDays, differenceInHours, format, formatDistanceToNow } from 'date-fns';
 
 type ServerType = {
@@ -653,11 +653,7 @@ export function CommandsContent({ mode = 'dashboard' }: { mode?: CommandsPageMod
                   <p className="text-sm">Commands run on this server will appear here.</p>
                 </div>
               ) : (
-                <Accordion type="single" collapsible className="w-full space-y-4">
-                  {visibleHistory.map((log) => (
-                    <CommandLogCard key={log.id} log={log} />
-                  ))}
-                </Accordion>
+                <CommandLogList logs={visibleHistory} />
               )}
 
               {showDashboard ? (

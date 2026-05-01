@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/core/utils';
@@ -136,5 +136,70 @@ export function CommandLogCard({ log }: { log: CommandLogItem }) {
         </AccordionContent>
       </Card>
     </AccordionItem>
+  );
+}
+
+export function CommandLogList({ logs }: { logs: CommandLogItem[] }) {
+  const [userName, setUserName] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAccountName().then(setUserName);
+  }, []);
+
+  return (
+    <Card className="w-full overflow-hidden border-border">
+      <Accordion type="single" collapsible className="w-full">
+        {logs.map((log, i) => {
+          const sourceInfo = getSourceInfo(log);
+          const isLast = i === logs.length - 1;
+          return (
+            <AccordionItem key={log.id} value={log.id} className="border-0">
+              <AccordionTrigger className={cn(
+                'px-4 py-4 hover:no-underline hover:bg-muted/40 transition-colors w-full [&>svg]:hidden',
+                !isLast && 'border-b border-border'
+              )}>
+                <div className="flex items-center justify-between w-full gap-4">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <div className="font-semibold text-base text-foreground tracking-tight">
+                      {getDisplayName(log.command, log.commandName)}
+                      {sourceInfo && (
+                        <span className="font-normal text-sm text-muted-foreground ml-2">
+                          from{' '}
+                          <Link
+                            href={sourceInfo.href}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-medium text-foreground hover:text-primary hover:underline transition-colors"
+                          >
+                            {sourceInfo.label}
+                          </Link>
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <LogStatusBadge status={log.status} />
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(log.runAt)}
+                        {' '}by <span className="font-medium text-foreground">{userName ?? 'Unknown User'}</span>
+                      </span>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-90" />
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className={cn('px-6 pb-6', !isLast && 'border-b border-border')}>
+                <div className="space-y-4 pt-4">
+                  <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm border text-foreground whitespace-pre-wrap break-all shadow-sm">
+                    {log.command}
+                  </div>
+                  <div className="bg-zinc-950 text-zinc-50 p-4 rounded-lg font-mono text-sm border border-zinc-800/50 whitespace-pre-wrap break-all overflow-wrap-anywhere shadow-inner">
+                    {log.output || <span className="text-zinc-500 italic">No output recorded.</span>}
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
+    </Card>
   );
 }
