@@ -9,6 +9,7 @@ import {
   Radar,
   ScrollText,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 
 import { PageTitle } from '@/components/page-header';
@@ -50,6 +51,12 @@ const intelligenceCards = [
     description: 'Manage the provider tokens used by primary and fallback model calls.',
     icon: KeySquare,
     href: '/intelligence/tokens',
+  },
+  {
+    title: 'OpenFlow',
+    description: 'Direct AI connection with token selection, prompt input, and automatic fallback support.',
+    icon: Zap,
+    href: '/intelligence/openflow',
   },
   {
     title: 'Models',

@@ -196,6 +196,19 @@ model IntelligenceLog {
   @@map("intelligenceLog")
 }
 
+model OpenFlowUsageLog {
+  id              BigInt   @id @default(autoincrement())
+  accountId       String   @map("account_id") @db.Text
+  tokenLast4      String   @map("token_last4") @db.Text
+  modelUsed       String   @map("model_used") @db.Text
+  provider        String   @db.Text
+  usedAt          DateTime @default(now()) @map("used_at") @db.Timestamp(6)
+
+  @@index([accountId], map: "openflow_usage_log_account_id_idx")
+  @@index([usedAt], map: "openflow_usage_log_used_at_idx")
+  @@map("openflow_usage_log")
+}
+
 model Pipeline {
   id          String  @id @db.Text
   accountId   String  @map("account_id") @db.Text

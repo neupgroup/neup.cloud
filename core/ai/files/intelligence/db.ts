@@ -254,6 +254,27 @@ export async function ensureIntelligenceTables(): Promise<void> {
         ALTER TABLE "intelligenceLog"
         ADD COLUMN IF NOT EXISTS "outputTokens" BIGINT
       `);
+
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS "openflow_usage_log" (
+          id BIGSERIAL PRIMARY KEY,
+          account_id TEXT NOT NULL,
+          token_last4 TEXT NOT NULL,
+          model_used TEXT NOT NULL,
+          provider TEXT NOT NULL,
+          used_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      await db.query(`
+        CREATE INDEX IF NOT EXISTS "openflow_usage_log_account_id_idx"
+        ON "openflow_usage_log" (account_id)
+      `);
+
+      await db.query(`
+        CREATE INDEX IF NOT EXISTS "openflow_usage_log_used_at_idx"
+        ON "openflow_usage_log" (used_at)
+      `);
     })().catch((error) => {
       schemaReadyPromise = null;
       throw error;
