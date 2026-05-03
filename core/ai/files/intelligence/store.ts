@@ -332,6 +332,33 @@ export async function getAccessTokens(accountId: string): Promise<AccessTokenRec
   }));
 }
 
+export async function getAccessTokenById(accountId: string, tokenId: number): Promise<AccessTokenRecord | null> {
+  await ensureIntelligenceTables();
+  const db = getIntelligenceDbPool();
+  const result = await db.query<AccessTokenRow>(
+    `
+      SELECT id, account_id, name, "key"
+      FROM "accessTokens"
+      WHERE account_id = $1 AND id = $2
+      LIMIT 1
+    `,
+    [accountId, tokenId]
+  );
+
+  const row = result.rows[0];
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: normalizeNumericId(row.id),
+    account_id: row.account_id,
+    name: row.name,
+    key: row.key,
+  };
+}
+
 function normalizeModelPrice(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {};
